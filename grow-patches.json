@@ -37,6 +37,6 @@
  {
   "name": "town-tab-remembrance",
   "find": "Archive <span class=\"n\">${nI}</span></a>\n</nav>",
-  "replace": "Archive <span class=\"n\">${nI}</span></a>\n<a href=\"/${esc(slug)}/remembrance\">Cemetery &amp; Remembrance</a>\n</nav>"
+  "replace": "Archive <span class=\"n\">${nI}</span></a>\n<a href=\"/${esc(slug)}/remembrance\">Cemetery &amp; Remembrance</a>\n<a href=\"/${esc(slug)}/sports\">Sports History</a>\n</nav>"
  }
 ]

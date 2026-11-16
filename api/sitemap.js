@@ -23,6 +23,14 @@ module.exports = async (req, res) => {
       urls.push(`${S}/${m.town}/remembrance/${encodeURIComponent(m.id)}`);
     }
   } catch (e) { /* remembrance tables unavailable: skip */ }
+  // Sports History pages, only for towns that have teams (empty ones are noindex).
+  try {
+    const [teams, athletes] = await Promise.all([
+      q('teams?status=eq.published&select=town', { all: true, timeout: 8000 }),
+      q('athletes?status=eq.published&select=town', { all: true, timeout: 8000 }).catch(() => []),
+    ]);
+    for (const t of new Set(teams.concat(athletes).map((x) => x.town))) if (towns[t]) urls.push(`${S}/${t}/sports`);
+  } catch (e) { /* teams table unavailable: skip */ }
   const esc = (u) => u.replace(/&/g, '&amp;');
   res.setHeader('Content-Type', 'application/xml; charset=utf-8');
   res.setHeader('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400');

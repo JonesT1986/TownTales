@@ -14,7 +14,7 @@ function call(handler, reqUrl) {
   });
 }
 (async () => {
-  const rem = require('../api/remembrance'), prov = require('../api/province'), seo = require('../api/seo'), sitemap = require('../api/sitemap');
+  const sports = require('../api/sports'), rem = require('../api/remembrance'), prov = require('../api/province'), seo = require('../api/seo'), sitemap = require('../api/sitemap');
   const cases = [
     ['rem-index', rem, '/api/remembrance?slug=wapella-sk'],
     ['rem-search', rem, '/api/remembrance?slug=wapella-sk&q=smith&c=wap-cem-2'],
@@ -23,6 +23,9 @@ function call(handler, reqUrl) {
     ['rem-missing', rem, '/api/remembrance?slug=wapella-sk&id=nope'],
     ['rem-empty-town', rem, '/api/remembrance?slug=moose-jaw-sk'],
     ['rem-bad-town', rem, '/api/remembrance?slug=atlantis-sk'],
+    ['sports-wapella', sports, '/api/sports?slug=wapella-sk'],
+    ['sports-empty', sports, '/api/sports?slug=moose-jaw-sk'],
+    ['sports-bad', sports, '/api/sports?slug=atlantis-sk'],
     ['prov-index', prov, '/api/province'],
     ['prov-sk', prov, '/api/province?name=saskatchewan'],
     ['prov-ns', prov, '/api/province?name=nova-scotia'],
