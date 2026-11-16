@@ -1,0 +1,7 @@
+test/
+db/
+supabase/
+scripts/
+*.md
+.git/
+node_modules/
