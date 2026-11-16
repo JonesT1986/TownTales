@@ -1,0 +1,37 @@
+[
+ {
+  "name": "home-grow-banner",
+  "find": "<p id=\"find-msg\" class=\"msg\" role=\"status\"></p>\n</form>\n</div>\n</section>\n",
+  "replace": "<p id=\"find-msg\" class=\"msg\" role=\"status\"></p>\n</form>\n</div>\n</section>\n<div class=\"grow-banner\"><div class=\"wrap\"><p>New towns are added every week — and every town's history grows with your help.</p><a href=\"#upload\">Add a memory, a photo, or your family's story →</a></div></div>\n"
+ },
+ {
+  "name": "home-grow-section",
+  "find": "${donateBand(\"\")}`;};",
+  "replace": "<section class=\"wrap stack\" id=\"grow\"><div class=\"grow\"><h2>This site grows one town, and one memory, at a time.</h2><p>New towns are added every week, but the real history doesn't live in archives — it lives with the people who were there. If you know a story, hold a photo, or have your community's history book on a shelf, you can put it where it belongs: on your town's page, with your name on it as the source.</p><ul><li>Share a memory or correct a date on any town's timeline</li><li>Send us your community's history book — one copy is all it takes</li><li>Add your family's people to the town's Cemetery &amp; Remembrance section</li></ul><p>Every entry is sourced and credited. This history belongs to the towns — we're just keeping it safe.</p><div class=\"btns\"><a class=\"btn\" href=\"#upload\">Add your town's history</a><a class=\"btn alt\" href=\"#corrections\" data-act=\"sendbook\">Send a history book</a></div></div></section>\n${donateBand(\"\")}`;};"
+ },
+ {
+  "name": "sendbook-prefill",
+  "find": "if(a===\"donatemsg\"){prefill.what=\"I'd like to donate\";return;",
+  "replace": "if(a===\"sendbook\"){prefill.what=\"Sending our community's history book\";if(location.hash===\"#corrections\")route();return;}if(a===\"donatemsg\"){prefill.what=\"I'd like to donate\";return;"
+ },
+ {
+  "name": "extra-css",
+  "find": "</head>",
+  "replace": "<link rel=\"stylesheet\" href=\"/towntales-extra.css?v=1\">\n</head>"
+ },
+ {
+  "name": "footer-province",
+  "find": "<li><a href=\"#towns\">Find your town</a></li>",
+  "replace": "<li><a href=\"#towns\">Find your town</a></li><li><a href=\"/province\">Towns by province</a></li>"
+ },
+ {
+  "name": "towns-province",
+  "find": "<div id=\"tw-list\" class=\"towngrid\"></div>",
+  "replace": "<p><a href=\"/province\">Browse towns by province and territory →</a></p><div id=\"tw-list\" class=\"towngrid\"></div>"
+ },
+ {
+  "name": "town-crumb-province",
+  "find": "<p class=\"crumbs\"><a href=\"#towns\">Towns</a> › ${esc(w.name)}</p>",
+  "replace": "<p class=\"crumbs\"><a href=\"#towns\">Towns</a> › <a href=\"/province/${esc(provName(w.prov).toLowerCase().replace(/ /g,\"-\"))}\">${esc(provName(w.prov))}</a> › ${esc(w.name)}</p>"
+ }
+]

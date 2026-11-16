@@ -61,7 +61,7 @@ function directory(towns, current) {
   const byProv = {};
   for (const t of towns) (byProv[t.prov] = byProv[t.prov] || []).push(t);
   const groups = Object.keys(byProv).sort().map((p) =>
-    '<div><h3>' + esc(PROV[p] || p) + ' towns</h3><p class="small" style="line-height:1.9">' +
+    '<div><h3><a href="/province/' + esc(String(PROV[p] || p).toLowerCase().replace(/ /g, '-')) + '">' + esc(PROV[p] || p) + ' towns</a></h3><p class="small" style="line-height:1.9">' +
     byProv[p].map((t) => t.slug === current
       ? '<b>' + esc(t.name) + '</b>'
       : '<a href="/' + esc(t.slug) + '">' + esc(t.name) + '</a>').join(' · ') +
@@ -69,7 +69,8 @@ function directory(towns, current) {
   return '<nav aria-label="All towns" class="wrap" id="ssr-towns" style="padding:24px 0;display:grid;gap:16px">' + groups + '</nav>';
 }
 
-function townBody(town, timeline, items, archive) {
+function townBody(town, timeline, items, archive, cems, clips) {
+  cems = cems || []; clips = clips || [];
   const prov = PROV[town.prov] || town.prov;
   let h = '<section class="wrap stack" id="ssr-town"><p class="small"><a href="/">TownTales</a> › ' + esc(town.name) + '</p>' +
     '<h1>' + esc(town.name) + ', ' + esc(prov) + (archive ? ' — Archive' : '') + '</h1>';
@@ -84,6 +85,21 @@ function townBody(town, timeline, items, archive) {
     }
   } else {
     h += '<p>Photos, stories, clippings and documents about ' + esc(town.name) + ' shared by locals. <a href="/' + esc(town.slug) + '">See the ' + esc(town.name) + ' timeline</a>.</p>';
+  }
+  if (!archive) {
+    h += '<h2>' + esc(town.name) + ' Cemetery &amp; Remembrance</h2><p>' +
+      (cems.length ? 'Cemeteries: ' + cems.map((c) => esc(c.name)).join(', ') + '. ' : '') +
+      '<a href="/' + esc(town.slug) + '/remembrance">Search the people remembered in ' + esc(town.name) + '</a>, or add someone from your family.</p>';
+  }
+  if (archive && clips.length) {
+    h += '<h2>Newspaper clippings from ' + esc(town.name) + '</h2><ul>';
+    for (const c of clips) {
+      const t = [c.paper_name, c.date_label].filter(Boolean).join(', ') || 'Newspaper clipping';
+      h += '<li><h3>' + esc(t) + '</h3>' + (c.description ? '<p>' + esc(c.description) + '</p>' : '') +
+        (c.transcription ? '<p>' + (c.transcription_status === 'transcribed' ? '<b>AI transcription — not yet verified.</b> ' : '') + esc(String(c.transcription).slice(0, 1500)) + '</p>' : '') +
+        '<p class="small">Source: ' + esc(t) + (c.submitter_name ? ' · Shared by ' + esc(c.submitter_name) : '') + '</p></li>';
+    }
+    h += '</ul>';
   }
   if (items.length) {
     h += '<h2>From the ' + esc(town.name) + ' archive</h2><ul>';
@@ -120,16 +136,25 @@ module.exports = async (req, res) => {
         if (!/rel=["']canonical["']/i.test(html)) inject.push('<link rel="canonical" href="' + SITE + '/">');
         inject.push(jsonLd({ '@context': 'https://schema.org', '@type': 'WebSite', name: 'TownTales', url: SITE + '/', description: 'Community-built history of small prairie towns: old photos, stories, clippings and timelines.' }));
         main = '<section class="wrap stack" id="ssr-home"><h1>TownTales: small-town prairie history</h1>' +
-          '<p>Old photos, stories, clippings and a timeline for ' + towns.length + ' small towns, built from what locals share.</p></section>';
+          '<p>Old photos, stories, clippings and a timeline for ' + towns.length + ' small towns, built from what locals share.</p>' +
+          '<p>New towns are added every week — and every town\'s history grows with your help. <a href="/#upload">Add a memory, a photo, or your family\'s story →</a></p>' +
+          '<h2>This site grows one town, and one memory, at a time.</h2>' +
+          '<p>New towns are added every week, but the real history doesn\'t live in archives — it lives with the people who were there. If you know a story, hold a photo, or have your community\'s history book on a shelf, you can put it where it belongs: on your town\'s page, with your name on it as the source.</p>' +
+          '<ul><li>Share a memory or correct a date on any town\'s timeline</li><li>Send us your community\'s history book — one copy is all it takes</li><li>Add your family\'s people to the town\'s Cemetery &amp; Remembrance section</li></ul>' +
+          '<p>Every entry is sourced and credited. This history belongs to the towns — we\'re just keeping it safe.</p>' +
+          '<p><a href="/province">Browse towns by province</a></p></section>';
       } else {
         const town = towns.find((t) => t.slug === slug);
         if (town) {
           const s = encodeURIComponent(slug);
-          const [timeline, items] = await Promise.all([
+          const soft = (p) => p.catch(() => []); // new tables: never let them break the town page
+          const [timeline, items, cems, clips] = await Promise.all([
             archive ? Promise.resolve([]) : q('timeline?town=eq.' + s + '&select=year,label,title,body&order=year,sort'),
             q('items?town=eq.' + s + '&status=eq.published&select=title,body,year,source&order=created_at.desc'),
+            archive ? Promise.resolve([]) : soft(q('cemeteries?town=eq.' + s + '&select=name&order=name')),
+            archive ? soft(q('clippings?town=eq.' + s + '&select=paper_name,date_label,description,transcription,transcription_status,submitter_name&order=created_at.desc&limit=100')) : Promise.resolve([]),
           ]);
-          main = townBody(town, timeline, items, archive);
+          main = townBody(town, timeline, items, archive, cems, clips);
           const prov = PROV[town.prov] || town.prov;
           const pageUrl = SITE + '/' + slug + (archive ? '/archive' : '');
           inject.push(jsonLd({

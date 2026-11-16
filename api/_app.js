@@ -6,6 +6,9 @@ const path = require('path');
 let patches = require('../patches.json');
 // Optional add-on patches (provincial flags on the elevators, train icon). Missing file is fine.
 try { patches = patches.concat(require('../flag-patches.json')); } catch (e) { /* optional */ }
+// Nov 2026 add-ons: homepage "help us grow" copy + stylesheet link, regional icons, province links. Missing files are fine.
+try { patches = patches.concat(require('../grow-patches.json')); } catch (e) { /* optional */ }
+try { patches = patches.concat(require('../icon-patches.json')); } catch (e) { /* optional */ }
 
 const GA_ID = 'G-C4E2QYM9XW';
 const GA_TAG = `<!-- Google tag (gtag.js) -->

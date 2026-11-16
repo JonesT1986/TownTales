@@ -3,6 +3,7 @@
 // town.js is left untouched; if anything here fails the page is served as before.
 const town = require('./town');
 const TAG = '<script src="/api/fam?v=2" defer></script>';
+const EXTRA_TAG = '<script src="/towntales-extra.js?v=1" defer></script>';
 
 // Exact-match swaps on the served page. A swap that no longer matches is skipped.
 const SWAPS = [
@@ -46,6 +47,8 @@ module.exports = async (req, res) => {
           } catch (e) { /* skip this swap */ }
         }
         if (!body.includes('/family.js') && !body.includes('/api/fam')) body = body.replace('</body>', TAG + '\n</body>');
+        // Remembrance, clippings and admin review add-ons (towntales-extra.js). Loaded after the app; it never blocks it.
+        if (!body.includes('/towntales-extra.js')) body = body.replace('</body>', EXTRA_TAG + '\n</body>');
         if (res.getHeader && res.getHeader('Content-Length')) res.removeHeader('Content-Length');
       }
     } catch (e) { /* serve unchanged */ }
