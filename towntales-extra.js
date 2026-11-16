@@ -3,6 +3,7 @@
    2. Family "add someone" form (on /<town>/remembrance)
    3. Newspaper clippings on each town's Archive tab, with an upload form
    4. Remembrance + clippings review queue on the #admin page
+   5. Sports & Teams on each town page (only when the town has teams)
    Nothing here can break the main app: every step is wrapped, and the app never depends on it. */
 (function () {
   "use strict";
@@ -142,6 +143,48 @@
     qi.addEventListener("input", draw); if (ci) ci.addEventListener("change", draw);
     $(".tt-rm-search", sec).addEventListener("submit", function (e) { e.preventDefault(); draw(); });
     draw();
+  }
+
+  /* ---------- 5: Sports & Teams on the town page (hidden when the town has no teams) ---------- */
+  function champText(c) {
+    if (c == null) return "";
+    if (typeof c === "string" || typeof c === "number") return String(c);
+    return [c.year || c.years || c.date, c.title || c.name || c.text].filter(Boolean).join(" — ");
+  }
+  var teamCache = {}, noTeams = {};
+  function teamsBlock(t) {
+    var view = $("#view"); if (!view || $("#tt-teams", view) || noTeams[t.slug]) return;
+    var anchor = $("#tt-rm", view) || $("#history", view); if (!anchor) return;
+    var sec = document.createElement("section");
+    sec.className = "wrap stack"; sec.id = "tt-teams"; sec.hidden = true;
+    anchor.parentNode.insertBefore(sec, anchor.nextSibling);
+    teamCache[t.slug] = teamCache[t.slug] || get("teams?town=eq." + encodeURIComponent(t.slug) + "&select=id,name,sport,league,years_label,home_venue,championships,note,tier,source,source_url&order=sport,name");
+    teamCache[t.slug].then(function (rows) {
+      if (!rows.length) noTeams[t.slug] = true;
+      if (!sec.isConnected) return;
+      if (!rows.length) return sec.remove();
+      var by = {}, order = [];
+      rows.forEach(function (r) { if (!by[r.sport]) { by[r.sport] = []; order.push(r.sport); } by[r.sport].push(r); });
+      var tn = townName();
+      sec.innerHTML = '<p class="eyebrow">Sports &amp; Teams</p><h2>' + esc(tn) + "'s teams</h2>" +
+        '<p class="muted">The teams that played for ' + esc(tn) + ', with the source for each. ' + pill("documented") + " from records, " + pill("community") + " from local memory.</p>" +
+        order.map(function (sp) {
+          return '<div class="tm-sport"><h3 class="tm-sport-h">' + esc(sp) + '</h3><div class="tm-list">' + by[sp].map(function (r) {
+            var ch = (Array.isArray(r.championships) ? r.championships : []).map(champText).filter(Boolean);
+            var kv = [];
+            if (r.league) kv.push("<dt>League</dt><dd>" + esc(r.league) + "</dd>");
+            if (r.years_label) kv.push("<dt>Years</dt><dd>" + esc(r.years_label) + "</dd>");
+            if (r.home_venue) kv.push("<dt>Home</dt><dd>" + esc(r.home_venue) + "</dd>");
+            var u = /^https?:\/\//i.test(r.source_url || "") ? r.source_url : "";
+            return '<article class="rm-cem tm-team"><h4>' + esc(r.name) + "</h4>" + (kv.length ? '<dl class="kv">' + kv.join("") + "</dl>" : "") +
+              (ch.length ? '<div><b>Championships</b><ul class="tm-ch">' + ch.map(function (c) { return "<li>" + esc(c) + "</li>"; }).join("") + "</ul></div>" : "") +
+              (r.note ? "<p>" + esc(r.note) + "</p>" : "") + "<p>" + pill(r.tier) + "</p>" +
+              '<p class="rm-src"><b>Source:</b> ' + esc(r.source) + (u ? ' · <a href="' + esc(u) + '" rel="nofollow noopener" target="_blank">View source</a>' : "") + "</p></article>";
+          }).join("") + "</div></div>";
+        }).join("") +
+        '<p class="small">Something wrong or missing? <a href="#corrections">Tell us</a>.</p>';
+      sec.hidden = false;
+    }).catch(function () { noTeams[t.slug] = true; sec.remove(); });
   }
 
   /* ---------- 3: clippings on the Archive tab ---------- */
@@ -303,7 +346,7 @@
       var h = (location.hash || "").slice(1);
       if (h === "admin") return adminBlock();
       var t = currentTown(); if (!t) return;
-      if (t.archive) clipBlock(t); else rmBlock(t);
+      if (t.archive) clipBlock(t); else { rmBlock(t); teamsBlock(t); }
     } catch (e) { if (window.console) console.error("towntales-extra", e); }
   }
   function boot() {

@@ -88,3 +88,10 @@
 /* search boxes: match the site's other inputs */
 input[type=search]{width:100%;font:400 1.05rem/1.4 var(--body);padding:12px;border:2px solid var(--rule);border-radius:4px;background:#FFFEFA;color:var(--ink);-webkit-appearance:none;appearance:none}
 input[type=search]:focus{border-color:var(--ink)}
+
+/* ---- sports & teams ---- */
+.tm-sport{display:flex;flex-direction:column;gap:10px;margin-top:8px}
+.tm-sport-h{font-size:1.6rem;border-bottom:3px solid var(--ink);padding-bottom:4px}
+.tm-list{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+.tm-team h4{font-family:var(--display);font-weight:800;font-size:1.35rem;margin:0}
+.tm-ch{margin:4px 0 0;padding-left:1.2em}

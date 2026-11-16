@@ -20,7 +20,11 @@ const clips = [
 ];
 const provinces = [{ code: 'SK', overview: 'Settlement followed the railway.\n\nHomesteaders arrived after 1882.', overview_source: 'Encyclopedia of Saskatchewan', overview_source_url: 'https://example.org/esk', topics: [{ title: 'The CPR main line', body: 'Towns were laid out every 10–15 km.', source: 'CPR archives' }, { title: 'No source topic', body: 'should be hidden' }] }];
 const town_stats = towns.map((t) => ({ slug: t.slug, items: 0, entries: 1, timeline_status: 'ready', timeline_built_at: '2026-11-01T00:00:00Z' }));
-const tables = { town_stats, towns, cemeteries: cems, memorials: mems, clippings: clips, provinces, timeline: [{ town: 'wapella-sk', year: 1882, label: '1882', title: 'Railway arrives', body: 'x', sort: 0 }], items: [] };
+const teams = [
+  { id: 't1', town: 'wapella-sk', name: 'Wapella Red Sox', sport: 'Baseball', league: 'Qu\'Appelle Valley League', years_label: 'c. 1920s–1960s', home_venue: 'Wapella sports grounds', championships: ['1952 league champions', { year: '1958', title: 'Provincial intermediate B' }], note: 'Played Sunday doubleheaders.', tier: 'documented', source: 'Wapella history book (1979), p. 212', source_url: null, status: 'published' },
+  { id: 't2', town: 'wapella-sk', name: 'Wapella Wolves', sport: 'Hockey', league: null, years_label: '1948–1972', home_venue: 'Wapella Rink', championships: [], note: null, tier: 'community', source: 'Recollection of J. Smith', source_url: null, status: 'published' },
+];
+const tables = { teams, town_stats, towns, cemeteries: cems, memorials: mems, clippings: clips, provinces, timeline: [{ town: 'wapella-sk', year: 1882, label: '1882', title: 'Railway arrives', body: 'x', sort: 0 }], items: [] };
 
 function filt(rows, params) {
   for (const [k, v] of params) {

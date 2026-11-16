@@ -69,8 +69,8 @@ function directory(towns, current) {
   return '<nav aria-label="All towns" class="wrap" id="ssr-towns" style="padding:24px 0;display:grid;gap:16px">' + groups + '</nav>';
 }
 
-function townBody(town, timeline, items, archive, cems, clips) {
-  cems = cems || []; clips = clips || [];
+function townBody(town, timeline, items, archive, cems, clips, teams) {
+  cems = cems || []; clips = clips || []; teams = teams || [];
   const prov = PROV[town.prov] || town.prov;
   let h = '<section class="wrap stack" id="ssr-town"><p class="small"><a href="/">TownTales</a> › ' + esc(town.name) + '</p>' +
     '<h1>' + esc(town.name) + ', ' + esc(prov) + (archive ? ' — Archive' : '') + '</h1>';
@@ -90,6 +90,24 @@ function townBody(town, timeline, items, archive, cems, clips) {
     h += '<h2>' + esc(town.name) + ' Cemetery &amp; Remembrance</h2><p>' +
       (cems.length ? 'Cemeteries: ' + cems.map((c) => esc(c.name)).join(', ') + '. ' : '') +
       '<a href="/' + esc(town.slug) + '/remembrance">Search the people remembered in ' + esc(town.name) + '</a>, or add someone from your family.</p>';
+  }
+  if (!archive && teams.length) {
+    const tierLabel = (t) => (t === 'community' ? 'Community Memory' : 'Verified');
+    const champ = (c) => (c == null ? '' : typeof c === 'object' ? [c.year || c.years || c.date, c.title || c.name || c.text].filter(Boolean).join(' — ') : String(c));
+    const bySport = {};
+    for (const t of teams) (bySport[t.sport] = bySport[t.sport] || []).push(t);
+    h += '<h2>' + esc(town.name) + ' Sports &amp; Teams</h2>';
+    for (const sp of Object.keys(bySport)) {
+      h += '<h3>' + esc(sp) + '</h3><ul>';
+      for (const t of bySport[sp]) {
+        const ch = (Array.isArray(t.championships) ? t.championships : []).map(champ).filter(Boolean);
+        h += '<li><h4>' + esc(t.name) + '</h4><p>' + [t.league && 'League: ' + esc(t.league), t.years_label && 'Years: ' + esc(t.years_label), t.home_venue && 'Home: ' + esc(t.home_venue)].filter(Boolean).join(' · ') + '</p>' +
+          (ch.length ? '<p>Championships:</p><ul>' + ch.map((c) => '<li>' + esc(c) + '</li>').join('') + '</ul>' : '') +
+          (t.note ? '<p>' + esc(t.note) + '</p>' : '') +
+          '<p class="small">' + tierLabel(t.tier) + ' · Source: ' + esc(t.source) + '</p></li>';
+      }
+      h += '</ul>';
+    }
   }
   if (archive && clips.length) {
     h += '<h2>Newspaper clippings from ' + esc(town.name) + '</h2><ul>';
@@ -148,13 +166,14 @@ module.exports = async (req, res) => {
         if (town) {
           const s = encodeURIComponent(slug);
           const soft = (p) => p.catch(() => []); // new tables: never let them break the town page
-          const [timeline, items, cems, clips] = await Promise.all([
+          const [timeline, items, cems, clips, teams] = await Promise.all([
             archive ? Promise.resolve([]) : q('timeline?town=eq.' + s + '&select=year,label,title,body&order=year,sort'),
             q('items?town=eq.' + s + '&status=eq.published&select=title,body,year,source&order=created_at.desc'),
             archive ? Promise.resolve([]) : soft(q('cemeteries?town=eq.' + s + '&select=name&order=name')),
             archive ? soft(q('clippings?town=eq.' + s + '&select=paper_name,date_label,description,transcription,transcription_status,submitter_name&order=created_at.desc&limit=100')) : Promise.resolve([]),
+            archive ? Promise.resolve([]) : soft(q('teams?town=eq.' + s + '&select=name,sport,league,years_label,home_venue,championships,note,tier,source&order=sport,name')),
           ]);
-          main = townBody(town, timeline, items, archive, cems, clips);
+          main = townBody(town, timeline, items, archive, cems, clips, teams);
           const prov = PROV[town.prov] || town.prov;
           const pageUrl = SITE + '/' + slug + (archive ? '/archive' : '');
           inject.push(jsonLd({
