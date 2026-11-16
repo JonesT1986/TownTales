@@ -20,6 +20,9 @@
     },
     "api/sports.js": {
       "includeFiles": "app.html"
+    },
+    "api/contact.js": {
+      "includeFiles": "app.html"
     }
   },
   "rewrites": [
@@ -30,6 +33,10 @@
     {
       "source": "/sitemap.xml",
       "destination": "/api/sitemap"
+    },
+    {
+      "source": "/contact",
+      "destination": "/api/contact"
     },
     {
       "source": "/province",

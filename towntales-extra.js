@@ -81,6 +81,24 @@
     });
   }
 
+  /* ---------- contact page (/contact): send to Formspree without leaving the page ---------- */
+  function wireContact(f) {
+    f.addEventListener("submit", function (ev) {
+      ev.preventDefault();
+      var err = $("#ct-err"), btn = f.querySelector('button[type="submit"]');
+      var v = function (n) { return String(f.elements[n].value || "").trim(); };
+      err.textContent = "";
+      if (!v("name")) return (err.textContent = "Please enter your name.");
+      if (!okEmail(v("email"))) return (err.textContent = "Please enter a working email address so we can reply.");
+      if (!v("message")) return (err.textContent = "Please write your message.");
+      btn.disabled = true; btn.textContent = "Sending…";
+      fetch(f.action, { method: "POST", body: new FormData(f), headers: { Accept: "application/json" } })
+        .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error((j && j.errors && j.errors.map(function (e) { return e.message; }).join(" ")) || "send"); }); })
+        .then(function () { f.hidden = true; $("#ct-done").innerHTML = '<div class="rm-ok"><h3>Thank you.</h3><p>Your message is on its way. We\'ll reply by email.</p></div>'; })
+        .catch(function () { err.textContent = "Couldn't send that just now. Please try again in a minute."; btn.disabled = false; btn.textContent = "Send message"; });
+    });
+  }
+
   /* ---------- which town page is showing in the app ---------- */
   function currentTown() {
     var h = decodeURIComponent((location.hash || "").slice(1));
@@ -358,6 +376,7 @@
   function boot() {
     try { wireIndexFilter(); } catch (e) {}
     $$("[data-tt-memform]").forEach(function (f) { try { wireMemForm(f); } catch (e) {} });
+    $$("[data-tt-contact]").forEach(function (f) { try { wireContact(f); } catch (e) {} });
     var v = $("#view");
     if (v && !$(".rm", v)) {
       new MutationObserver(function () { onView(); }).observe(v, { childList: true });
