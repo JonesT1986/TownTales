@@ -33,5 +33,10 @@
   "name": "town-crumb-province",
   "find": "<p class=\"crumbs\"><a href=\"#towns\">Towns</a> › ${esc(w.name)}</p>",
   "replace": "<p class=\"crumbs\"><a href=\"#towns\">Towns</a> › <a href=\"/province/${esc(provName(w.prov).toLowerCase().replace(/ /g,\"-\"))}\">${esc(provName(w.prov))}</a> › ${esc(w.name)}</p>"
+ },
+ {
+  "name": "town-tab-remembrance",
+  "find": "Archive <span class=\"n\">${nI}</span></a>\n</nav>",
+  "replace": "Archive <span class=\"n\">${nI}</span></a>\n<a href=\"/${esc(slug)}/remembrance\">Cemetery &amp; Remembrance</a>\n</nav>"
  }
 ]
