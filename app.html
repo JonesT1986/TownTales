@@ -1,0 +1,737 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>TownTales</title>
+<meta name="description" content="TownTales keeps the history of small towns. Share old photos, stories and clippings, and watch your town's timeline grow.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800;900&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+--paper:#F5EFDF;--card:#FFFCF3;--sunk:#EAE1CB;--kraft:#D9E8EF;--ink:#1E2930;--ink-2:#4E5A62;--rule:#D3C8B0;
+--red:#B4512C;--red-2:#8F3E1F;--denim:#2B5C80;--denim-2:#1F4560;--wheat:#E3B34A;
+--green:#4F7334;--ok:#4F7334;--warn:#8A5D0E;--bad:#A83A22;--focus:#E3B34A;
+--sky1:#B9D6E7;--sky2:#E6F0F1;--tie:#6D4B30;--steel:#3A3F44;
+--display:"Big Shoulders Display","Arial Narrow",Impact,sans-serif;
+--body:"Atkinson Hyperlegible","Segoe UI",Arial,sans-serif;
+--hand:"Courier Prime","Courier New",monospace;
+color-scheme:light;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--paper);color:var(--ink);font:400 19px/1.65 var(--body);-webkit-text-size-adjust:100%}
+img{max-width:100%}[hidden]{display:none!important}
+.wrap{max-width:1080px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1,h2,h3{font-family:var(--display);font-weight:900;line-height:1.1;text-wrap:balance;margin:0;color:var(--ink);letter-spacing:.005em}
+h1{font-size:clamp(2.4rem,7vw,4.2rem);line-height:.98}h2{font-size:clamp(1.8rem,4.2vw,2.5rem);font-weight:800}h3{font-size:1.4rem;font-weight:800}
+p{margin:0}a{color:var(--denim);text-underline-offset:3px;text-decoration-thickness:1px}a:hover{color:var(--red)}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.stack{display:flex;flex-direction:column;gap:16px}
+.eyebrow{font:700 .95rem/1.3 var(--hand);color:var(--red);letter-spacing:.02em}
+.hand{font:700 1.05rem/1.3 var(--hand);color:var(--red)}
+.lede{font-size:1.18rem;color:var(--ink-2);max-width:62ch}
+.muted{color:var(--ink-2)}.small{font-size:.9rem}
+.mast{background:var(--paper);border-bottom:3px solid var(--ink)}
+.mast .wrap{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 24px;padding-block:14px}
+.brand{display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--ink)}
+.brand svg{width:44px;height:44px;flex:none}
+.brand b{display:block;font:900 2rem/1 var(--display)}
+.brand span span{display:block;font:400 .9rem/1.2 var(--hand);color:var(--ink-2)}
+.brand:hover{color:var(--ink)}
+nav.main{display:flex;flex-wrap:wrap;gap:2px 4px}
+nav.main a{color:var(--ink);text-decoration:none;padding:8px 12px;border-radius:3px;font-weight:700;font-size:1rem}
+nav.main a:hover{background:var(--sunk);color:var(--ink)}
+nav.main a[aria-current="page"]{color:var(--red);text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:6px}
+nav.main a.donate{color:var(--red);box-shadow:inset 0 0 0 2px var(--red)}
+nav.main a.donate:hover{background:var(--red);color:#FFF8EC}
+nav.main a.cta{background:var(--red);color:#FFF8EC}
+nav.main a.cta:hover{background:var(--red-2);color:#FFF8EC}
+.demo-bar{background:var(--sunk);border-bottom:1px solid var(--rule);font-size:.88rem;color:var(--ink-2)}
+.demo-bar .wrap{padding-block:7px;display:flex;flex-wrap:wrap;gap:4px 16px;justify-content:space-between}
+main{padding-block:0 64px;display:flex;flex-direction:column;gap:52px}
+main>section:first-child.wrap{padding-top:28px}
+main>.wrap{width:100%}
+input[type=file]{max-width:100%;min-width:0}
+.kind{min-width:0}
+fieldset{min-width:0}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:50px;padding:10px 22px;border-radius:3px;border:2px solid var(--red);background:var(--red);color:#FFF8EC;font:700 1.02rem/1.2 var(--body);cursor:pointer;text-decoration:none;box-shadow:0 3px 0 var(--red-2)}
+.btn:hover{background:var(--red-2);border-color:var(--red-2);color:#FFF8EC}
+.btn:active{transform:translateY(1px);box-shadow:none}
+.btn.alt{background:var(--card);color:var(--ink);border-color:var(--ink);box-shadow:0 3px 0 var(--ink)}
+.btn.alt:hover{background:var(--sunk);color:var(--ink)}
+.btn.sm{min-height:40px;padding:6px 14px;font-size:.92rem}
+.btn:disabled{opacity:.5;cursor:default}
+.btns{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.field{display:flex;flex-direction:column;gap:6px}
+label,.lbl{font-weight:700}
+.hint{font-size:.88rem;color:var(--ink-2);font-weight:400}
+input[type=text],input[type=email],input[type=url],input[type=password],input[type=number],select,textarea{width:100%;font:400 1.05rem/1.4 var(--body);padding:12px;border:2px solid var(--rule);border-radius:4px;background:#FFFEFA;color:var(--ink)}
+input[type=file]{font:inherit;font-size:1rem}
+input:focus,select:focus,textarea:focus{border-color:var(--denim);outline:none;box-shadow:0 0 0 3px rgba(61,90,115,.18)}
+textarea{min-height:140px;resize:vertical}
+.check{display:flex;gap:12px;align-items:flex-start;font-weight:400;background:var(--sunk);padding:14px;border-radius:4px}
+.check input{width:24px;height:24px;flex:none;margin-top:2px;accent-color:var(--red)}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:16px}
+.formbox{background:var(--card);border:2px solid var(--ink);border-radius:2px;padding:26px;display:flex;flex-direction:column;gap:18px;max-width:780px;box-shadow:6px 6px 0 var(--wheat)}
+@media (max-width:520px){.formbox{padding:18px}}
+.msg{font-weight:700}.msg.ok{color:var(--ok)}.msg.bad{color:var(--bad)}
+.notice{border-radius:2px;padding:18px 20px;display:flex;flex-direction:column;gap:10px}
+.notice.ok{background:#EEF3EA;border:2px solid var(--ok)}
+.notice.warn{background:#F7ECD3;border:2px solid var(--warn)}
+.notice.info{background:var(--sunk);border:1px dashed var(--ink-2)}
+.err{color:var(--bad);font-size:.95rem;font-weight:700}
+.empty{border:2px dashed var(--rule);border-radius:2px;padding:22px;color:var(--ink-2);text-align:center;background:rgba(255,253,248,.6)}
+.kinds{display:flex;flex-wrap:wrap;gap:10px}
+.kind{flex:1 1 150px;border:2px solid var(--rule);border-radius:3px;padding:12px 14px;background:#FFFEFA;cursor:pointer;display:flex;gap:10px;align-items:center;font-weight:700}
+.kind:has(input:checked){border-color:var(--red);background:#FBF0EA}
+.kind input{width:22px;height:22px;accent-color:var(--red);flex:none;margin:0}
+.pill{display:inline-block;font:700 .82rem/1 var(--hand);padding:5px 8px;border-radius:2px;white-space:nowrap}
+.pill.doc{background:#E4EDE2;color:var(--green)}
+.pill.mem{background:#F5E2DC;color:var(--red-2);font-style:italic}
+.pill.new{background:#E3EAF0;color:var(--denim-2)}
+.pill.warn{background:#F7ECD3;color:var(--warn)}
+.pill.st{background:var(--sunk);color:var(--ink);border:1px solid var(--rule)}
+.pill.ai{background:#EDE6F0;color:#5B4570}
+.sign{justify-self:center;display:flex;flex-direction:column;align-items:center;width:100%;max-width:400px}
+.sign .board{width:100%;background:#fff;color:var(--ink);border:4px solid var(--ink);box-shadow:6px 6px 0 var(--wheat);border-radius:2px;padding:14px 22px 16px;text-align:center;display:flex;flex-direction:column;gap:2px}
+.sign .board i{font:700 .9rem/1 var(--hand);font-style:normal;color:var(--red)}
+.sign .board b{font:900 clamp(2.2rem,7vw,3.4rem)/1 var(--display);text-transform:uppercase;letter-spacing:.06em;overflow-wrap:anywhere}
+.sign .board span{font:400 .88rem/1.2 var(--hand);color:var(--ink-2);margin-top:6px}
+.sign .posts{display:flex;justify-content:space-between;width:70%;height:54px}
+.sign .posts::before,.sign .posts::after{content:"";width:10px;background:var(--ink)}
+.feature{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr);gap:32px;align-items:center;padding-top:28px}
+@media (max-width:760px){.feature{grid-template-columns:1fr}}
+.line-wrap{background:linear-gradient(180deg,var(--sky1),var(--sky2) 72%,var(--paper));border-bottom:3px solid var(--ink)}
+.line-head{display:flex;flex-direction:column;gap:12px;padding-block:28px 0}
+.line{overflow-x:auto;overflow-y:hidden;scrollbar-width:thin;-webkit-overflow-scrolling:touch}
+.line-inner{position:relative;height:250px}
+.ground{position:absolute;left:0;right:0;bottom:0;height:46px;background:#C9B57E;background-image:repeating-linear-gradient(90deg,rgba(94,125,58,.35) 0 2px,transparent 2px 9px)}
+.track{position:absolute;left:0;right:0;bottom:38px;height:16px;background:repeating-linear-gradient(90deg,var(--tie) 0 7px,transparent 7px 24px);border-top:3px solid var(--steel);border-bottom:3px solid var(--steel)}
+.station{position:absolute;bottom:60px;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;background:none;border:0;padding:0;cursor:pointer;font:inherit;color:var(--ink)}
+.station .nb{background:#fff;border:3px solid var(--ink);padding:5px 12px;font:900 1.25rem/1 var(--display);text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;box-shadow:3px 3px 0 rgba(30,41,48,.25)}
+.station .pp{display:flex;justify-content:space-between;width:58%;height:70px}
+.station .pp::before,.station .pp::after{content:"";width:5px;background:var(--ink)}
+.station.ghost .nb{border-style:dashed;color:var(--ink-2);background:rgba(255,255,255,.6)}
+.station[aria-current="true"] .nb{background:var(--wheat)}
+.station:focus-visible{outline:none}.station:focus-visible .nb{outline:3px solid var(--red);outline-offset:3px}
+.elev{position:absolute;bottom:54px;width:46px;height:120px;transform:translateX(-50%);pointer-events:none}
+.train{position:absolute;bottom:47px;left:0;width:170px;transform:translateX(-50%);pointer-events:none;transition:left 1.6s cubic-bezier(.45,0,.2,1)}
+.train svg{display:block;width:100%;height:auto}
+.wheel{transform-box:fill-box;transform-origin:center}
+.train.moving .wheel{animation:spin .45s linear infinite}
+.train.moving .puff{animation:puff 1.2s ease-out infinite}
+.puff{opacity:0;transform-box:fill-box;transform-origin:center}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes puff{0%{opacity:.75;transform:translate(0,0) scale(.6)}100%{opacity:0;transform:translate(-26px,-26px) scale(1.6)}}
+@media (prefers-reduced-motion:reduce){.train{transition:none}.train.moving .wheel,.train.moving .puff{animation:none}}
+.controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;padding-block:14px 18px}
+#tour-btn[aria-pressed="true"]{background:var(--wheat);border-color:var(--ink)}
+.stopcard{background:var(--card);border:3px solid var(--ink);box-shadow:6px 6px 0 var(--wheat);padding:20px 22px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:center}
+@media (max-width:640px){.stopcard{grid-template-columns:1fr}}
+.stopcard .now{font:700 .95rem var(--hand);color:var(--red)}
+.stopcard h2{text-transform:uppercase;letter-spacing:.04em}
+.find{display:flex;flex-direction:column;gap:8px;max-width:560px;padding-block:26px 34px}
+.find .row{display:flex;gap:8px;flex-wrap:wrap}.find input{flex:1 1 220px}
+.band{background:var(--kraft);border-block:1px solid #B5CDD9}
+.band .wrap{padding-block:40px}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:28px}
+.three{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:20px}
+.panel{background:var(--card);border:2px solid var(--ink);border-radius:2px;padding:22px 24px;display:flex;flex-direction:column;gap:12px;min-width:0;box-shadow:4px 4px 0 var(--sunk)}
+.panel .no{font:700 .85rem/1 var(--hand);color:var(--red-2);letter-spacing:.06em;text-transform:uppercase}
+.towngrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,260px),1fr));gap:18px}
+.towncard{background:var(--card);border:2px solid var(--ink);border-radius:2px;padding:26px 18px 18px;display:flex;flex-direction:column;gap:6px;text-decoration:none;color:var(--ink);box-shadow:4px 4px 0 var(--sunk);position:relative}
+.towncard::before{content:"STATION";position:absolute;top:0;left:0;right:0;background:var(--ink);color:var(--paper);font:700 .72rem/1 var(--hand);letter-spacing:.2em;padding:5px 12px}
+.towncard:hover{color:var(--ink);box-shadow:4px 4px 0 var(--wheat)}
+.towncard b{font:900 1.7rem/1 var(--display);text-transform:uppercase;letter-spacing:.04em}
+.towncard .muted{font-size:.92rem}
+.towncard.add{border-style:dashed;background:transparent;box-shadow:none}
+.towncard.add::before{content:"NEW STOP";background:var(--red)}
+.towncard.add b{color:var(--red)}
+.ttabs{display:flex;gap:0;border-bottom:3px solid var(--ink);flex-wrap:wrap}
+.ttabs a{display:flex;align-items:center;gap:10px;padding:12px 20px;font:900 1.35rem/1 var(--display);text-transform:uppercase;letter-spacing:.05em;color:var(--ink);text-decoration:none;border:3px solid transparent;border-bottom:0;margin-bottom:-3px;border-radius:2px 2px 0 0}
+.ttabs a[aria-current="page"]{background:var(--card);border-color:var(--ink)}
+.ttabs a:not([aria-current]):hover{background:var(--sunk)}
+.ttabs .n{font:700 .8rem/1 var(--hand);background:var(--red);color:#fff;padding:4px 7px;border-radius:2px;letter-spacing:0}
+.aibar{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between;background:var(--card);border:2px dashed var(--ink-2);padding:14px 18px;border-radius:2px}
+.aibar p{font-size:.98rem;color:var(--ink-2);flex:1 1 360px}
+.status{font:700 .9rem/1.2 var(--hand);color:var(--green);display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
+.status.busy{color:var(--warn)}
+.status.busy::before{content:"";width:10px;height:10px;border-radius:50%;background:var(--warn);animation:blink 1s ease-in-out infinite}
+@keyframes blink{50%{opacity:.25}}
+.tl{display:grid;grid-template-columns:70px minmax(0,1fr);gap:18px}
+@media (max-width:640px){.tl{grid-template-columns:30px minmax(0,1fr);gap:10px}}
+.rail{position:relative;display:flex;justify-content:center}
+.rail::before{content:"";position:absolute;top:0;bottom:0;left:50%;width:22px;transform:translateX(-50%);background:repeating-linear-gradient(180deg,var(--tie) 0 6px,transparent 6px 20px);border-left:3px solid var(--steel);border-right:3px solid var(--steel)}
+.rail .rider{position:sticky;top:38vh;z-index:1;width:46px;height:70px;margin-top:10px}
+@media (max-width:640px){.rail::before{width:14px}.rail .rider{width:28px;height:44px}}
+.stops{display:flex;flex-direction:column;gap:30px;min-width:0}
+.stop{display:flex;flex-direction:column;gap:12px;scroll-margin-top:20px}
+.stop>h2{display:inline-flex;align-self:flex-start;background:#fff;border:3px solid var(--ink);padding:4px 14px;box-shadow:4px 4px 0 var(--wheat);font-size:1.9rem}
+.tick{background:var(--card);border:2px solid var(--ink);display:grid;grid-template-columns:118px minmax(0,1fr);box-shadow:3px 3px 0 var(--sunk)}
+@media (max-width:640px){.tick{grid-template-columns:1fr}}
+.tick .stub{background:#F3E4BC;border-right:2px dashed var(--ink);padding:14px 12px;font:700 1rem/1.3 var(--hand);display:flex;flex-direction:column;gap:6px;justify-content:center}
+@media (max-width:640px){.tick .stub{border-right:0;border-bottom:2px dashed var(--ink);flex-direction:row;justify-content:space-between}}
+.tick .stub small{font-weight:400;font-size:.8rem;color:var(--ink-2)}
+.tick details{min-width:0}
+.tick summary{list-style:none;cursor:pointer;padding:14px 16px;display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;justify-content:space-between}
+.tick summary::-webkit-details-marker{display:none}
+.tick summary h3{font-size:1.45rem;line-height:1.1;flex:1 1 220px}
+.tick summary .more{font:700 .85rem var(--hand);color:var(--denim);white-space:nowrap}
+.tick details[open] summary .more::after{content:" \2212"}.tick details:not([open]) summary .more::after{content:" +"}
+.tick .inner{padding:0 16px 16px;display:flex;flex-direction:column;gap:10px}
+.tick .from{font-size:.92rem;color:var(--ink-2);border-top:1px dashed var(--rule);padding-top:10px}
+.dial{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.dial button{font:900 1.15rem var(--display);padding:6px 12px;border:2px solid var(--ink);background:#fff;cursor:pointer;color:var(--ink);border-radius:2px}
+.dial button:hover{background:var(--wheat)}
+.filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));gap:12px;background:var(--sunk);border-radius:2px;padding:16px}
+.arch{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,230px),1fr));gap:20px;align-items:start}
+.acard{background:var(--card);border:2px solid var(--ink);border-radius:2px;display:flex;flex-direction:column;text-decoration:none;color:var(--ink);box-shadow:3px 3px 0 var(--sunk);min-width:0}
+.acard:hover{color:var(--ink);box-shadow:3px 3px 0 var(--wheat)}
+.acard .ph{aspect-ratio:4/3;background:var(--sunk);overflow:hidden;border-bottom:2px solid var(--ink);display:grid;place-items:center}
+.acard .ph img{width:100%;height:100%;object-fit:cover;display:block}
+.acard .ph svg{width:56px;height:56px}
+.acard .txt{padding:14px 16px 16px;display:flex;flex-direction:column;gap:6px}
+.acard .k{display:flex;justify-content:space-between;gap:8px;font:700 .8rem/1 var(--hand);color:var(--red-2);text-transform:uppercase;letter-spacing:.06em}
+.acard h3{font-size:1.25rem;line-height:1.1}
+.acard p{font-size:.92rem;color:var(--ink-2);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.acard.story .ph{background:#FBF3DE}
+.item{max-width:760px;display:flex;flex-direction:column;gap:20px}
+.item .photo{background:#fff;padding:12px 12px 14px;box-shadow:0 1px 2px rgba(0,0,0,.15),0 12px 22px -14px rgba(46,37,29,.55)}
+.item .photo img{display:block;width:100%}
+.item .body{font-size:1.15rem;white-space:pre-wrap}
+.kv{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:6px 16px;font-size:.98rem}
+.kv dt{font-weight:700;color:var(--ink-2)}.kv dd{margin:0;overflow-wrap:anywhere}
+.crumbs{font-size:.92rem;color:var(--ink-2)}
+.share{background:var(--card);border:3px solid var(--ink);border-radius:2px;padding:22px;display:flex;flex-direction:column;gap:14px;box-shadow:6px 6px 0 var(--wheat)}
+.linkbox{display:flex;flex-wrap:wrap;gap:8px;align-items:stretch}
+.linkbox code{flex:1 1 240px;min-width:0;overflow-wrap:anywhere;font:700 1.05rem/1.4 var(--body);background:var(--sunk);border:1px dashed var(--ink-2);border-radius:2px;padding:12px 14px;color:var(--ink);user-select:all}
+.postbox{white-space:pre-wrap;background:#FFFEFA;border:1px solid var(--rule);border-radius:2px;padding:14px;font-size:1rem;user-select:all}
+.how-line{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));position:relative}
+.how-line::before{content:"";position:absolute;left:6%;right:6%;top:38px;height:6px;background:repeating-linear-gradient(90deg,var(--tie) 0 6px,transparent 6px 22px);border-block:3px solid var(--steel);box-sizing:content-box}
+.how-line li{position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px;padding:0 10px}
+.how-line .stn{position:relative;z-index:1;width:80px;height:80px;border-radius:50%;background:var(--card);border:3px solid var(--ink);display:grid;place-items:center}
+.how-line .stn svg{width:40px;height:40px}
+.how-line .no{font:700 .85rem/1 var(--hand);color:var(--red-2);letter-spacing:.06em;text-transform:uppercase}
+.how-line p{font-size:.98rem;color:var(--ink-2)}
+@media (max-width:860px){
+.how-line{grid-template-columns:1fr;gap:22px}
+.how-line::before{left:38px;right:auto;top:20px;bottom:20px;width:6px;height:auto;background:repeating-linear-gradient(180deg,var(--tie) 0 6px,transparent 6px 22px);border-block:0;border-inline:3px solid var(--steel)}
+.how-line li{display:grid;grid-template-columns:80px 1fr;align-items:center;text-align:left;gap:4px 18px;padding:0}
+.how-line .stn{grid-row:span 3}
+}
+.faq{display:flex;flex-direction:column;gap:10px;max-width:820px}
+.faq details{background:var(--card);border:1px solid var(--rule);border-radius:2px;padding:0 18px}
+.faq summary{cursor:pointer;font:700 1.1rem/1.3 var(--body);padding:16px 0;list-style:none;display:flex;justify-content:space-between;gap:16px}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:"+";font:800 1.5rem/1 var(--display);color:var(--red)}
+.faq details[open] summary::after{content:"\2212"}
+.faq details>div{padding:0 0 18px;display:flex;flex-direction:column;gap:10px;color:var(--ink-2)}
+.article{max-width:720px;display:flex;flex-direction:column;gap:18px}
+.tabs{display:flex;flex-wrap:wrap;gap:6px;border-bottom:2px solid var(--ink);padding-bottom:8px}
+.tabs button{font:700 .95rem var(--body);padding:9px 14px;border-radius:2px;border:1px solid var(--rule);background:var(--card);cursor:pointer;color:var(--ink)}
+.tabs button[aria-selected="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.tabs .count{display:inline-block;min-width:22px;padding:1px 6px;margin-left:6px;border-radius:10px;background:var(--red);color:#fff;font-size:.78rem}
+.qitem{background:var(--card);border:1px solid var(--rule);border-radius:2px;padding:16px;display:flex;flex-direction:column;gap:10px}
+.qitem .top{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;align-items:center}
+.qitem img{max-width:240px;border:1px solid var(--rule)}
+.tbl{overflow-x:auto;border:1px solid var(--rule);border-radius:2px;background:var(--card)}
+table{border-collapse:collapse;width:100%;font-size:.95rem}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--rule);vertical-align:top}
+th{background:var(--sunk);font-weight:700;white-space:nowrap}
+tr:last-child td{border-bottom:0}
+td.num{font-variant-numeric:tabular-nums;text-align:right}
+pre.code{background:var(--ink);color:#F5EFDF;padding:16px;border-radius:2px;overflow-x:auto;font:400 .85rem/1.5 var(--hand);margin:0}
+footer{background:var(--ink);color:#EDE3D2}
+footer .wrap{padding-block:34px;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:24px}
+footer a{color:#EDE3D2}footer a:hover{color:#fff}
+footer h3{color:#fff;font-size:1.15rem;margin-bottom:8px}
+footer ul{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px}
+footer .hand{color:var(--wheat)}
+@media (prefers-reduced-motion:no-preference){.btn,nav.main a,.acard,.towncard{transition:background-color .15s,color .15s,box-shadow .15s}}
+</style>
+</head>
+<body>
+<header class="mast">
+<div class="wrap">
+<a class="brand" href="#home"><svg viewBox="0 0 44 44" aria-hidden="true"><path d="M17 40V13l5-6 5 6v27z" fill="#B4512C" stroke="#2E251D" stroke-width="2" stroke-linejoin="round"/><path d="M27 40V22l9-4v22z" fill="#E3B34A" stroke="#2E251D" stroke-width="2" stroke-linejoin="round"/><path d="M4 40h36" stroke="#2E251D" stroke-width="2.4" stroke-linecap="round"/><path d="M20 20h4M20 27h4" stroke="#FBF4E4" stroke-width="2" stroke-linecap="round"/></svg><span><b>TownTales</b><span>Every town has a story. Let's keep it.</span></span></a>
+<nav class="main" aria-label="Main">
+<a href="#towns">Towns</a>
+<a href="#upload">Share history</a>
+<a href="#how">How it works</a>
+<a href="#donate" class="donate">Donate</a>
+<a href="#addtown" class="cta">Add your town</a>
+</nav>
+</div>
+</header>
+<div class="demo-bar" id="demo-bar" hidden><div class="wrap"><span><b>Preview.</b> Uploads save in this browser only until the database is switched on.</span><span><a href="#admin">Admin</a></span></div></div>
+<main id="view"></main>
+<footer>
+<div class="wrap">
+<div><h3>TownTales</h3><p class="hand">Every town has a story. Let's keep it.</p><p class="small">Preserving prairie history, one town at a time.</p></div>
+<div><h3>Take part</h3><ul><li><a href="#addtown">Add your town</a></li><li><a href="#upload">Share photos, stories and clippings</a></li><li><a href="#towns">Find your town</a></li><li><a href="#donate">Donate</a></li></ul></div>
+<div><h3>About</h3><ul><li><a href="#how">How it works</a></li><li><a href="#corrections">Corrections and removals</a></li><li><a href="#privacy">Privacy</a></li></ul></div>
+</div>
+</footer>
+<script>
+(function(){
+"use strict";
+/* ============ CONFIG ============
+Leave url/anon empty to run in preview mode (data lives in this browser).
+Fill them in once the Supabase project exists and the site reads/writes the real database. */
+const CFG={url:"https://zpqwrzsgpwwjrlbnfynn.supabase.co",anon:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpwcXdyenNncHd3anJsYm5meW5uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIzNDI4MzQsImV4cCI6MjEwNzkxODgzNH0.0SuQ5vpg21azn5g6wzqE7o-mGbH9TCl8LyyR2zXUqIA",site:"https://towntales.ca"};
+const LIVE=!!(CFG.url&&CFG.anon);
+const PROVS=[["SK","Saskatchewan"],["MB","Manitoba"],["AB","Alberta"],["BC","British Columbia"],["ON","Ontario"],["QC","Quebec"],["NB","New Brunswick"],["NS","Nova Scotia"],["PE","Prince Edward Island"],["NL","Newfoundland and Labrador"],["YT","Yukon"],["NT","Northwest Territories"],["NU","Nunavut"]];
+const KINDS={photo:"Photo",story:"Story or memory",document:"Document or clipping",link:"Link to something online"};
+const KEY="towntales-v3";
+const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const norm=s=>String(s||"").toLowerCase().replace(/[^\p{L}\p{N}\s]/gu,"").replace(/\s+/g," ").trim();
+const uid=p=>p+Math.random().toString(36).slice(2,9);
+const now=()=>new Date().toISOString();
+const provName=a=>(PROVS.find(p=>p[0]===a)||[a,a])[1];
+const slugify=(name,prov)=>norm(name).replace(/ /g,"-")+"-"+String(prov).toLowerCase();
+const yearOf=s=>{const m=String(s||"").match(/\b(1[6-9]\d\d|20\d\d)\b/);return m?+m[1]:null;};
+const fmtDate=iso=>{try{return new Date(iso).toLocaleDateString("en-CA",{year:"numeric",month:"short",day:"numeric"});}catch(e){return "";}};
+const okEmail=e=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+const safeUrl=u=>/^https?:\/\//i.test(String(u||""))?u:"";
+function seed(){
+const T="moose-jaw-sk",A="mj-dir-1890",URL="https://archive.org/details/P001837",G="2026-10-18T12:00:00Z";
+const S0={towns:[],items:[],timeline:[],meta:{}};
+S0.towns.push({slug:T,name:"Moose Jaw",prov:"SK",est:"1882",line:"CPR main line",intro:"Moose Jaw grew up where the Canadian Pacific Railway reached the district in the fall of 1882. The first pieces in its archive come from a town directory printed in 1890, one of the earliest books written about the town.",hidden:false,created_at:G});
+S0.items.push({id:A,town:T,kind:"document",title:"Alphabetical and Business Directory of the Town and District of Moose Jaw",body:"A directory compiled by R. L. Alexander and printed in Moose Jaw in 1890. Besides listing residents and businesses, it opens with a short history of the town from the first settlers in 1882 to 1890. The book is in the public domain and the full scan can be read online.",year:1890,date_label:"1890",image_url:"",source:"R. L. Alexander (1890). Digitized by Peel's Prairie Provinces, via the Internet Archive.",source_url:URL,contributor:"TownTales research",origin:"team",status:"published",created_at:G});
+const E=(id,year,label,title,body,cat,pg)=>({id,town:T,year,label,title,body,cat,tier:"documented",items:[A],cite:pg});
+S0.timeline.push(
+E("mj1",1882,"Early 1882","Settlers camp on the future townsite","The first settlers arrived before the railway did and squatted on the land that would become Moose Jaw. Most of them lived in tents.","Settlement","p. 27"),
+E("mj2",1882,"Fall 1882","The CPR arrives and the land rush begins","When the Canadian Pacific Railway reached the townsite in the fall of 1882, the rush for land began in earnest. Many quick homestead claims made that year were later cancelled.","Railway","p. 27"),
+E("mj3",1883,"1883","The town is laid out and incorporated","In 1883 the foundations of the town were laid, and Moose Jaw was incorporated as a town.","Town life","p. 27"),
+E("mj4",1883,"1883","Moose Jaw's first newspaper","A weekly paper called the News started in 1883, edited by J. E. Wells. It did not survive the boom years.","Businesses","pp. 27-28"),
+E("mj6",1884,"Feb 11, 1884","The first election is won by one vote","Moose Jaw held its first municipal election on February 11, 1884. John E. Ross became mayor, beating R. L. Alexander by a single vote.","Events","p. 27"),
+E("mj8",1884,"1884","School District No. 1","The Moose Jaw Protestant Public School District No. 1 was organized in 1884, the first school district formed under the Territories' new school law.","Schools","pp. 27-28"),
+E("mj9",1884,"Fall 1884","The boom goes bust","By the fall of 1884 the land boom had collapsed and hard times set in.","Businesses","p. 27"),
+E("mj10",1885,"1885","A supply point during the 1885 Resistance","Moose Jaw served as a point for distributing supplies. A hospital with a medical corps was set up and a home guard organized under Captain Rorison.","Military","p. 27"),
+E("mj11",1886,"1886","Drought and a failed crop","A dry season in 1886 brought a complete crop failure, the lowest point in the young town's fortunes.","Agriculture","p. 28"),
+E("mj12",1887,"1887","A good harvest brings hope back","Spring 1887 brought new hope, and the year ended with an abundant grain harvest.","Agriculture","p. 28"),
+E("mj13",1888,"1888","St. John the Baptist Church is built","St. John the Baptist Episcopal Church went up on River Street East in 1888, at a cost of about $1,500.","Churches","p. 27"),
+E("mj14",1889,"1889","A new brick school","In 1889 the town built a new brick school for about $7,000. The directory called it the finest school building in the Territories.","Schools","p. 26"),
+E("mj15",1890,"Early 1890","High school classes begin","A high school department opened early in 1890, with William Rothwell as principal.","Schools","p. 26"),
+E("mj16",1890,"1890","A town of about 1,000, debt-free","By 1890 Moose Jaw had about 1,000 people and property assessed at over $300,000. The town owed nothing and had roughly $1,000 in its treasury.","Town life","p. 26"));
+S0.meta[T]={timeline_status:"ready",timeline_built_at:G};
+return S0;}
+let S={towns:[],items:[],timeline:[],meta:{}};
+const loadedTowns=new Set();
+const local={
+load(){let s=null;try{s=JSON.parse(localStorage.getItem(KEY));}catch(e){}S=(s&&s.towns)?s:seed();loadedTowns.add("*");return Promise.resolve();},
+save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}},
+ensureTown(){return Promise.resolve();},
+addTown(t){S.towns.push(t);this.save();return Promise.resolve(t);},
+addItem(it){S.items.push(it);this.save();return Promise.resolve(it);},
+setItem(id,patch){const it=S.items.find(x=>x.id===id);if(it)Object.assign(it,patch);this.save();if(patch.status)demoRebuild(it.town);return Promise.resolve();},
+setTown(slug,patch){const t=S.towns.find(x=>x.slug===slug);if(t)Object.assign(t,patch);this.save();return Promise.resolve();},
+rebuild(slug){demoRebuild(slug);return Promise.resolve();},
+reset(){S=seed();this.save();}
+};
+/* Preview-mode stand-in for the AI rebuild: one entry per published item, no invention.
+The live site replaces this with the AI rebuild that runs on the server. */
+function demoRebuild(slug){
+const m=S.meta[slug]=S.meta[slug]||{};m.timeline_status="building";local.save();
+setTimeout(()=>{
+const pubIds=new Set(S.items.filter(i=>i.town===slug&&i.status==="published").map(i=>i.id));
+S.timeline=S.timeline.filter(e=>e.town!==slug||e.items.some(id=>pubIds.has(id)));
+S.items.filter(i=>i.town===slug&&i.status==="published"&&!S.timeline.some(e=>e.items.includes(i.id))).forEach(i=>{
+if(!i.year)return;
+const body=String(i.body||"").replace(/\s+/g," ").trim();
+S.timeline.push({id:uid("e"),town:slug,year:i.year,label:i.date_label||String(i.year),title:i.title,body:body.length>320?body.slice(0,317)+"...":body,cat:i.kind==="photo"?"Photos":"Town life",tier:i.kind==="story"?"memory":"documented",items:[i.id],cite:""});});
+m.timeline_status="ready";m.timeline_built_at=now();local.save();
+if(document.getElementById("tl-list")||document.getElementById("aibar"))route();
+},1800);}
+const live={
+h(extra){return Object.assign({apikey:CFG.anon,Authorization:"Bearer "+CFG.anon,"Content-Type":"application/json"},extra||{});},
+async get(path){const r=await fetch(CFG.url+"/rest/v1/"+path,{headers:this.h()});if(!r.ok)throw new Error(await r.text());return r.json();},
+async post(table,row){const r=await fetch(CFG.url+"/rest/v1/"+table,{method:"POST",headers:this.h({Prefer:"return=minimal"}),body:JSON.stringify(row)});if(!r.ok)throw new Error(await r.text());},
+async load(){
+const [towns,stats]=await Promise.all([this.get("towns?hidden=eq.false&select=slug,name,prov,est,line,intro,hidden,timeline_status,timeline_built_at,created_at&order=name"),this.get("town_stats?select=*")]);
+S.towns=towns;S.stats={};stats.forEach(s=>{S.stats[s.slug]=s;S.meta[s.slug]={timeline_status:s.timeline_status,timeline_built_at:s.timeline_built_at};});},
+async ensureTown(slug){if(loadedTowns.has(slug))return;
+const [items,tl]=await Promise.all([this.get(`items?town=eq.${encodeURIComponent(slug)}&status=eq.published&select=id,town,kind,title,body,year,date_label,image_url,source,source_url,contributor,origin,status,created_at&order=created_at.desc`),this.get(`timeline?town=eq.${encodeURIComponent(slug)}&select=*&order=year,sort`)]);
+S.items=S.items.filter(i=>i.town!==slug).concat(items);S.timeline=S.timeline.filter(e=>e.town!==slug).concat(tl.map(e=>Object.assign(e,{items:e.item_ids||[]})));loadedTowns.add(slug);},
+async addTown(t){await this.post("towns",{slug:t.slug,name:t.name,prov:t.prov,est:t.est,line:t.line,intro:t.intro,added_by:t.added_by,added_email:t.added_email});S.towns.push(t);return t;},
+async upload(file){const path=`${Date.now()}-${Math.random().toString(36).slice(2,8)}.jpg`;
+const r=await fetch(`${CFG.url}/storage/v1/object/uploads/${path}`,{method:"POST",headers:{apikey:CFG.anon,Authorization:"Bearer "+CFG.anon,"Content-Type":"image/jpeg"},body:file});
+if(!r.ok)throw new Error("Photo upload failed");return `${CFG.url}/storage/v1/object/public/uploads/${path}`;},
+async addItem(it,blob){if(blob)it.image_url=await this.upload(blob);
+const row={town:it.town,kind:it.kind,title:it.title,body:it.body,year:it.year,date_label:it.date_label,image_url:it.image_url,source:it.source,source_url:it.source_url,contributor:it.contributor,contact_email:it.contact_email};
+await this.post("items",row);return it;},
+async api(action,payload){const key=sessionStorage.getItem("tt-admin")||"";const r=await fetch(CFG.url+"/functions/v1/api/"+action,{method:"POST",headers:{"Content-Type":"application/json","x-admin-key":key},body:JSON.stringify(payload)});if(!r.ok)throw new Error(await r.text());return r.json();},
+setItem(id,patch){return this.api("moderate",{item:id,patch});},
+setTown(slug,patch){return this.api("moderate",{town:slug,patch});},
+rebuild(slug){return this.api("rebuild",{town:slug});}
+};
+const DB=LIVE?live:local;
+const town=s=>S.towns.find(t=>t.slug===s);
+const liveTowns=()=>S.towns.filter(t=>!t.hidden).sort((a,b)=>a.name.localeCompare(b.name));
+const itemsOf=t=>S.items.filter(i=>i.town===t&&i.status==="published");
+const tlOf=t=>S.timeline.filter(e=>e.town===t).sort((a,b)=>a.year-b.year||(a.sort||0)-(b.sort||0));
+const countItems=t=>LIVE&&S.stats&&S.stats[t]&&!loadedTowns.has(t)?S.stats[t].items:itemsOf(t).length;
+const countTl=t=>LIVE&&S.stats&&S.stats[t]&&!loadedTowns.has(t)?S.stats[t].entries:tlOf(t).length;
+const pending=()=>S.items.filter(i=>i.status==="pending");
+const plural=(n,a,b)=>`${n} ${n===1?a:b}`;
+function townOpts(sel){return liveTowns().map(t=>`<option value="${esc(t.slug)}"${t.slug===sel?" selected":""}>${esc(t.name)}, ${esc(t.prov)}</option>`).join("");}
+function sign(t){const bits=[provName(t.prov)];if(t.est)bits.push("Est. "+t.est);if(t.line)bits.push(t.line);return `<div class="sign" aria-label="Welcome to ${esc(t.name)}"><div class="board"><i>Welcome to</i><b>${esc(t.name)}</b><span>${bits.map(esc).join(" · ")}</span></div><div class="posts"></div></div>`;}
+function townCard(t){return `<a class="towncard" href="#t-${esc(t.slug)}"><b>${esc(t.name)}</b><span class="muted">${esc(provName(t.prov))}</span><span class="muted">${plural(countItems(t.slug),"thing","things")} in the archive · ${plural(countTl(t.slug),"timeline entry","timeline entries")}</span></a>`;}
+const ICON={
+story:`<svg viewBox="0 0 56 56" aria-hidden="true" fill="none" stroke="#1E2930" stroke-width="2.5" stroke-linejoin="round"><path d="M28 14c-6-4-13-4-20-3v32c7-1 14-1 20 3 6-4 13-4 20-3V11c-7-1-14-1-20 3z" fill="#FFFCF3"/><path d="M28 14v32"/><path d="M13 21h9M13 27h9M13 33h7M34 21h9M34 27h9" stroke-linecap="round"/></svg>`,
+document:`<svg viewBox="0 0 56 56" aria-hidden="true" fill="none" stroke="#1E2930" stroke-width="2.5" stroke-linejoin="round"><path d="M14 6h20l9 9v35H14z" fill="#FFFCF3"/><path d="M34 6v9h9"/><path d="M20 24h17M20 30h17M20 36h12" stroke-linecap="round"/></svg>`,
+link:`<svg viewBox="0 0 56 56" aria-hidden="true" fill="none" stroke="#1E2930" stroke-width="3" stroke-linecap="round"><path d="M24 32a8 8 0 0 0 11 0l8-8a8 8 0 0 0-11-11l-3 3"/><path d="M32 24a8 8 0 0 0-11 0l-8 8a8 8 0 0 0 11 11l3-3"/></svg>`,
+photo:`<svg viewBox="0 0 56 56" aria-hidden="true" fill="none" stroke="#1E2930" stroke-width="2.5" stroke-linejoin="round"><rect x="7" y="14" width="42" height="30" rx="2" fill="#FFFCF3"/><circle cx="28" cy="29" r="8"/><path d="M19 14l3-5h12l3 5"/></svg>`};
+function archCard(i){const yr=i.date_label||(i.year?String(i.year):"Date unknown");const ph=i.image_url?`<img src="${esc(i.image_url)}" alt="" loading="lazy">`:ICON[i.kind]||ICON.document;
+return `<a class="acard ${esc(i.kind)}" href="#i-${esc(i.id)}"><div class="ph">${ph}</div><div class="txt"><span class="k"><span>${esc(KINDS[i.kind]||i.kind)}</span><span>${esc(yr)}</span></span><h3>${esc(i.title)}</h3>${i.body?`<p>${esc(i.body)}</p>`:""}</div></a>`;}
+function tierPill(t){return t==="memory"?'<span class="pill mem">Community memory</span>':'<span class="pill doc">Documented</span>';}
+function aiStatus(slug){const m=S.meta[slug]||{};if(m.timeline_status==="building"||m.timeline_status==="queued")return `<span class="status busy" role="status">Rebuilding the timeline now…</span>`;return m.timeline_built_at?`<span class="status">Last rebuilt ${esc(fmtDate(m.timeline_built_at))}</span>`:`<span class="status">Waiting for the first upload</span>`;}
+const TRAIN=`<svg viewBox="0 0 170 64" aria-hidden="true"><g stroke="#1E2930" stroke-width="2" stroke-linejoin="round"><circle class="puff" cx="128" cy="6" r="6" fill="#fff" stroke="none"/><circle class="puff" cx="124" cy="4" r="5" fill="#fff" stroke="none" style="animation-delay:.4s"/><rect x="3" y="20" width="60" height="30" rx="2" fill="#B4512C"/><rect x="10" y="26" width="12" height="10" fill="#FFFCF3"/><rect x="27" y="26" width="12" height="10" fill="#FFFCF3"/><rect x="44" y="26" width="12" height="10" fill="#FFFCF3"/><path d="M63 44h6"/><rect x="69" y="12" width="28" height="38" fill="#2B5C80"/><rect x="74" y="18" width="16" height="12" fill="#FFFCF3"/><rect x="97" y="24" width="50" height="26" rx="3" fill="#2B5C80"/><rect x="122" y="10" width="10" height="14" fill="#1E2930"/><rect x="141" y="18" width="6" height="6" fill="#E3B34A"/><path d="M147 50l14 0-14-12z" fill="#E3B34A"/></g><g class="wheel"><circle cx="18" cy="53" r="7" fill="#1E2930"/><path d="M11 53h14M18 46v14" stroke="#E3B34A" stroke-width="1.5"/></g><g class="wheel"><circle cx="48" cy="53" r="7" fill="#1E2930"/><path d="M41 53h14M48 46v14" stroke="#E3B34A" stroke-width="1.5"/></g><g class="wheel"><circle cx="84" cy="51" r="9" fill="#1E2930"/><path d="M75 51h18M84 42v18" stroke="#E3B34A" stroke-width="1.5"/></g><g class="wheel"><circle cx="112" cy="51" r="9" fill="#1E2930"/><path d="M103 51h18M112 42v18" stroke="#E3B34A" stroke-width="1.5"/></g><g class="wheel"><circle cx="136" cy="53" r="7" fill="#1E2930"/><path d="M129 53h14M136 46v14" stroke="#E3B34A" stroke-width="1.5"/></g></svg>`;
+const ELEV=`<svg class="elev" viewBox="0 0 46 120" aria-hidden="true"><path d="M8 118V30L23 12l15 18v88z" fill="#B4512C" stroke="#1E2930" stroke-width="2.4" stroke-linejoin="round"/><path d="M17 12h12V2H17z" fill="#B4512C" stroke="#1E2930" stroke-width="2"/><rect x="13" y="44" width="20" height="10" fill="#FFFCF3" stroke="#1E2930" stroke-width="1.6"/></svg>`;
+const RIDER=`<svg class="rider" viewBox="0 0 46 70" aria-hidden="true"><g stroke="#1E2930" stroke-width="2" stroke-linejoin="round"><rect x="8" y="2" width="30" height="44" rx="3" fill="#2B5C80"/><rect x="14" y="8" width="18" height="12" fill="#FFFCF3"/><path d="M8 46h30l-15 20z" fill="#E3B34A"/><circle cx="23" cy="32" r="5" fill="#E3B34A"/></g></svg>`;
+const shareURL=t=>CFG.site+"/#t-"+t.slug;
+const sharePost=t=>`Did you grow up in or around ${t.name}? There's a page now to save ${t.name}'s history. Add an old photo, a clipping or a story, and it goes straight onto the town's timeline:\n${shareURL(t)}`;
+function shareBlock(t,compact){const u=shareURL(t),id=compact?"x":"";return `<div class="share"><h2>${compact?"Now spread the word":`Share ${esc(t.name)}'s page`}</h2>
+<p>Every person from ${esc(t.name)} who sees this might have a shoebox of photos. Post it in your town's Facebook group, or send it to someone who remembers the old days.</p>
+<div class="linkbox"><code id="sh-url${id}">${esc(u)}</code><button class="btn" data-act="copy" data-target="sh-url${id}">Copy link</button></div>
+<div class="btns"><a class="btn alt" href="https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(u)}" target="_blank" rel="noopener">Share on Facebook</a><button class="btn alt" data-act="copy" data-target="sh-post${id}">Copy a ready-made post</button></div>
+<div class="postbox" id="sh-post${id}">${esc(sharePost(t))}</div></div>`;}
+const donateBand=name=>`<section class="wrap"><div class="share" style="flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:space-between"><div class="stack" style="gap:6px;flex:1 1 320px"><h2>Help keep this going</h2><p>Hosting, storage and the work of digging up old records all cost money. If ${name?esc(name)+"'s":"small-town"} history matters to you, a few dollars keeps it online.</p></div><div class="btns"><a class="btn" href="#donate">Donate</a></div></div></section>`;
+const notFound=()=>`<section class="wrap stack"><h1>We couldn't find that page</h1><p><a href="#towns">See all towns</a></p></section>`;
+let prefill={};
+const P={};
+P.home=()=>{const ts=liveTowns();const nItems=ts.reduce((a,t)=>a+countItems(t.slug),0);return `
+<section class="line-wrap">
+<div class="wrap line-head">
+<p class="eyebrow">Every town has a story. Let's keep it.</p>
+<h1>Next stop: your town.</h1>
+<p class="lede">Every town on TownTales is a stop on the line. Each one has an archive of old photos, stories and clippings, and a timeline that writes itself from them. Tap a station, or let the train give you a tour.</p>
+</div>
+<div class="line" id="line" tabindex="0" aria-label="The TownTales line. Use the buttons below to ride between towns."><div class="line-inner" id="line-inner"></div></div>
+<div class="wrap">
+<div class="controls"><div class="btns"><button class="btn alt" data-act="ride" data-d="-1">← Previous stop</button><button class="btn" data-act="ride" data-d="1">Next stop →</button><button class="btn sm alt" data-act="tour" id="tour-btn" aria-pressed="false">Start the tour</button></div><span class="hand" id="line-count"></span></div>
+<div id="stopcard"></div>
+<form class="find" data-form="find" novalidate>
+<label for="find-q">Looking for a particular town?</label>
+<div class="row"><input type="text" id="find-q" name="q" placeholder="Type your town's name" autocomplete="off"><button class="btn" type="submit">Search</button></div>
+<p id="find-msg" class="msg" role="status"></p>
+</form>
+</div>
+</section>
+<section class="wrap stack">
+<div class="btns" style="justify-content:space-between;align-items:end"><h2>${ts.length?"Towns on the line":"Be the first town on the line"}</h2>${ts.length?`<span class="hand">${plural(ts.length,"town","towns")} · ${plural(nItems,"thing","things")} saved so far</span>`:""}</div>
+<div class="towngrid">${ts.slice(0,6).map(townCard).join("")}
+<a class="towncard add" href="#addtown"><b>Add your town</b><span class="muted">Don't see your town? Start its page in two minutes, then invite people to share what they have.</span></a>
+</div>
+${ts.length>6?'<p><a href="#towns">See all towns →</a></p>':""}
+</section>
+<section class="band"><div class="wrap stack">
+<p class="eyebrow">How it works</p><h2>You bring the shoebox. The timeline builds itself.</h2>
+<div class="three">
+<div class="panel"><span class="no">Stop 1</span><h3>Add your town</h3><p>Anyone can put their town on the line. It gets its own page and a link to share.</p></div>
+<div class="panel"><span class="no">Stop 2</span><h3>Share what you have</h3><p>Old photos, family stories, newspaper clippings, anniversary booklets. Everything goes into the town's archive.</p></div>
+<div class="panel"><span class="no">Stop 3</span><h3>Watch the timeline grow</h3><p>Every time something new is added, the town's timeline is rebuilt from the archive, with each line linked to where it came from.</p></div>
+</div>
+<div class="btns"><a class="btn" href="#upload">Share something now</a><a class="btn alt" href="#how">More about how it works</a></div>
+</div></section>
+${donateBand("")}`;};
+let townFilter={q:"",prov:""};
+P.towns=()=>{const provs=[...new Set(liveTowns().map(t=>t.prov))];return `
+<section class="wrap stack"><p class="eyebrow">All towns</p><h1>Find your town</h1>
+<p class="lede">Every town here was started by someone who wanted its story kept. Yours can be next.</p>
+<div class="filters"><div class="field"><label for="tw-q">Town name</label><input type="text" id="tw-q" value="${esc(townFilter.q)}" placeholder="Start typing"></div>
+<div class="field"><label for="tw-prov">Province</label><select id="tw-prov"><option value="">All provinces</option>${provs.map(p=>`<option value="${p}"${p===townFilter.prov?" selected":""}>${esc(provName(p))}</option>`).join("")}</select></div></div>
+<div id="tw-list" class="towngrid"></div>
+<div class="notice info"><b>Don't see your town?</b><p>Start its page. It's free, and it takes about two minutes.</p><div class="btns"><a class="btn" href="#addtown">Add your town</a></div></div>
+</section>`;};
+function drawTowns(){const el=document.getElementById("tw-list");if(!el)return;const q=norm(townFilter.q);const ts=liveTowns().filter(t=>(!q||norm(t.name).includes(q))&&(!townFilter.prov||t.prov===townFilter.prov));
+el.innerHTML=ts.map(townCard).join("")||`<div class="empty" style="grid-column:1/-1">No towns match. <a href="#addtown" data-act="addpre" data-town="${esc(townFilter.q)}">Add ${esc(townFilter.q||"your town")}</a>.</div>`;}
+P.addtown=()=>`
+<section class="wrap stack"><p class="eyebrow">Add your town</p><h1>Put your town on the line</h1>
+<p class="lede">Anyone can add a town. Its page goes up right away, and then you and your neighbours can start filling its archive.</p>
+<form class="formbox" data-form="addtown" novalidate>
+<div class="grid2">
+<div class="field"><label for="at-name">Town, village or hamlet</label><input type="text" id="at-name" name="name" value="${esc(prefill.town||"")}"></div>
+<div class="field"><label for="at-prov">Province or territory</label><select id="at-prov" name="prov">${PROVS.map(([a,n])=>`<option value="${a}">${esc(n)}</option>`).join("")}</select></div>
+<div class="field"><label for="at-est">Year founded <span class="hint">(if you know it)</span></label><input type="text" id="at-est" name="est" inputmode="numeric" placeholder="e.g. 1905"></div>
+<div class="field"><label for="at-line">Railway or highway <span class="hint">(optional)</span></label><input type="text" id="at-line" name="line" placeholder="e.g. CPR line, Highway 1"></div>
+</div>
+<div class="field"><label for="at-intro">A few words about the town <span class="hint">(optional)</span></label><textarea id="at-intro" name="intro" style="min-height:100px" placeholder="Where it is, who settled it, what it's known for."></textarea></div>
+<div class="grid2"><div class="field"><label for="at-you">Your name</label><input type="text" id="at-you" name="you"></div><div class="field"><label for="at-email">Your email</label><input type="email" id="at-email" name="email"><span class="hint">Never shown publicly.</span></div></div>
+<input type="text" name="website" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px" aria-hidden="true">
+<p class="err" id="at-err" role="alert"></p>
+<button class="btn" type="submit">Add this town</button>
+</form><div id="at-done"></div></section>`;
+P.town=(slug,tab)=>{const w=town(slug);if(!w||w.hidden)return notFound();const nI=itemsOf(slug).length,nT=tlOf(slug).length;tab=tab==="archive"?"archive":"timeline";
+document.title=`${w.name}, ${provName(w.prov)} — History, Archive and Timeline | TownTales`;return `
+<section class="wrap feature">
+${sign(w)}
+<div class="stack"><p class="crumbs"><a href="#towns">Towns</a> › ${esc(w.name)}</p><h1>${esc(w.name)}, ${esc(provName(w.prov))}</h1>
+<p class="lede">${esc(w.intro)||`${esc(w.name)}'s page is just getting started. Have an old photo or a story? You could be the first to add it.`}</p>
+<div class="btns"><a class="btn" href="#upload" data-act="settown" data-town="${esc(slug)}">Share something about ${esc(w.name)}</a><a class="btn alt" href="#share-${esc(slug)}" data-act="toshare">Share this page</a></div></div>
+</section>
+<section class="wrap stack" id="history">
+<nav class="ttabs" aria-label="${esc(w.name)} history">
+<a href="#t-${esc(slug)}"${tab==="timeline"?' aria-current="page"':""}>Timeline <span class="n">${nT}</span></a>
+<a href="#t-${esc(slug)}/archive"${tab==="archive"?' aria-current="page"':""}>Archive <span class="n">${nI}</span></a>
+</nav>
+${tab==="timeline"?timelinePane(w):archivePane(w)}
+</section>
+<section class="wrap" id="share-${esc(slug)}">${shareBlock(w)}</section>
+${donateBand(w.name)}`;};
+let tf={town:"",q:""};
+function timelinePane(w){const slug=w.slug,es=tlOf(slug);if(tf.town!==slug)tf={town:slug,q:""};
+return `<div class="aibar" id="aibar"><p><span class="pill ai">AI-built</span> This timeline is written by AI from everything in ${esc(w.name)}'s archive, and rebuilt each time something new is added. Every line links back to what it came from. Nothing is made up; anything uncertain is left out.</p>${aiStatus(slug)}</div>
+${es.length?`<div class="filters"><div class="field"><label for="f-q">Search the timeline</label><input type="text" id="f-q" value="${esc(tf.q)}" placeholder="Name, place, event"></div></div>
+<div class="dial" id="tl-dial"></div><div id="tl-list" class="stack"></div>`:`<div class="empty" id="tl-list">No timeline yet. It builds itself as soon as the first photo, story or clipping is added. <a href="#upload" data-act="settown" data-town="${esc(slug)}">Add the first one</a>.</div>`}`;}
+function drawTimeline(){const list=document.getElementById("tl-list");if(!list||!document.getElementById("tl-dial"))return;const q=norm(tf.q);const all=tlOf(tf.town);
+const es=all.filter(e=>!q||norm(e.title+" "+e.body+" "+e.label).includes(q));const by={};es.forEach(e=>{const d=Math.floor(e.year/10)*10;(by[d]=by[d]||[]).push(e);});const ds=Object.keys(by).sort();
+document.getElementById("tl-dial").innerHTML=ds.length>1?`<span class="hand">Jump to:</span>`+ds.map(d=>`<button data-act="jumpdec" data-d="${d}">${d}s</button>`).join("")+`<button class="btn sm alt" data-act="openall">Open all</button>`:(ds.length?`<button class="btn sm alt" data-act="openall">Open all</button>`:"");
+list.innerHTML=ds.length?`<div class="tl"><div class="rail">${RIDER}</div><div class="stops">${ds.map(d=>`<section class="stop" id="dec-${d}"><h2>${d}s</h2>${by[d].map(entryRow).join("")}</section>`).join("")}<p class="hand">End of the line, for now. <a href="#upload" data-act="settown" data-town="${esc(tf.town)}">Know what comes next?</a></p></div></div>`:`<div class="empty">Nothing matches that search.</div>`;}
+function entryRow(e){const src=(e.items||[]).map(id=>S.items.find(i=>i.id===id)).filter(Boolean);
+return `<article class="tick"><div class="stub"><span>${esc(e.label)}</span><small>${esc(e.cat||"")}</small></div><details><summary><h3>${esc(e.title)}</h3><span class="btns">${tierPill(e.tier)}<span class="more">Read</span></span></summary><div class="inner"><p>${esc(e.body)}</p>${src.length?`<p class="from">From the archive: ${src.map(i=>`<a href="#i-${esc(i.id)}">${esc(i.title)}</a>`).join("; ")}${e.cite?`, ${esc(e.cite)}`:""}</p>`:""}</div></details></article>`;}
+let af={town:"",q:"",kind:"",sort:"new"};
+function archivePane(w){const slug=w.slug;if(af.town!==slug)af={town:slug,q:"",kind:"",sort:"new"};const n=itemsOf(slug).length;
+return `<p class="muted">Everything people have shared about ${esc(w.name)}, just as they shared it. The timeline is built from these.</p>
+${n?`<div class="filters"><div class="field"><label for="a-q">Search the archive</label><input type="text" id="a-q" value="${esc(af.q)}" placeholder="Words, names, places"></div>
+<div class="field"><label for="a-kind">Type</label><select id="a-kind"><option value="">Everything</option>${Object.entries(KINDS).map(([k,l])=>`<option value="${k}"${af.kind===k?" selected":""}>${esc(l)}</option>`).join("")}</select></div>
+<div class="field"><label for="a-sort">Order</label><select id="a-sort"><option value="new"${af.sort==="new"?" selected":""}>Newest added</option><option value="old"${af.sort==="old"?" selected":""}>Oldest history first</option></select></div></div>
+<p id="a-count" class="muted small" role="status"></p><div class="arch" id="a-list"></div>`:`<div class="empty">The archive is empty. <a href="#upload" data-act="settown" data-town="${esc(slug)}">Share the first photo, story or clipping</a>.</div>`}
+<div class="notice info"><b>Got something in a drawer?</b><p>Photos, clippings, booklets, letters, or just what you remember. It all helps.</p><div class="btns"><a class="btn" href="#upload" data-act="settown" data-town="${esc(slug)}">Add to the archive</a></div></div>`;}
+function drawArchive(){const el=document.getElementById("a-list");if(!el)return;const q=norm(af.q);const all=itemsOf(af.town);
+let xs=all.filter(i=>(!af.kind||i.kind===af.kind)&&(!q||norm(i.title+" "+i.body+" "+i.source+" "+i.date_label).includes(q)));
+xs.sort(af.sort==="old"?(a,b)=>(a.year||9999)-(b.year||9999):(a,b)=>String(b.created_at).localeCompare(String(a.created_at)));
+el.innerHTML=xs.map(archCard).join("")||'<div class="empty" style="grid-column:1/-1">Nothing matches.</div>';
+document.getElementById("a-count").textContent=`Showing ${xs.length} of ${all.length}`;}
+P.item=id=>{const i=S.items.find(x=>x.id===id&&x.status==="published");if(!i)return notFound();const t=town(i.town)||{name:"",slug:i.town,prov:""};
+const used=S.timeline.filter(e=>(e.items||[]).includes(i.id));const su=safeUrl(i.source_url);
+document.title=`${i.title} — ${t.name} Archive | TownTales`;return `
+<section class="wrap item">
+<p class="crumbs"><a href="#t-${esc(t.slug)}">${esc(t.name)}</a> › <a href="#t-${esc(t.slug)}/archive">Archive</a></p>
+<p class="eyebrow">${esc(KINDS[i.kind]||i.kind)} · ${esc(i.date_label||(i.year?String(i.year):"Date unknown"))}</p>
+<h1 style="font-size:clamp(2rem,5.5vw,3.2rem)">${esc(i.title)}</h1>
+${i.image_url?`<div class="photo"><img src="${esc(i.image_url)}" alt="${esc(i.title)}"></div>`:""}
+${i.body?`<p class="body">${esc(i.body)}</p>`:""}
+<dl class="kv">${i.source?`<dt>Source</dt><dd>${esc(i.source)}</dd>`:""}${su?`<dt>Link</dt><dd><a href="${esc(su)}" target="_blank" rel="noopener">${esc(su)}</a></dd>`:""}<dt>Shared by</dt><dd>${esc(i.contributor||"A local contributor")}</dd><dt>Added</dt><dd>${esc(fmtDate(i.created_at))}</dd></dl>
+${used.length?`<div class="stack"><h2>On the timeline</h2><div class="stack">${used.map(entryRow).join("")}</div></div>`:`<p class="muted">Not on the timeline yet. It's used the next time the timeline is rebuilt, if it has a date to hang on.</p>`}
+<div class="btns"><a class="btn alt" href="#t-${esc(t.slug)}/archive">Back to the archive</a><button class="btn alt" data-act="correct" data-id="${esc(i.id)}">Report a problem</button></div>
+</section>`;};
+P.upload=()=>{const sel=prefill.town||(liveTowns()[0]||{}).slug;const has=liveTowns().length;return `
+<section class="wrap stack"><p class="eyebrow">Share history</p><h1>Add something to your town's archive</h1>
+<p class="lede">An old photo, a clipping, a page from an anniversary booklet, or a story only you remember. It goes into the town's archive, and the timeline is rebuilt to include it.</p>
+${has?`<form class="formbox" data-form="upload" novalidate>
+<div class="field"><label for="u-town">Town</label><select id="u-town" name="town">${townOpts(sel)}</select><span class="hint">Not listed? <a href="#addtown">Add your town</a> first.</span></div>
+<fieldset class="stack" style="border:0;padding:0;margin:0"><legend class="lbl" style="margin-bottom:10px">What are you sharing?</legend>
+<div class="kinds">${Object.entries(KINDS).map(([k,l],n)=>`<label class="kind"><input type="radio" name="kind" value="${k}"${n===0?" checked":""}> ${esc(l)}</label>`).join("")}</div></fieldset>
+<div class="field" id="u-filebox"><label for="u-file">Photo or picture of the page</label><input type="file" id="u-file" name="file" accept="image/*"><span class="hint">A phone photo of a clipping or a booklet page works fine.</span><div id="u-prev"></div></div>
+<div class="field"><label for="u-title">Give it a short title</label><input type="text" id="u-title" name="title" placeholder="e.g. Main Street after the 1947 blizzard"></div>
+<div class="field"><label for="u-body" id="u-body-l">Tell us about it</label><textarea id="u-body" name="body" placeholder="Who's in it, what was happening, anything you know."></textarea></div>
+<div class="grid2">
+<div class="field"><label for="u-when">When? <span class="hint">(a rough year is fine)</span></label><input type="text" id="u-when" name="when" placeholder="e.g. 1947, or 1950s"></div>
+<div class="field"><label for="u-source">Where is it from?</label><input type="text" id="u-source" name="source" placeholder="e.g. Grandma's album, the Leader-Post"></div>
+</div>
+<div class="field" id="u-urlbox" hidden><label for="u-url">Link</label><input type="url" id="u-url" name="url" placeholder="https://"></div>
+<div class="grid2"><div class="field"><label for="u-name">Your name</label><input type="text" id="u-name" name="name"><span class="hint">Shown as "Shared by". Leave blank to stay anonymous.</span></div><div class="field"><label for="u-email">Your email</label><input type="email" id="u-email" name="email"><span class="hint">Only if we have a question. Never shown.</span></div></div>
+<label class="check"><input type="checkbox" name="rights"> This is mine to share (or it's from a public source), and TownTales can show it on the town's page with credit.</label>
+<input type="text" name="website" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px" aria-hidden="true">
+<p class="err" id="u-err" role="alert"></p>
+<button class="btn" type="submit" id="u-go">Add to the archive</button>
+</form><div id="u-done"></div>`:`<div class="notice info"><b>There are no towns yet.</b><p>Start with your town's page, then come back here.</p><div class="btns"><a class="btn" href="#addtown">Add your town</a></div></div>`}
+</section>`;};
+P.how=()=>`
+<section class="wrap stack"><p class="eyebrow">How it works</p>
+<h1>From a shoebox to a town timeline</h1>
+<p class="lede">The history of a small town is scattered across albums, drawers and people's memories. TownTales gathers it into one place for each town, and builds a timeline anyone can read.</p>
+<div class="btns"><a class="btn" href="#addtown">Add your town</a><a class="btn alt" href="#towns">Find your town</a></div>
+</section>
+<section class="wrap stack"><h2>Four stops down the line</h2>
+<ol class="how-line">
+<li><span class="stn"><svg viewBox="0 0 40 40" aria-hidden="true" fill="none" stroke="#1E2930" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="7" width="28" height="14" rx="2" fill="#E3B34A"/><path d="M13 21v13M27 21v13M11 14h18"/></svg></span><span class="no">Stop 1</span><h3>Add your town</h3><p>Anyone can put a town on the line. Its page goes up right away, with its own link.</p></li>
+<li><span class="stn"><svg viewBox="0 0 40 40" aria-hidden="true" fill="none" stroke="#1E2930" stroke-width="2.5" stroke-linejoin="round"><path d="M6 15h28v18H6z" fill="#D9E8EF"/><path d="M6 15l4-7h20l4 7"/><rect x="11" y="4" width="10" height="13" fill="#FFFCF3" transform="rotate(-8 16 10)"/></svg></span><span class="no">Stop 2</span><h3>Share what you have</h3><p>Photos, clippings, booklet pages, letters, or a story you remember.</p></li>
+<li><span class="stn"><svg viewBox="0 0 40 40" aria-hidden="true" fill="none" stroke="#1E2930" stroke-width="2.5" stroke-linejoin="round"><rect x="7" y="9" width="26" height="24" fill="#FFFCF3"/><path d="M7 15h26M13 21h14M13 26h10" stroke-linecap="round"/></svg></span><span class="no">Stop 3</span><h3>It goes in the archive</h3><p>Each town keeps everything shared about it, exactly as it was shared, for anyone to browse.</p></li>
+<li><span class="stn"><svg viewBox="0 0 40 40" aria-hidden="true" fill="none" stroke="#1E2930" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 32V8" /><circle cx="8" cy="12" r="3" fill="#B4512C"/><circle cx="8" cy="21" r="3" fill="#E3B34A"/><circle cx="8" cy="30" r="3" fill="#4F7334"/><path d="M15 12h17M15 21h13M15 30h15"/></svg></span><span class="no">Stop 4</span><h3>The timeline rebuilds</h3><p>Each new addition triggers a fresh timeline, written from the archive, with every line linked to its source.</p></li>
+</ol></section>
+<section class="band"><div class="wrap two">
+<div class="stack"><h2>How the timeline gets written</h2>
+<p>Some towns end up with hundreds of photos and stories. Nobody has time to sort all of that by hand, so we use AI to read the whole archive and put it in order.</p>
+<p>The rules are strict. The timeline can only say what something in the archive says. Every entry links back to the photo, clipping or story it came from. If two sources disagree, or a date is fuzzy, it says so or leaves it out. It never fills gaps with guesses.</p>
+<p>And people stay in charge. Anyone can report a mistake, and we fix it.</p></div>
+<div class="stack"><h3>How entries are labelled</h3>
+<div class="panel"><span><span class="pill doc">Documented</span></span><p>Comes from a document: a book, a newspaper, a record, or a dated photo.</p></div>
+<div class="panel"><span><span class="pill mem">Community memory</span></span><p>Comes from someone's recollection. Memories matter, so we keep them and label them honestly.</p></div></div>
+</div></section>
+<section class="wrap stack"><h2>Questions people ask</h2>
+<div class="faq">
+<details><summary>Does it cost anything?</summary><div><p>No. Adding a town and sharing things is free. Donations keep the site running.</p></div></details>
+<details><summary>Will my photo be shown publicly?</summary><div><p>Yes, on the town's archive, credited to you (or to "a local contributor" if you leave your name off). We take a quick look at new uploads before they appear. Your email is never shown.</p></div></details>
+<details><summary>Is the AI making things up?</summary><div><p>It isn't allowed to. It only writes from what's in the archive, and each entry shows where it came from. If you spot something wrong, use the report link and we'll fix it.</p></div></details>
+<details><summary>Where does the first material come from?</summary><div><p>Besides what people share, we dig up public records: old directories, public-domain books, archived newspapers. Each is credited to where we found it.</p></div></details>
+<details><summary>Something about my family is wrong or private. What do I do?</summary><div><p>Use the <a href="#corrections">corrections and removals page</a>. We can take something down right away while we look into it.</p></div></details>
+</div></section>
+<section class="wrap stack" style="align-items:flex-start"><p class="hand">Every town has a story. Let's keep it.</p><h2>Is your town on the line yet?</h2><div class="btns"><a class="btn" href="#addtown">Add your town</a><a class="btn alt" href="#upload">Share something</a></div></section>`;
+P.donate=()=>`
+<section class="wrap stack"><p class="eyebrow">Donate</p><h1>Help keep small-town history online</h1>
+<p class="lede">Donations pay for hosting, photo storage, and the time spent digging up old records for each town.</p>
+<div class="notice info" style="max-width:780px"><b>Online donations are coming soon.</b><p>Want to help before then? <a href="#corrections" data-act="donatemsg">Send us a note</a> and we'll get in touch.</p></div>
+</section>`;
+P.corrections=()=>`
+<section class="wrap stack"><p class="eyebrow">Corrections and removals</p><h1>Report a problem</h1>
+<p class="lede">Something wrong, private, or posted without permission? Tell us. We can hide it right away while we look into it.</p>
+<form class="formbox" data-form="correction" novalidate>
+<div class="field"><label for="cr-what">What is it about?</label><input type="text" id="cr-what" name="what" value="${esc(prefill.what||"")}" placeholder="The town and the item or timeline entry"></div>
+<div class="field"><label for="cr-text">What's wrong?</label><textarea id="cr-text" name="text"></textarea></div>
+<div class="grid2"><div class="field"><label for="cr-name">Your name</label><input type="text" id="cr-name" name="name"></div><div class="field"><label for="cr-email">Your email</label><input type="email" id="cr-email" name="email"></div></div>
+<p class="err" id="cr-err" role="alert"></p><button class="btn" type="submit">Send</button>
+</form><div id="cr-done"></div></section>`;
+P.privacy=()=>`
+<section class="wrap article"><p class="eyebrow">Privacy</p><h1>Privacy, in plain language</h1>
+<p>We collect only what we need: your name if you want credit, and your email if you choose to give it so we can ask a question about what you shared.</p>
+<p>Your email is never shown publicly and never sold.</p>
+<p>Photos are resized before upload, which removes location data. You can ask us to correct or delete anything through the <a href="#corrections">corrections page</a>.</p>
+<p>TownTales operates in Canada and follows Canadian privacy law.</p>
+</section>`;
+let at="queue",queueLoaded=false;
+P.admin=()=>{const q=pending();const T=[["queue","Waiting for a look"],["towns","Towns"],["api","Upload API"]];
+return `<section class="wrap stack"><p class="eyebrow">Admin</p><h1>TownTales admin</h1>
+${LIVE?`<div class="formbox" style="max-width:520px"><div class="field"><label for="adm-key">Admin key</label><input type="password" id="adm-key" value="${esc(sessionStorage.getItem("tt-admin")||"")}"><span class="hint">Kept in this tab only.</span></div><button class="btn sm" data-act="setkey">Save key</button></div>`:`<p class="muted">Preview mode: changes here only affect this browser.</p>`}
+<div class="tabs" role="tablist">${T.map(([k,l])=>`<button role="tab" aria-selected="${at===k}" data-act="tab" data-t="${k}">${l}${k==="queue"&&q.length?`<span class="count">${q.length}</span>`:""}</button>`).join("")}</div>
+<div class="stack">${A[at]()}</div></section>`;};
+const A={};
+A.queue=()=>{if(LIVE&&!queueLoaded){live.api("queue",{}).then(r=>{S.items=S.items.filter(i=>i.status!=="pending").concat(r.items);queueLoaded=true;route();},()=>{queueLoaded="err";route();});return '<p class="muted">Loading…</p>';}
+if(queueLoaded==="err")return '<div class="notice warn"><p>Couldn\'t load the queue. Check the admin key above.</p></div>';
+const q=pending();
+if(!q.length)return '<div class="empty">Nothing waiting. Share something on the public site to see it here.</div>';
+return q.map(i=>`<div class="qitem"><div class="top"><h3>${esc(i.title)}</h3><span><span class="pill st">${esc(KINDS[i.kind])}</span> <span class="pill new">${esc((town(i.town)||{}).name||i.town)}</span></span></div>${i.image_url?`<img src="${esc(i.image_url)}" alt="">`:""}<p>${esc(i.body)}</p><dl class="kv"><dt>When</dt><dd>${esc(i.date_label||"—")}</dd><dt>Source</dt><dd>${esc(i.source||"—")}</dd><dt>From</dt><dd>${esc(i.contributor||"Anonymous")} ${i.contact_email?"· "+esc(i.contact_email):""}</dd></dl>
+<div class="btns"><button class="btn sm" data-act="approve" data-id="${esc(i.id)}">Publish</button><button class="btn sm alt" data-act="decline" data-id="${esc(i.id)}">Decline</button></div></div>`).join("");};
+A.towns=()=>`<div class="tbl"><table><thead><tr><th>Town</th><th class="num">Archive</th><th class="num">Timeline</th><th>Actions</th></tr></thead><tbody>${S.towns.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(t=>`<tr><td><b>${esc(t.name)}</b>, ${esc(t.prov)}<br><a class="small" href="#t-${esc(t.slug)}">View</a></td><td class="num">${countItems(t.slug)}</td><td class="num">${countTl(t.slug)}</td><td><div class="btns"><button class="btn sm alt" data-act="rebuild" data-id="${esc(t.slug)}">Rebuild timeline</button>${t.hidden?`<button class="btn sm alt" data-act="tshow" data-id="${esc(t.slug)}">Show</button>`:`<button class="btn sm alt" data-act="thide" data-id="${esc(t.slug)}">Hide</button>`}</div></td></tr>`).join("")}</tbody></table></div>
+${LIVE?"":`<div class="btns"><button class="btn sm alt" data-act="reset">Reset preview data</button></div>`}`;
+A.api=()=>`<div class="stack" style="max-width:820px"><p>Automated tools (like Muse) post straight into a town's archive. Posts from the API skip the review queue and trigger a timeline rebuild.</p>
+<pre class="code">POST ${esc(CFG.url||"https://&lt;project&gt;.supabase.co")}/functions/v1/api/ingest
+x-api-key: &lt;TOWNTALES_INGEST_KEY&gt;
+Content-Type: application/json
+{
+"town": { "name": "Moose Jaw", "prov": "SK" },
+"items": [{
+"kind": "document",
+"title": "Directory of the Town of Moose Jaw",
+"body": "Plain-text summary or transcription...",
+"date_label": "1890",
+"source": "R. L. Alexander (1890), Internet Archive",
+"source_url": "https://archive.org/details/P001837"
+}]
+}</pre><p class="small muted">Full field list is in the API guide.</p></div>`;
+const TITLES={home:"TownTales — Every town has a story",towns:"All Towns | TownTales",addtown:"Add Your Town | TownTales",upload:"Share Town History | TownTales",how:"How It Works | TownTales",donate:"Donate | TownTales",corrections:"Corrections and Removals | TownTales",privacy:"Privacy | TownTales",admin:"Admin | TownTales"};
+const ALIAS={about:"how",contribute:"upload",share:"upload",send:"upload",books:"towns",partners:"how",suggest:"addtown",sponsor:"donate",remember:"upload"};
+let lastRoute="";
+async function route(){setTour(false);let r=(location.hash||"#home").slice(1)||"home";if(ALIAS[r])r=ALIAS[r];
+if(r.startsWith("tl-"))r="t-"+r.slice(3);
+const view=document.getElementById("view");let html,navKey=r,kind=r;document.title=TITLES[r]||TITLES.home;
+try{
+if(r.startsWith("t-")){const [slug,tab]=r.slice(2).split("/");await DB.ensureTown(slug);html=P.town(slug,tab);navKey="towns";kind=tab==="archive"?"archive":"timeline";}
+else if(r.startsWith("i-")){html=P.item(r.slice(2));navKey="towns";kind="item";}
+else html=(P[r]||P.home)();
+}catch(e){html=`<section class="wrap stack"><h1>Something went wrong loading this page</h1><p class="muted">${esc(e.message)}</p><p><a href="#home">Back home</a></p></section>`;}
+view.innerHTML=html;
+document.querySelectorAll("nav.main a").forEach(a=>{const h=a.getAttribute("href").slice(1);if(h===navKey)a.setAttribute("aria-current","page");else a.removeAttribute("aria-current");});
+const base=r.split("/")[0];if(base!==lastRoute.split("/")[0])window.scrollTo(0,0);lastRoute=r;
+after(kind);prefill={};}
+function after(r){
+if(r==="home"){drawLine();arrive();const ln=document.getElementById("line");if(ln){ln.addEventListener("pointerdown",()=>setTour(false));ln.addEventListener("wheel",()=>setTour(false),{passive:true});ln.addEventListener("keydown",e=>{if(e.key==="ArrowRight"){e.preventDefault();setTour(false);rideTo(rideAt+1);}if(e.key==="ArrowLeft"){e.preventDefault();setTour(false);rideTo(rideAt-1);}});}}
+if(r==="timeline"){drawTimeline();const q=document.getElementById("f-q");if(q)q.addEventListener("input",()=>{tf.q=q.value;drawTimeline();});}
+if(r==="archive"){drawArchive();[["a-q","input","q"],["a-kind","change","kind"],["a-sort","change","sort"]].forEach(([id,ev,k])=>{const el=document.getElementById(id);if(el)el.addEventListener(ev,()=>{af[k]=el.value;drawArchive();});});}
+if(r==="towns"){drawTowns();document.getElementById("tw-q").addEventListener("input",e=>{townFilter.q=e.target.value;drawTowns();});document.getElementById("tw-prov").addEventListener("change",e=>{townFilter.prov=e.target.value;drawTowns();});}
+if(r==="upload"){const f=document.querySelector('[data-form="upload"]');if(f){f.addEventListener("change",ev=>{if(ev.target.name==="kind")kindUI(f);});document.getElementById("u-file").addEventListener("change",onPhoto);kindUI(f);}}
+}
+function kindUI(f){const k=(f.querySelector('input[name="kind"]:checked')||{}).value;document.getElementById("u-filebox").hidden=k==="story"||k==="link";document.getElementById("u-urlbox").hidden=k!=="link";
+document.getElementById("u-body-l").textContent=k==="story"?"Your story":k==="document"?"What does it say? (a summary or the text itself)":"Tell us about it";}
+window.addEventListener("hashchange",route);
+let rideAt=0;
+function lineStops(){const ts=liveTowns().map(t=>({town:t}));const ghosts=Math.max(2,4-ts.length);for(let i=0;i<ghosts;i++)ts.push({ghost:true});return ts;}
+const STOP_GAP=260,STOP_PAD=170;
+function drawLine(){const inner=document.getElementById("line-inner");if(!inner)return;const stops=lineStops();const w=STOP_PAD*2+STOP_GAP*(stops.length-1);
+inner.style.width=Math.max(w,document.getElementById("line").clientWidth)+"px";if(rideAt>=stops.length)rideAt=0;
+inner.innerHTML=`<div class="ground"></div><div class="track"></div>`+stops.map((s,i)=>{const x=STOP_PAD+i*STOP_GAP;const el=(i%2===0)?`<div style="position:absolute;left:${x+78}px;bottom:0;height:0">${ELEV}</div>`:"";
+return el+`<button class="station${s.ghost?" ghost":""}" style="left:${x}px" data-act="stop" data-i="${i}" aria-current="${i===rideAt}"><span class="nb">${s.ghost?"Your town?":esc(s.town.name)}</span><span class="pp"></span></button>`;}).join("")+`<div class="train" id="train" style="left:${STOP_PAD+rideAt*STOP_GAP-40}px">${TRAIN}</div>`;
+const n=liveTowns().length;document.getElementById("line-count").textContent=n?`${plural(n,"town","towns")} on the line so far`:"No towns on the line yet. Be the first.";drawStopCard();}
+function drawStopCard(){const c=document.getElementById("stopcard");if(!c)return;const s=lineStops()[rideAt];
+if(s.ghost){c.innerHTML=`<div class="stopcard"><div class="stack"><span class="now">Now stopping at: an empty platform</span><h2>Your town could be here</h2><p>Add your town to the line. It takes two minutes, and then anyone can start sharing its photos and stories.</p></div><div class="btns"><a class="btn" href="#addtown">Add your town</a></div></div>`;return;}
+const t=s.town;c.innerHTML=`<div class="stopcard"><div class="stack"><span class="now">Now stopping at</span><h2>${esc(t.name)}, ${esc(provName(t.prov))}</h2><p>${esc(t.intro)||"This stop is just getting started."}</p><p class="small muted">${plural(countItems(t.slug),"thing","things")} in the archive · ${plural(countTl(t.slug),"timeline entry","timeline entries")}</p></div><div class="btns"><a class="btn" href="#t-${esc(t.slug)}">Get off here</a><a class="btn alt" href="#t-${esc(t.slug)}/archive">Browse its archive</a></div></div>`;}
+let tourT=null;
+const reduceMotion=()=>!!(window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches);
+function setTour(on){clearInterval(tourT);tourT=null;const b=document.getElementById("tour-btn");if(on&&document.getElementById("line"))tourT=setInterval(()=>{if(!document.getElementById("line")){setTour(false);return;}rideTo(rideAt+1);},4800);if(b){b.setAttribute("aria-pressed",!!on);b.textContent=on?"Pause the tour":"Start the tour";}}
+function arrive(){const tr=document.getElementById("train");if(!tr||reduceMotion())return;const x=STOP_PAD+rideAt*STOP_GAP-40;tr.style.transition="none";tr.style.left="-200px";tr.offsetWidth;tr.style.transition="";
+requestAnimationFrame(()=>{tr.classList.add("moving");tr.style.left=x+"px";setTimeout(()=>tr.classList.remove("moving"),1600);});
+setTimeout(()=>{if(document.getElementById("line")&&!tourT)setTour(true);},2600);}
+function rideTo(i){const stops=lineStops();i=(i+stops.length)%stops.length;rideAt=i;const tr=document.getElementById("train"),line=document.getElementById("line"),x=STOP_PAD+i*STOP_GAP;
+document.querySelectorAll(".station").forEach((b,k)=>b.setAttribute("aria-current",k===i));
+if(tr){tr.classList.add("moving");tr.style.left=(x-40)+"px";clearTimeout(rideTo.t);rideTo.t=setTimeout(()=>tr.classList.remove("moving"),1600);}
+if(line&&line.scrollTo)line.scrollTo({left:Math.max(0,x-line.clientWidth/2),behavior:reduceMotion()?"auto":"smooth"});drawStopCard();}
+let photoBlob=null,photoData="";
+function onPhoto(ev){const f=ev.target.files[0];photoBlob=null;photoData="";const prev=document.getElementById("u-prev");prev.innerHTML="";if(!f)return;
+const fr=new FileReader();fr.onload=()=>{const img=new Image();img.onload=()=>{const max=LIVE?1600:900,sc=Math.min(1,max/Math.max(img.width,img.height));const c=document.createElement("canvas");c.width=Math.round(img.width*sc);c.height=Math.round(img.height*sc);c.getContext("2d").drawImage(img,0,0,c.width,c.height);photoData=c.toDataURL("image/jpeg",0.8);c.toBlob(b=>{photoBlob=b;},"image/jpeg",0.82);
+prev.innerHTML=`<img src="${photoData}" alt="Preview" style="max-width:260px;border:2px solid var(--ink);margin-top:6px">`;};img.src=fr.result;};fr.readAsDataURL(f);}
+const val=(f,n)=>(f.elements[n]&&f.elements[n].value||"").trim();
+function fail(id,msg){document.getElementById(id).textContent=msg;return false;}
+function done(id,html,form){const el=document.getElementById(id);el.innerHTML=html;if(form)form.hidden=true;el.scrollIntoView({block:"nearest"});}
+const F={};
+F.find=f=>{const q=norm(val(f,"q"));const m=document.getElementById("find-msg");if(!q){m.className="msg bad";m.textContent="Type a town name.";return;}
+const hits=liveTowns().filter(x=>norm(x.name).startsWith(q));if(hits.length===1){location.hash="#t-"+hits[0].slug;return;}
+if(hits.length>1){townFilter={q:val(f,"q"),prov:""};location.hash="#towns";return;}
+m.className="msg";m.innerHTML=`${esc(val(f,"q"))} isn't on TownTales yet. <a href="#addtown" data-act="addpre" data-town="${esc(val(f,"q"))}">Add it now</a>. It takes about two minutes.`;};
+F.addtown=async f=>{if(val(f,"website"))return;const e="at-err";const name=val(f,"name").replace(/\s+/g," ");if(name.length<2)return fail(e,"Add the town's name.");if(!val(f,"you"))return fail(e,"Add your name.");if(!okEmail(val(f,"email")))return fail(e,"Add a valid email.");
+const est=val(f,"est");if(est&&!/^\d{4}$/.test(est))return fail(e,"Enter the founding year as four digits, like 1905, or leave it blank.");
+const slug=slugify(name,val(f,"prov"));const ex=town(slug);
+if(ex)return done("at-done",`<div class="notice warn"><h3>${esc(ex.name)} is already on TownTales.</h3><p>Good news: you can start adding to it right now.</p><div class="btns"><a class="btn" href="#t-${esc(ex.slug)}">Go to ${esc(ex.name)}'s page</a></div></div>`);
+const t={slug,name,prov:val(f,"prov"),est,line:val(f,"line"),intro:val(f,"intro"),added_by:val(f,"you"),added_email:val(f,"email"),hidden:false,created_at:now()};
+try{await DB.addTown(t);}catch(err){return fail(e,"Couldn't save that just now. Please try again in a minute.");}
+done("at-done",`<div class="notice ok"><h3>${esc(name)} is the newest stop on the line. Thank you, ${esc(val(f,"you"))}.</h3><p>Its page is live. Best next step: add the first photo or story, then share the page in your town's Facebook group.</p><div class="btns"><a class="btn" href="#upload" data-act="settown" data-town="${esc(slug)}">Add the first thing</a><a class="btn alt" href="#t-${esc(slug)}">Go to ${esc(name)}'s page</a></div></div>${shareBlock(t,true)}`,f);};
+F.upload=async f=>{if(val(f,"website"))return;const e="u-err";const kind=(f.querySelector('input[name="kind"]:checked')||{}).value;
+if(kind==="photo"&&!photoData)return fail(e,"Choose a photo first.");
+if(!val(f,"title"))return fail(e,"Give it a short title.");
+if(kind==="story"&&val(f,"body").length<30)return fail(e,"Tell us a little more of the story.");
+if(kind==="link"&&!safeUrl(val(f,"url")))return fail(e,"Add the link, starting with https://");
+if(val(f,"email")&&!okEmail(val(f,"email")))return fail(e,"That email doesn't look right. You can leave it blank.");
+if(!f.elements.rights.checked)return fail(e,"Please tick the box to confirm it's OK to share.");
+const when=val(f,"when");const it={id:uid("i"),town:val(f,"town"),kind,title:val(f,"title"),body:val(f,"body"),year:yearOf(when),date_label:when,image_url:LIVE?"":(kind!=="story"&&kind!=="link"?photoData:""),source:val(f,"source"),source_url:kind==="link"?val(f,"url"):"",contributor:val(f,"name"),contact_email:val(f,"email"),origin:"community",status:"pending",created_at:now()};
+const btn=document.getElementById("u-go");btn.disabled=true;btn.textContent="Saving…";
+try{await DB.addItem(it,LIVE&&kind!=="story"&&kind!=="link"?photoBlob:null);}catch(err){btn.disabled=false;btn.textContent="Add to the archive";return fail(e,"Couldn't save that just now. Please try again in a minute.");}
+photoBlob=null;photoData="";const t=town(it.town)||{name:"",slug:it.town};
+done("u-done",`<div class="notice ok"><h3>Got it. Thank you${it.contributor?", "+esc(it.contributor):""}.</h3><p>We take a quick look at new uploads, then it goes into ${esc(t.name)}'s archive and the timeline rebuilds to include it.</p><div class="btns"><button class="btn" data-act="again" data-town="${esc(t.slug)}">Share another</button><a class="btn alt" href="#t-${esc(t.slug)}/archive">See ${esc(t.name)}'s archive</a>${LIVE?"":'<a class="btn alt" href="#admin">Publish it in admin (preview)</a>'}</div></div>`,f);};
+F.correction=f=>{const e="cr-err";if(val(f,"text").length<10)return fail(e,"Tell us what's wrong.");if(!okEmail(val(f,"email")))return fail(e,"Add a valid email so we can reply.");
+const row={what:val(f,"what"),text:val(f,"text"),name:val(f,"name"),email:val(f,"email")};
+(LIVE?live.post("reports",row):Promise.resolve()).then(()=>done("cr-done",`<div class="notice ok"><h3>Thanks. We've got it.</h3><p>We'll reply to ${esc(row.email)} within a few days.</p></div>`,f),()=>fail(e,"Couldn't send just now. Please try again."));};
+document.addEventListener("submit",ev=>{const f=ev.target.closest("form[data-form]");if(!f)return;ev.preventDefault();const h=F[f.dataset.form];if(h)h(f);});
+document.addEventListener("click",async ev=>{const b=ev.target.closest("[data-act]");if(!b)return;const a=b.dataset.act,id=b.dataset.id;
+if(a==="settown"){prefill.town=b.dataset.town;if(location.hash===b.getAttribute("href"))route();return;}
+if(a==="addpre"){prefill.town=b.dataset.town;if(location.hash==="#addtown")route();return;}
+if(a==="again"){prefill.town=b.dataset.town;route();return;}
+if(a==="toshare"){ev.preventDefault();const s=document.getElementById(b.getAttribute("href").slice(1));if(s)s.scrollIntoView({behavior:"smooth",block:"start"});return;}
+if(a==="correct"){const i=S.items.find(x=>x.id===id);prefill.what=i?`${(town(i.town)||{}).name||""}: ${i.title}`:"";location.hash="#corrections";return;}
+if(a==="donatemsg"){prefill.what="I'd like to donate";return;}
+if(a==="copy"){const el=document.getElementById(b.dataset.target);if(!el)return;const txt=el.textContent,label=b.textContent;
+const ok=()=>{b.textContent="Copied!";setTimeout(()=>{b.textContent=label;},2000);};
+const fb=()=>{const rg=document.createRange();rg.selectNodeContents(el);const sel=getSelection();sel.removeAllRanges();sel.addRange(rg);b.textContent="Selected. Press Ctrl+C to copy";setTimeout(()=>{b.textContent=label;},3000);};
+try{navigator.clipboard.writeText(txt).then(ok,fb);}catch(err){fb();}return;}
+if(a==="ride"){setTour(false);rideTo(rideAt+ +b.dataset.d);return;}
+if(a==="tour"){const on=!tourT;setTour(on);if(on)rideTo(rideAt+1);return;}
+if(a==="stop"){setTour(false);rideTo(+b.dataset.i);return;}
+if(a==="jumpdec"){const g=document.getElementById("dec-"+b.dataset.d);if(g)g.scrollIntoView({behavior:"smooth",block:"start"});return;}
+if(a==="openall"){const ds=[...document.querySelectorAll("#tl-list details")];const open=!ds.every(d=>d.open);ds.forEach(d=>d.open=open);b.textContent=open?"Close all":"Open all";return;}
+if(a==="tab"){at=b.dataset.t;route();return;}
+if(a==="setkey"){sessionStorage.setItem("tt-admin",document.getElementById("adm-key").value);queueLoaded=false;route();return;}
+try{
+if(a==="approve"){await DB.setItem(id,{status:"published"});if(LIVE){S.items=S.items.filter(i=>i.id!==id);loadedTowns.clear();}route();return;}
+if(a==="decline"){await DB.setItem(id,{status:"declined"});if(LIVE)S.items=S.items.filter(i=>i.id!==id);route();return;}
+if(a==="rebuild"){await DB.rebuild(id);b.textContent="Rebuilding…";return;}
+if(a==="thide"||a==="tshow"){await DB.setTown(id,{hidden:a==="thide"});route();return;}
+if(a==="reset"){local.reset();route();return;}
+}catch(err){alert("That didn't work: "+err.message);}
+});
+document.getElementById("demo-bar").hidden=LIVE;
+DB.load().then(route,err=>{document.getElementById("view").innerHTML=`<section class="wrap stack"><h1>TownTales is taking a breather</h1><p class="muted">We couldn't reach the database. Please try again in a minute.</p></section>`;console.error(err);});
+})();
+</script>
+</body>
+</html>

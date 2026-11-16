@@ -1,0 +1,34 @@
+{
+  "functions": {
+    "api/town.js": {
+      "includeFiles": "app.html"
+    },
+    "api/page.js": {
+      "includeFiles": "app.html"
+    },
+    "api/fam.js": {
+      "includeFiles": "family.js"
+    },
+    "api/seo.js": {
+      "includeFiles": "app.html"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/",
+      "destination": "/api/seo?slug=_home"
+    },
+    {
+      "source": "/sitemap.xml",
+      "destination": "/api/sitemap"
+    },
+    {
+      "source": "/:slug([a-z0-9-]+-(?:sk|mb|ab|bc|on|qc|nb|ns|pe|nl|yt|nt|nu))",
+      "destination": "/api/seo?slug=:slug"
+    },
+    {
+      "source": "/:slug([a-z0-9-]+-(?:sk|mb|ab|bc|on|qc|nb|ns|pe|nl|yt|nt|nu))/archive",
+      "destination": "/api/seo?slug=:slug&sub=archive"
+    }
+  ]
+}
