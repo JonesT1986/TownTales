@@ -367,6 +367,7 @@
   /* ---------- hook into the app ---------- */
   function onView() {
     try {
+      var nb = $("#tt-notice"); if (nb) { try { if (localStorage.getItem("tt-notice-1")) nb.remove(); } catch (e) {} }
       var h = (location.hash || "").slice(1);
       if (h === "admin") return adminBlock();
       var t = currentTown(); if (!t) return;

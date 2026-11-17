@@ -12,7 +12,7 @@
  {
   "name": "extra-css",
   "find": "</head>",
-  "replace": "<link rel=\"stylesheet\" href=\"/towntales-extra.css?v=2\">\n</head>"
+  "replace": "<link rel=\"stylesheet\" href=\"/towntales-extra.css?v=3\">\n</head>"
  },
  {
   "name": "footer-province",
@@ -38,5 +38,10 @@
   "name": "footer-contact",
   "find": "<li><a href=\"#privacy\">Privacy</a></li>",
   "replace": "<li><a href=\"#privacy\">Privacy</a></li><li><a href=\"/contact\">Contact</a></li>"
+ },
+ {
+  "name": "home-growing-notice",
+  "find": "return `\n<section class=\"line-wrap\">",
+  "replace": "return `\n<div class=\"tt-notice\" id=\"tt-notice\" role=\"note\"><div class=\"wrap\"><p><b>Now growing:</b> we're adding the history of every town in Canada, one by one. Don't see yours yet? It's coming, or <a href=\"#addtown\">add it yourself</a>.</p><button type=\"button\" class=\"tt-notice-x\" aria-label=\"Close this message\" onclick=\"try{localStorage.setItem('tt-notice-1','1')}catch(e){};this.closest('.tt-notice').remove()\">✕</button></div></div>\n<section class=\"line-wrap\">"
  }
 ]
