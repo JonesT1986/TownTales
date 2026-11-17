@@ -23,6 +23,9 @@
     },
     "api/contact.js": {
       "includeFiles": "app.html"
+    },
+    "api/book.js": {
+      "includeFiles": "app.html"
     }
   },
   "rewrites": [
@@ -65,6 +68,10 @@
     {
       "source": "/:slug([a-z0-9-]+-(?:sk|mb|ab|bc|on|qc|nb|ns|pe|nl|yt|nt|nu))/sports",
       "destination": "/api/sports?slug=:slug"
+    },
+    {
+      "source": "/:slug([a-z0-9-]+-(?:sk|mb|ab|bc|on|qc|nb|ns|pe|nl|yt|nt|nu))/book",
+      "destination": "/api/book?slug=:slug"
     }
   ]
 }

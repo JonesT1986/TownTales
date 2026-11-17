@@ -99,6 +99,33 @@
     });
   }
 
+  /* ---------- town book request (DRAFT, Wapella only) → existing book_interest table ---------- */
+  var BOOK_TOWNS = { "wapella-sk": true };
+  function wireBookForm(f) {
+    f.addEventListener("submit", function (ev) {
+      ev.preventDefault();
+      var err = $("#bk-err"), btn = f.querySelector('button[type="submit"]');
+      var v = function (n) { return String(f.elements[n].value || "").trim(); };
+      err.textContent = "";
+      if (!v("name")) return (err.textContent = "Please enter your name.");
+      if (!okEmail(v("email"))) return (err.textContent = "Please enter a working email address.");
+      btn.disabled = true; btn.textContent = "Sending…";
+      fetch(SB + "/rest/v1/book_interest", { method: "POST", headers: H({ "Content-Type": "application/json", Prefer: "return=minimal" }),
+        body: JSON.stringify({ town: f.getAttribute("data-town"), name: v("name").slice(0, 120), email: v("email").slice(0, 200).toLowerCase(), format: v("format"), copies: parseInt(v("copies"), 10) || 1, updates_ok: !!f.elements.updates.checked }) })
+        .then(function (r) { if (!r.ok) throw new Error("save"); f.hidden = true; $("#bk-done").innerHTML = '<div class="rm-ok"><h3>You\'re on the list.</h3><p>Thank you. We\'ll email you when your copy is ready to order.</p></div>'; })
+        .catch(function () { err.textContent = "Couldn't send that just now. Please try again in a minute."; btn.disabled = false; btn.textContent = "Request my copy"; });
+    });
+  }
+  function bookBlock(t) {
+    var view = $("#view"); if (!view || !BOOK_TOWNS[t.slug] || $("#tt-book", view)) return;
+    var anchor = $("#history", view); if (!anchor) return;
+    var tn = townName(), sec = document.createElement("section");
+    sec.className = "wrap"; sec.id = "tt-book";
+    sec.innerHTML = '<div class="grow" style="max-width:none"><p class="eyebrow">The ' + esc(tn) + ' Book</p><h2>Get the ' + esc(tn) + ' Book</h2><p>' + esc(tn) + "'s history in one book: the timeline, the people, the cemeteries and the teams, with every source. See a free sample first.</p>" +
+      '<div class="btns"><a class="btn" href="/' + esc(t.slug) + '/book">See the free sample</a><a class="btn alt" href="/' + esc(t.slug) + '/book#request">Request the book</a></div></div>';
+    anchor.parentNode.insertBefore(sec, anchor);
+  }
+
   /* ---------- which town page is showing in the app ---------- */
   function currentTown() {
     var h = decodeURIComponent((location.hash || "").slice(1));
@@ -370,13 +397,14 @@
       var h = (location.hash || "").slice(1);
       if (h === "admin") return adminBlock();
       var t = currentTown(); if (!t) return;
-      if (t.archive) clipBlock(t); else { rmBlock(t); teamsBlock(t); }
+      if (t.archive) clipBlock(t); else { rmBlock(t); teamsBlock(t); bookBlock(t); }
     } catch (e) { if (window.console) console.error("towntales-extra", e); }
   }
   function boot() {
     try { wireIndexFilter(); } catch (e) {}
     $$("[data-tt-memform]").forEach(function (f) { try { wireMemForm(f); } catch (e) {} });
     $$("[data-tt-contact]").forEach(function (f) { try { wireContact(f); } catch (e) {} });
+    $$("[data-tt-bookform]").forEach(function (f) { try { wireBookForm(f); } catch (e) {} });
     var v = $("#view");
     if (v && !$(".rm", v)) {
       new MutationObserver(function () { onView(); }).observe(v, { childList: true });

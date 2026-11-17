@@ -2,6 +2,7 @@
 const towns = [{ slug: 'wapella-sk', name: 'Wapella', prov: 'SK', hidden: false }, { slug: 'moose-jaw-sk', name: 'Moose Jaw', prov: 'SK', hidden: false }, { slug: 'baddeck-ns', name: 'Baddeck', prov: 'NS', hidden: false }];
 const cems = [
   { id: 'wap-cem-1', town: 'wapella-sk', name: 'Wapella Cemetery', aka: ['Town Cemetery'], location_desc: 'North edge of town, east of Highway 1', affiliation: 'Municipal', status: 'active', managed_by: 'Town of Wapella', source: 'Saskatchewan Genealogical Society cemetery index', source_url: 'https://example.org/sgs' },
+  { id: 'wap-cem-3', town: 'wapella-sk', name: 'Buck Cemetery', aka: [], source: 'x' }, { id: 'wap-cem-4', town: 'wapella-sk', name: 'Earlswood Cemetery', aka: [], source: 'x' }, { id: 'wap-cem-5', town: 'wapella-sk', name: 'St. Paul\'s Cemetery', aka: [], source: 'x' }, { id: 'wap-cem-6', town: 'wapella-sk', name: 'Wapella Jewish Cemetery', aka: [], source: 'x' },
   { id: 'wap-cem-2', town: 'wapella-sk', name: 'St. John\'s Anglican Cemetery', aka: [], location_desc: '5 km south', affiliation: 'Anglican', status: 'inactive', managed_by: null, source: 'Wapella history book (1979)', source_url: null },
 ];
 const first = ['John', 'Mary', 'William', 'Margaret', 'James', 'Annie', 'Robert', 'Elizabeth'], last = ['Anderson', 'Brown', 'Campbell', 'Davidson', 'Elliott', 'Fraser', 'Gordon', 'Hamilton', 'Irvine', 'Johnston', 'Kerr', 'MacLeod', 'Nelson', 'Olson', 'Peterson', 'Reid', 'Smith', 'Thompson', 'Wilson', 'Young'];
@@ -25,7 +26,31 @@ const teams = [
   { id: 't2', town: 'wapella-sk', name: 'Wapella Wolves', sport: 'Hockey', league: null, years_label: '1948–1972', home_venue: 'Wapella Rink', championships: [], note: null, tier: 'community', source: 'Recollection of J. Smith', source_url: null, status: 'published' },
 ];
 const athletes = [{ id: 'a1', town: 'wapella-sk', name: 'Test Athlete', sport: 'Hockey', level: 'NHL', connection: 'Born in Wapella', teams_label: 'Test Team A, Test Team B', years_label: '1990s–2000s', achievements: ['Test highlight'], note: null, tier: 'documented', source: 'Test source', source_url: null, status: 'published' }];
-const tables = { athletes, teams, town_stats, towns, cemeteries: cems, memorials: mems, clippings: clips, provinces, timeline: [{ town: 'wapella-sk', year: 1882, label: '1882', title: 'Railway arrives', body: 'x', sort: 0 }], items: [] };
+const tables = { athletes, teams, town_stats, towns, cemeteries: cems, memorials: mems, clippings: clips, provinces, timeline: [
+  {"town": "wapella-sk", "year": 1874, "label": "September 1874", "title": "Treaty 4 signed at Fort Qu'Appelle", "body": "", "sort": 0},
+  {"town": "wapella-sk", "year": 1882, "label": "1882", "title": "The CPR main line reaches Wapella", "body": "", "sort": 1},
+  {"town": "wapella-sk", "year": 1883, "label": "1883", "title": "Scottish settlement founded south of town", "body": "", "sort": 2},
+  {"town": "wapella-sk", "year": 1883, "label": "Nov. 1, 1883 (reported)", "title": "Post office reportedly opens", "body": "", "sort": 3},
+  {"town": "wapella-sk", "year": 1885, "label": "1885 or 1886", "title": "First school district, Wapella #11", "body": "", "sort": 4},
+  {"town": "wapella-sk", "year": 1886, "label": "1886", "title": "Jewish farm colony founded northeast of town", "body": "", "sort": 5},
+  {"town": "wapella-sk", "year": 1889, "label": "1889", "title": "Rabbi Edel Brotman takes up a homestead", "body": "", "sort": 6},
+  {"town": "wapella-sk", "year": 1889, "label": "1889", "title": "The Bronfman family arrives in Wapella", "body": "", "sort": 7},
+  {"town": "wapella-sk", "year": 1890, "label": "c. 1890", "title": "A small railway village takes shape", "body": "", "sort": 8},
+  {"town": "wapella-sk", "year": 1898, "label": "1898", "title": "Jewish colony opens its own school", "body": "", "sort": 9},
+  {"town": "wapella-sk", "year": 1901, "label": "1901", "title": "The Commercial Hotel is built", "body": "", "sort": 10},
+  {"town": "wapella-sk", "year": 1901, "label": "1901", "title": "Frost destroys crops; farmers turn to JCA loans", "body": "", "sort": 11},
+  {"town": "wapella-sk", "year": 1903, "label": "1903", "title": "Wapella incorporated as a town", "body": "", "sort": 12},
+  {"town": "wapella-sk", "year": 1903, "label": "1903", "title": "CPR branch line opens up the district", "body": "", "sort": 13},
+  {"town": "wapella-sk", "year": 1907, "label": "1906-1907", "title": "Old Town Hall designed and completed", "body": "", "sort": 14},
+  {"town": "wapella-sk", "year": 1910, "label": "1910", "title": "First steam threshing outfit among Jewish farmers", "body": "", "sort": 15},
+  {"town": "wapella-sk", "year": 1913, "label": "January 13, 1913", "title": "RM of Martin No. 122 incorporated", "body": "", "sort": 16},
+  {"town": "wapella-sk", "year": 1921, "label": "1921", "title": "Farmers prosecuted under the Lord's Day Act", "body": "", "sort": 17},
+  {"town": "wapella-sk", "year": 1924, "label": "1924", "title": "Wapella baseball team's near-perfect season", "body": "", "sort": 18},
+  {"town": "wapella-sk", "year": 1930, "label": "1930s", "title": "Ten dry years in the Depression", "body": "", "sort": 19},
+  {"town": "wapella-sk", "year": 1943, "label": "1943-1944", "title": "The Wapella Post weekly newspaper", "body": "", "sort": 20},
+  {"town": "wapella-sk", "year": 1979, "label": "1979", "title": "Mingling Memories published", "body": "", "sort": 21},
+  {"town": "wapella-sk", "year": 2017, "label": "September 2017", "title": "Grain elevator sold; rail switch reconnected", "body": "", "sort": 22}
+], items: Array.from({ length: 26 }, (_, i) => ({ id: 'i' + i, town: 'wapella-sk', status: 'published' })) };
 
 function filt(rows, params) {
   for (const [k, v] of params) {
