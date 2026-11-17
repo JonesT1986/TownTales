@@ -55,6 +55,11 @@ const tables = { athletes, teams, town_stats, towns, cemeteries: cems, memorials
 function filt(rows, params) {
   for (const [k, v] of params) {
     if (['select', 'order', 'limit'].includes(k)) continue;
+    if (k === 'or') {
+      const conds = v.replace(/^\(|\)$/g, '').split(',').map((c) => c.split('.'));
+      rows = rows.filter((r) => conds.some(([col, op, ...rest]) => op === 'ilike' && String(r[col] || '').toLowerCase().includes(decodeURIComponent(rest.join('.')).replace(/\*/g, '').toLowerCase())));
+      continue;
+    }
     const m = v.match(/^(eq|neq)\.(.*)$/); if (!m) continue;
     const val = decodeURIComponent(m[2]);
     rows = rows.filter((r) => { const x = String(r[k]); return m[1] === 'eq' ? x === val : x !== val; });
@@ -74,4 +79,6 @@ const mockFetch = async (url, opts = {}) => {
 };
 
 
+// Real McFadyen records from the live site, for the family report preview.
+try { const real = require('./data/mcfadyen.json'); tables.memorials.push(...real.memorials); tables.cemeteries.push(...real.cemeteries); } catch (e) {}
 module.exports = { mockFetch, tables };
