@@ -7,12 +7,7 @@
  {
   "name": "home-grow-section",
   "find": "${donateBand(\"\")}`;};",
-  "replace": "<section class=\"wrap stack\" id=\"grow\"><div class=\"grow\"><h2>This site grows one town, and one memory, at a time.</h2><p>New towns are added every week, but the real history doesn't live in archives — it lives with the people who were there. If you know a story, hold a photo, or have your community's history book on a shelf, you can put it where it belongs: on your town's page, with your name on it as the source.</p><ul><li>Share a memory or correct a date on any town's timeline</li><li>Send us your community's history book — one copy is all it takes</li><li>Add your family's people to the town's Cemetery &amp; Remembrance section</li></ul><p>Every entry is sourced and credited. This history belongs to the towns — we're just keeping it safe.</p><div class=\"btns\"><a class=\"btn\" href=\"#upload\">Add your town's history</a><a class=\"btn alt\" href=\"#corrections\" data-act=\"sendbook\">Send a history book</a></div></div></section>\n${donateBand(\"\")}`;};"
- },
- {
-  "name": "sendbook-prefill",
-  "find": "if(a===\"donatemsg\"){prefill.what=\"I'd like to donate\";return;",
-  "replace": "if(a===\"sendbook\"){prefill.what=\"Sending our community's history book\";if(location.hash===\"#corrections\")route();return;}if(a===\"donatemsg\"){prefill.what=\"I'd like to donate\";return;"
+  "replace": "<section class=\"wrap stack\" id=\"grow\"><div class=\"grow\"><h2>This site grows one town, and one memory, at a time.</h2><p>New towns are added every week, but the real history doesn't live in archives — it lives with the people who were there. If you know a story, hold a photo, or have your community's history book on a shelf, you can put it where it belongs: on your town's page, with your name on it as the source.</p><ul><li>Share a memory or correct a date on any town's timeline</li><li>Send us your community's history book — one copy is all it takes</li><li>Add your family's people to the town's Cemetery &amp; Remembrance section</li></ul><p>Every entry is sourced and credited. This history belongs to the towns — we're just keeping it safe.</p><div class=\"btns\"><a class=\"btn\" href=\"#upload\">Add your town's history</a><a class=\"btn alt\" href=\"/contact?topic=book\">Send a history book</a></div></div></section>\n${donateBand(\"\")}`;};"
  },
  {
   "name": "extra-css",
