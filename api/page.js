@@ -3,7 +3,7 @@
 // town.js is left untouched; if anything here fails the page is served as before.
 const town = require('./town');
 const TAG = '<script src="/api/fam?v=2" defer></script>';
-const EXTRA_TAG = '<script src="/towntales-extra.js?v=3" defer></script>';
+const EXTRA_TAG = '<script src="/towntales-extra.js?v=4" defer></script>';
 
 // Exact-match swaps on the served page. A swap that no longer matches is skipped.
 const SWAPS = [

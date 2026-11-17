@@ -99,6 +99,19 @@
     });
   }
 
+  /* ---------- copy-to-clipboard (contact page email) ---------- */
+  function copyText(t) {
+    var say = function (ok) {
+      var m = $(".ct-copied"); if (m) m.textContent = ok ? "Copied! Paste it into a new email." : "Couldn't copy. Please select the address and copy it.";
+      $$(".ct-copy").forEach(function (b) { b.textContent = ok ? "Copied!" : "Copy"; setTimeout(function () { b.textContent = "Copy"; }, 2500); });
+    };
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(t).then(function () { say(true); }, function () { say(fallback(t)); });
+    say(fallback(t));
+  }
+  function fallback(t) {
+    try { var ta = document.createElement("textarea"); ta.value = t; ta.setAttribute("readonly", ""); ta.style.position = "fixed"; ta.style.opacity = "0"; document.body.appendChild(ta); ta.select(); var ok = document.execCommand("copy"); ta.remove(); return ok; } catch (e) { return false; }
+  }
+
   /* ---------- which town page is showing in the app ---------- */
   function currentTown() {
     var h = decodeURIComponent((location.hash || "").slice(1));
@@ -378,6 +391,7 @@
     try { wireIndexFilter(); } catch (e) {}
     $$("[data-tt-memform]").forEach(function (f) { try { wireMemForm(f); } catch (e) {} });
     $$("[data-tt-contact]").forEach(function (f) { try { wireContact(f); } catch (e) {} });
+    $$("[data-copy]").forEach(function (b) { b.addEventListener("click", function () { copyText(b.getAttribute("data-copy")); }); });
     var v = $("#view");
     if (v && !$(".rm", v)) {
       new MutationObserver(function () { onView(); }).observe(v, { childList: true });
