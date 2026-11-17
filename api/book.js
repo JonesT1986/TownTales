@@ -4,11 +4,19 @@
 const { SITE, PROV, PROV_SLUG, esc, q, page, send, notFound } = require('./_shell');
 
 // Towns with a book file ready. sample = public URL of the free sample PDF (null until supplied).
+// mainStreet = the town's main street photo used as the cover: { image, credit } (credit = who took it / where it's from).
+// Rule: the cover is always the main street. No photo yet → illustrated cover + a request for one, and the town is
+// listed in NEEDS_MAIN_STREET so it can be reported.
 const BOOKS = {
-  'wapella-sk': { pages: 77, sample: null },
+  'wapella-sk': { pages: 77, sample: null, mainStreet: null },
 };
+const NEEDS_MAIN_STREET = Object.keys(BOOKS).filter((k) => !(BOOKS[k].mainStreet && BOOKS[k].mainStreet.image));
 
-function cover(town, prov) {
+function cover(town, prov, ms) {
+  if (ms && ms.image) {
+    return `<figure class="bk-cover bk-photo" style="margin:0 auto"><div class="bk-cover-in" style="background:linear-gradient(rgba(30,41,48,.15),rgba(30,41,48,.75)),url('${esc(ms.image)}') center/cover"><p class="bk-kicker">A TownTales history</p><div><p class="bk-title">${esc(town.name)}</p><p class="bk-prov">${esc(prov)}</p></div></div>
+<figcaption class="small muted" style="margin-top:12px;text-align:center">Cover: ${esc(town.name)}'s main street${ms.credit ? '. Photo: ' + esc(ms.credit) : ''}</figcaption></figure>`;
+  }
   return `<div class="bk-cover" role="img" aria-label="Cover of the ${esc(town.name)} book">
 <div class="bk-cover-in"><p class="bk-kicker">A TownTales history</p><p class="bk-title">${esc(town.name)}</p><p class="bk-prov">${esc(prov)}</p>
 <svg viewBox="0 0 120 70" aria-hidden="true" class="bk-art"><path d="M0 62h120" stroke="#E3B34A" stroke-width="3"/><path d="M14 62V30L24 18l10 12v32z" fill="#B4512C" stroke="#1E2930" stroke-width="2"/><path d="M40 62V44h46v18z" fill="#2B5C80" stroke="#1E2930" stroke-width="2"/><circle cx="50" cy="63" r="5" fill="#1E2930"/><circle cx="76" cy="63" r="5" fill="#1E2930"/><path d="M86 50h16v12H86z" fill="#B4512C" stroke="#1E2930" stroke-width="2"/></svg>
@@ -45,7 +53,7 @@ module.exports = async (req, res) => {
     const main = `<section class="wrap stack" style="padding-top:22px">
 <p class="crumbs"><a href="/">TownTales</a> › <a href="/province/${esc(PROV_SLUG[town.prov] || '')}">${esc(prov)}</a> › <a href="/${esc(town.slug)}">${esc(town.name)}</a> › The ${esc(town.name)} Book</p>
 <div class="bk-hero">
-${cover(town, prov)}
+${cover(town, prov, book.mainStreet)}
 <div class="stack">
 <p class="eyebrow">The ${esc(town.name)} Book</p>
 <h1>${esc(town.name)}'s history, in a book you can hold</h1>
@@ -56,6 +64,8 @@ ${cover(town, prov)}
 <p class="small muted">The sample has the cover, the contents, the timeline at a glance and the first chapter. Free, nothing to sign up for.</p>
 </div></div>
 </section>
+
+${book.mainStreet && book.mainStreet.image ? '' : `<section class="wrap"><div class="pv-soon"><p><b>Have a photo of ${esc(town.name)}'s main street?</b> Every TownTales book has the town's main street on the cover, and ${esc(town.name)}'s doesn't have one yet. Old or new, send it in and we'll credit you on the cover.</p><div class="btns" style="margin-top:10px"><a class="btn" href="/#upload">Send a main street photo</a></div></div></section>`}
 
 <section class="wrap stack"><h2>What's inside</h2><ul class="bk-inside">${inside}</ul>
 <p class="small muted">The book is built straight from the collection on this site and is never hand-edited, so it grows each time someone adds a photo, a story or a name.</p></section>
@@ -105,6 +115,7 @@ ${timeline.length ? `<section class="wrap stack"><h2>${esc(town.name)} at a glan
   }
 };
 module.exports.BOOKS = BOOKS;
+module.exports.NEEDS_MAIN_STREET = NEEDS_MAIN_STREET;
 
 // Towns without a book yet: a short waitlist. Requests show which towns to research next.
 function waitlist(res, town) {
