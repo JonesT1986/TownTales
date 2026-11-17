@@ -24,16 +24,7 @@
     "api/contact.js": {
       "includeFiles": "app.html"
     },
-    "api/book.js": {
-      "includeFiles": "app.html"
-    },
-    "api/family-report.js": {
-      "includeFiles": "app.html"
-    },
-    "api/partners.js": {
-      "includeFiles": "app.html"
-    },
-    "api/anniversary.js": {
+    "api/extra.js": {
       "includeFiles": "app.html"
     }
   },
@@ -48,11 +39,11 @@
     },
     {
       "source": "/anniversary",
-      "destination": "/api/anniversary"
+      "destination": "/api/extra?kind=anniversary"
     },
     {
       "source": "/partners/funeral-homes",
-      "destination": "/api/partners"
+      "destination": "/api/extra?kind=partners"
     },
     {
       "source": "/contact",
@@ -88,11 +79,11 @@
     },
     {
       "source": "/:slug([a-z0-9-]+-(?:sk|mb|ab|bc|on|qc|nb|ns|pe|nl|yt|nt|nu))/book",
-      "destination": "/api/book?slug=:slug"
+      "destination": "/api/extra?kind=book&slug=:slug"
     },
     {
       "source": "/:slug([a-z0-9-]+-(?:sk|mb|ab|bc|on|qc|nb|ns|pe|nl|yt|nt|nu))/family/:name([A-Za-z-]+)",
-      "destination": "/api/family-report?slug=:slug&name=:name"
+      "destination": "/api/extra?kind=family&slug=:slug&name=:name"
     }
   ]
 }
