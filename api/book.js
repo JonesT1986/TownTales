@@ -20,11 +20,11 @@ module.exports = async (req, res) => {
   const slug = String(url.searchParams.get('slug') || '').toLowerCase();
   const book = BOOKS[slug];
   try {
-    if (!book) return notFound(res, "There isn't a book page for that town yet.");
     const s = encodeURIComponent(slug);
     const towns = await q(`towns?slug=eq.${s}&hidden=eq.false&select=slug,name,prov`);
     const town = towns[0];
-    if (!town) return notFound(res);
+    if (!town) return notFound(res, "We don't have a town at that address.");
+    if (!book) return waitlist(res, town);
     const [timeline, items, mems, cems, teams] = await Promise.all([
       q(`timeline?town=eq.${s}&select=year,label,title&order=year,sort`, { all: true }),
       q(`items?town=eq.${s}&status=eq.published&select=id`, { all: true }),
@@ -64,10 +64,10 @@ ${timeline.length ? `<section class="wrap stack"><h2>${esc(town.name)} at a glan
 <p class="small"><a href="/${esc(town.slug)}">See the full timeline with sources →</a></p></section>` : ''}
 
 <section class="wrap stack" id="request"><h2>Request the full book</h2>
-<p>Tell us which edition you'd like. There's nothing to pay now. We'll email you when your copy is ready to order.</p>
+<p>Tell us which edition you'd like. There's nothing to pay now. We'll email you the price and let you know when your copy is ready to order.</p>
 <div class="bk-eds">
-<div class="rm-cem"><h3>Digital edition</h3><p>A PDF you can read on any screen or print at home.</p><p class="bk-price">About $15–20</p></div>
-<div class="rm-cem"><h3>Printed book</h3><p>A bound paperback, printed when you order it.</p><p class="bk-price">About $40</p></div>
+<div class="rm-cem"><h3>Digital edition</h3><p>A PDF you can read on any screen or print at home.</p></div>
+<div class="rm-cem"><h3>Printed book</h3><p>A bound paperback, printed when you order it.</p></div>
 </div>
 <form class="formbox" data-tt-bookform data-town="${esc(town.slug)}" novalidate style="max-width:820px">
 <div class="grid2">
@@ -105,3 +105,37 @@ ${timeline.length ? `<section class="wrap stack"><h2>${esc(town.name)} at a glan
   }
 };
 module.exports.BOOKS = BOOKS;
+
+// Towns without a book yet: a short waitlist. Requests show which towns to research next.
+function waitlist(res, town) {
+  const prov = PROV[town.prov] || town.prov;
+  const main = `<section class="wrap stack" style="padding-top:22px">
+<p class="crumbs"><a href="/">TownTales</a> › <a href="/province/${esc(PROV_SLUG[town.prov] || '')}">${esc(prov)}</a> › <a href="/${esc(town.slug)}">${esc(town.name)}</a> › Book</p>
+<div class="bk-hero">${cover(town, prov)}<div class="stack">
+<p class="eyebrow">The ${esc(town.name)} Book</p>
+<h1>Want a book about ${esc(town.name)}?</h1>
+<p class="lede">We make a history book for each town from everything on its TownTales page. ${esc(town.name)}'s isn't ready yet. Add your name and we'll let you know when it is. The towns with the most requests get their books first.</p>
+</div></div></section>
+<section class="wrap stack" id="request"><h2>Put me on the list</h2>
+<form class="formbox" data-tt-bookform data-town="${esc(town.slug)}" data-waitlist="1" novalidate style="max-width:820px">
+<div class="grid2">
+<div class="field"><label for="bk-name">Your name</label><input type="text" id="bk-name" name="name" required autocomplete="name"></div>
+<div class="field"><label for="bk-email">Your email</label><input type="email" id="bk-email" name="email" required autocomplete="email"><span class="hint">Only used to tell you about the book. Never shown.</span></div>
+</div>
+<div class="grid2">
+<div class="field"><label for="bk-format">Which would you want?</label><select id="bk-format" name="format"><option value="digital">Digital edition</option><option value="print">Printed book</option><option value="both">Both</option><option value="unsure">Not sure yet</option></select></div>
+<div class="field"><label for="bk-copies">How many copies?</label><select id="bk-copies" name="copies">${[1, 2, 3, 4, 5, 10].map((c) => `<option>${c}</option>`).join('')}</select></div>
+</div>
+<input type="hidden" name="updates" value="on">
+<p class="err" id="bk-err" role="alert"></p>
+<button class="btn" type="submit">Add me to the list</button>
+</form>
+<div id="bk-done" role="status"></div>
+<p>The more ${esc(town.name)} has on its page, the fuller its book will be. <a href="/#upload">Share a photo, a story or a clipping</a> to help.</p>
+</section>`;
+  send(res, 200, page({
+    title: `A ${town.name}, ${prov} history book | TownTales`,
+    desc: `Request a history book about ${town.name}, ${prov}, built from the TownTales collection.`,
+    canonical: `${SITE}/${town.slug}/book`, main, noindex: true,
+  }), 'public, s-maxage=3600, stale-while-revalidate=86400');
+}

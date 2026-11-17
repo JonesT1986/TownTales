@@ -32,11 +32,16 @@
  {
   "name": "town-tab-remembrance",
   "find": "Archive <span class=\"n\">${nI}</span></a>\n</nav>",
-  "replace": "Archive <span class=\"n\">${nI}</span></a>\n<a href=\"/${esc(slug)}/remembrance\">Cemetery &amp; Remembrance</a>\n<a href=\"/${esc(slug)}/sports\">Sports History</a>\n</nav>"
+  "replace": "Archive <span class=\"n\">${nI}</span></a>\n<a href=\"/${esc(slug)}/remembrance\">Cemetery &amp; Remembrance</a>\n<a href=\"/${esc(slug)}/sports\">Sports History</a>\n<a href=\"/${esc(slug)}/book\">Book</a>\n</nav>"
  },
  {
   "name": "footer-contact",
   "find": "<li><a href=\"#privacy\">Privacy</a></li>",
   "replace": "<li><a href=\"#privacy\">Privacy</a></li><li><a href=\"/contact\">Contact</a></li>"
+ },
+ {
+  "name": "towns-book-card",
+  "find": "<p><a href=\"/province\">Browse towns by province and territory →</a></p>",
+  "replace": "<p><a href=\"/province\">Browse towns by province and territory →</a></p><div class=\"grow\" style=\"max-width:none;margin:6px 0 14px\"><p class=\"eyebrow\">New: town history books</p><h2>The Wapella Book</h2><p>Wapella's history in one book: the timeline, the people, the cemeteries and the teams, with every source. See what's inside before you ask for a copy.</p><div class=\"btns\"><a class=\"btn\" href=\"/wapella-sk/book\">See the Wapella Book</a></div><p class=\"small\">Want one for your town? Open your town's page below and choose the <b>Book</b> tab.</p></div>"
  }
 ]

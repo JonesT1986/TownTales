@@ -111,8 +111,8 @@
       if (!okEmail(v("email"))) return (err.textContent = "Please enter a working email address.");
       btn.disabled = true; btn.textContent = "Sending…";
       fetch(SB + "/rest/v1/book_interest", { method: "POST", headers: H({ "Content-Type": "application/json", Prefer: "return=minimal" }),
-        body: JSON.stringify({ town: f.getAttribute("data-town"), name: v("name").slice(0, 120), email: v("email").slice(0, 200).toLowerCase(), format: v("format"), copies: parseInt(v("copies"), 10) || 1, updates_ok: !!f.elements.updates.checked }) })
-        .then(function (r) { if (!r.ok) throw new Error("save"); f.hidden = true; $("#bk-done").innerHTML = '<div class="rm-ok"><h3>You\'re on the list.</h3><p>Thank you. We\'ll email you when your copy is ready to order.</p></div>'; })
+        body: JSON.stringify({ town: f.getAttribute("data-town"), name: v("name").slice(0, 120), email: v("email").slice(0, 200).toLowerCase(), format: v("format"), copies: parseInt(v("copies"), 10) || 1, updates_ok: f.elements.updates.type === "hidden" ? true : !!f.elements.updates.checked }) })
+        .then(function (r) { if (!r.ok) throw new Error("save"); f.hidden = true; $("#bk-done").innerHTML = f.getAttribute("data-waitlist") ? '<div class="rm-ok"><h3>You\'re on the list.</h3><p>Thank you. We\'ll email you when this town\'s book is ready.</p></div>' : '<div class="rm-ok"><h3>You\'re on the list.</h3><p>Thank you. We\'ll email you the price and let you know when your copy is ready to order.</p></div>'; })
         .catch(function () { err.textContent = "Couldn't send that just now. Please try again in a minute."; btn.disabled = false; btn.textContent = "Request my copy"; });
     });
   }
