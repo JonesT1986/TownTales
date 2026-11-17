@@ -12,7 +12,7 @@
  {
   "name": "extra-css",
   "find": "</head>",
-  "replace": "<link rel=\"stylesheet\" href=\"/towntales-extra.css?v=2\">\n</head>"
+  "replace": "<link rel=\"stylesheet\" href=\"/towntales-extra.css?v=4\">\n</head>"
  },
  {
   "name": "footer-province",
@@ -43,5 +43,10 @@
   "name": "towns-book-card",
   "find": "<p><a href=\"/province\">Browse towns by province and territory →</a></p>",
   "replace": "<p><a href=\"/province\">Browse towns by province and territory →</a></p><div class=\"grow\" style=\"max-width:none;margin:6px 0 14px\"><p class=\"eyebrow\">New: town history books</p><h2>The Wapella Book</h2><p>Wapella's history in one book: the timeline, the people, the cemeteries and the teams, with every source. See what's inside before you ask for a copy.</p><div class=\"btns\"><a class=\"btn\" href=\"/wapella-sk/book\">See the Wapella Book</a></div><p class=\"small\">Want one for your town? Open your town's page below and choose the <b>Book</b> tab.</p></div>"
+ },
+ {
+  "name": "home-growing-notice",
+  "find": "return `\n<section class=\"line-wrap\">",
+  "replace": "return `\n<div class=\"tt-notice\" id=\"tt-notice\" role=\"note\"><div class=\"wrap\"><p><b>Now growing:</b> we're adding the history of every town in Canada, one by one. Don't see yours yet? It's coming, or <a href=\"#addtown\">add it yourself</a>.</p><button type=\"button\" class=\"tt-notice-x\" aria-label=\"Close this message\" onclick=\"try{localStorage.setItem('tt-notice-1','1')}catch(e){};this.closest('.tt-notice').remove()\">✕</button></div></div>\n<section class=\"line-wrap\">"
  }
 ]
