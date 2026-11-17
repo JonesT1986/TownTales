@@ -34,6 +34,7 @@ ${['A question', 'Sending a history book', 'Something to fix on the site', 'An i
 <button class="btn" type="submit">Send message</button>
 </form>
 <div id="ct-done" role="status"></div>
+<p>Or email us directly: <a href="mailto:towntalesinfo@gmail.com">towntalesinfo@gmail.com</a></p>
 </section>`;
   const html = page({
     title: 'Contact TownTales',
