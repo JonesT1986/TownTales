@@ -1,4 +1,4 @@
-// DRAFT (not deployed): anniversary & reunion packs for town committees — /anniversary  (?town=wapella-sk for the sample banner)
+// anniversary & reunion packs for town committees — /anniversary  (?town=wapella-sk for the sample banner)
 const { SITE, PROV, esc, q, page, send } = require('./_shell');
 
 const EMAIL = 'towntalesinfo@gmail.com';
@@ -20,8 +20,7 @@ module.exports = async (req, res) => {
 <p class="an-foot">Every event sourced · towntales.ca/${esc(town.slug)}</p></div>
 <p class="small muted">Sample built automatically from ${esc(town.name)}'s timeline on TownTales. A real banner is printed large (e.g. 8 ft) and checked with your committee first.</p>` : '';
 
-  const main = `<div class="fr-draft">Draft preview · not public</div>
-<section class="wrap stack" style="padding-top:22px">
+  const main = `<section class="wrap stack" style="padding-top:22px">
 <p class="crumbs"><a href="/">TownTales</a> › Anniversaries and reunions</p>
 <p class="eyebrow">For anniversary and reunion committees</p>
 <h1>Your town's story, ready for the big weekend</h1>

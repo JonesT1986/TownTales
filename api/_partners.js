@@ -1,12 +1,11 @@
-// DRAFT (not deployed): funeral home partner page — /partners/funeral-homes
+// funeral home partner page — /partners/funeral-homes
 const { SITE, esc, page, send } = require('./_shell');
 
 const EMAIL = 'towntalesinfo@gmail.com';
 
 module.exports = async (req, res) => {
   const mail = `mailto:${EMAIL}?subject=${encodeURIComponent('Funeral home partnership')}`;
-  const main = `<div class="fr-draft">Draft preview · not public</div>
-<section class="wrap stack" style="padding-top:22px">
+  const main = `<section class="wrap stack" style="padding-top:22px">
 <p class="crumbs"><a href="/">TownTales</a> › Partners › Funeral homes</p>
 <p class="eyebrow">For funeral homes</p>
 <h1>Give every family a place to remember them</h1>

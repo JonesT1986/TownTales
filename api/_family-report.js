@@ -1,4 +1,4 @@
-// DRAFT (not deployed): "Your family in [Town]" report — /<town>/family/<surname>
+// "Your family in [Town]" report — /<town>/family/<surname>
 // Built only from records already on the site. Lists people as recorded; never guesses who is related to whom.
 const { SITE, PROV, PROV_SLUG, esc, q, page, send, notFound } = require('./_shell');
 
@@ -44,7 +44,7 @@ module.exports = async (req, res) => {
         `<span class="rm-meta">${d.length === 2 ? esc(d[0]) + ' – ' + esc(d[1]) : d.length ? (m.birth_date_label ? 'Born ' : 'Died ') + esc(d[0]) : '<span class="muted">Dates not recorded</span>'} · ${esc(cname(m))}</span></li>`;
     };
 
-    const main = `<div class="fr-draft">Sample report · draft preview</div>
+    const main = `<div class="fr-draft">Sample report</div>
 <section class="wrap stack" style="padding-top:22px">
 <p class="crumbs"><a href="/">TownTales</a> › <a href="/province/${esc(PROV_SLUG[town.prov] || '')}">${esc(prov)}</a> › <a href="/${esc(town.slug)}">${esc(town.name)}</a> › Family report</p>
 <div class="fr-cover">

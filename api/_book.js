@@ -1,4 +1,4 @@
-// DRAFT (not deployed): "Get the Wapella Book" page — /<town>/book, Wapella only for now.
+// "Get the Wapella Book" page — /<town>/book, Wapella only for now.
 // Free sample + request form (saves to the existing book_interest table). No payments.
 // Everything shown comes from the live collection; nothing is hand-written about the town.
 const { SITE, PROV, PROV_SLUG, esc, q, page, send, notFound } = require('./_shell');
@@ -12,7 +12,7 @@ const BOOKS = {
 };
 // Until each town has its own, every cover shows Wapella's main street, with a note under it.
 // Put the photo at /img/wapella-main-street.jpg (in the site folder: img/wapella-main-street.jpg).
-// PREVIEW ONLY: linked from prairie-towns.com while permission / a print-quality scan is sorted out. Don't publish live as-is.
+// Linked from prairie-towns.com; shown on previews only until permission / a print-quality scan is sorted out.
 const SAMPLE_COVER = { town: 'Wapella', image: 'https://prairie-towns.com/wapella-7.jpg', credit: 'historic postcard, via prairie-towns.com' };
 // Live site: the postcard only shows once permission is in hand. Set COVER_PHOTO_OK=1 in Vercel to switch it on.
 const PHOTO_OK = process.env.VERCEL_ENV !== 'production' || process.env.COVER_PHOTO_OK === '1';
