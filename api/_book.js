@@ -10,12 +10,22 @@ const { SITE, PROV, PROV_SLUG, esc, q, page, send, notFound } = require('./_shel
 const BOOKS = {
   'wapella-sk': { pages: 77, sample: null, mainStreet: null },
 };
+// Until each town has its own, every cover shows Wapella's main street, with a note under it.
+// Put the photo at /img/wapella-main-street.jpg (in the site folder: img/wapella-main-street.jpg).
+const SAMPLE_COVER = { town: 'Wapella', image: '/img/wapella-main-street.jpg', credit: '' };
+BOOKS['wapella-sk'].mainStreet = SAMPLE_COVER; // Wapella's own cover
 const NEEDS_MAIN_STREET = Object.keys(BOOKS).filter((k) => !(BOOKS[k].mainStreet && BOOKS[k].mainStreet.image));
 
 function cover(town, prov, ms) {
+  const own = !!(ms && ms.image);
+  if (!own && SAMPLE_COVER.image) ms = SAMPLE_COVER;
   if (ms && ms.image) {
+    const isWapella = town.name === SAMPLE_COVER.town;
+    const note = own || isWapella
+      ? `Cover: ${esc(town.name)}'s main street${ms.credit ? '. Photo: ' + esc(ms.credit) : ''}`
+      : `Sample cover showing ${esc(SAMPLE_COVER.town)}'s main street. When you order, ${esc(town.name)}'s main street will be on the cover.`;
     return `<figure class="bk-cover bk-photo" style="margin:0 auto"><div class="bk-cover-in" style="background:linear-gradient(rgba(30,41,48,.15),rgba(30,41,48,.75)),url('${esc(ms.image)}') center/cover"><p class="bk-kicker">A TownTales history</p><div><p class="bk-title">${esc(town.name)}</p><p class="bk-prov">${esc(prov)}</p></div></div>
-<figcaption class="small muted" style="margin-top:12px;text-align:center">Cover: ${esc(town.name)}'s main street${ms.credit ? '. Photo: ' + esc(ms.credit) : ''}</figcaption></figure>`;
+<figcaption class="small muted bk-note">${note}</figcaption></figure>`;
   }
   return `<div class="bk-cover" role="img" aria-label="Cover of the ${esc(town.name)} book">
 <div class="bk-cover-in"><p class="bk-kicker">A TownTales history</p><p class="bk-title">${esc(town.name)}</p><p class="bk-prov">${esc(prov)}</p>

@@ -156,3 +156,6 @@ input[type=search]:focus{border-color:var(--ink)}
 .ct-addr:hover{border-color:var(--ink)}
 .ct-copy{min-width:96px}
 .ct-copied{min-height:1.5em;font-weight:700;color:var(--green);margin:0}
+
+.bk-note{margin:12px auto 0;text-align:center;max-width:240px;line-height:1.4}
+.bk-photo .bk-cover-in{justify-content:space-between}
