@@ -1,8 +1,10 @@
 // TownTales "api" edge function.
 // Routes: /ingest (Muse, x-api-key) | /research /contact /upload-url (public, guarded) | /queue /moderate /rebuild (admin, x-admin-key)
+// Added Nov 17 2026: /links-status /read-link (admin) — see links.ts
 // Added Nov 2026: /rem-queue /rem-moderate /clip-queue /clip-moderate /clip-item (admin) — see remembrance.ts
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 import { remQueue, remModerate, clipQueue, clipModerate, clipItem } from "./remembrance.ts";
+import { linksStatus, readLink } from "./links.ts";
 
 const SB_URL = Deno.env.get("SUPABASE_URL")!;
 const db = createClient(SB_URL, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
@@ -77,6 +79,8 @@ Deno.serve(async (req) => {
   if (action === "clip-queue") return clipQueue(ctx);
   if (action === "clip-moderate") return clipModerate(ctx, body);
   if (action === "clip-item") return clipItem(ctx, body);
+  if (action === "links-status") return linksStatus(ctx, body);
+  if (action === "read-link") return readLink(ctx, body);
   return json({ error: "Unknown action" }, 404);
 });
 

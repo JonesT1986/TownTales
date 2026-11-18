@@ -14,7 +14,10 @@ const BOOKS = {
 // Put the photo at /img/wapella-main-street.jpg (in the site folder: img/wapella-main-street.jpg).
 // PREVIEW ONLY: linked from prairie-towns.com while permission / a print-quality scan is sorted out. Don't publish live as-is.
 const SAMPLE_COVER = { town: 'Wapella', image: 'https://prairie-towns.com/wapella-7.jpg', credit: 'historic postcard, via prairie-towns.com' };
-BOOKS['wapella-sk'].mainStreet = SAMPLE_COVER; // Wapella's own cover
+// Live site: the postcard only shows once permission is in hand. Set COVER_PHOTO_OK=1 in Vercel to switch it on.
+const PHOTO_OK = process.env.VERCEL_ENV !== 'production' || process.env.COVER_PHOTO_OK === '1';
+if (!PHOTO_OK) SAMPLE_COVER.image = '';
+BOOKS['wapella-sk'].mainStreet = PHOTO_OK ? SAMPLE_COVER : null; // Wapella's own cover
 const NEEDS_MAIN_STREET = Object.keys(BOOKS).filter((k) => !(BOOKS[k].mainStreet && BOOKS[k].mainStreet.image));
 
 function cover(town, prov, ms) {
@@ -28,10 +31,11 @@ function cover(town, prov, ms) {
     return `<figure class="bk-fig"><div class="bk-cover bk-photo"><div class="bk-cover-in" style="background:linear-gradient(rgba(30,41,48,.55),rgba(30,41,48,0) 45%,rgba(30,41,48,0) 70%,rgba(30,41,48,.6)),url('${esc(ms.image)}') 52% center/cover"><p class="bk-kicker">A TownTales history</p><div><p class="bk-title">${esc(town.name)}</p><p class="bk-prov">${esc(prov)}</p></div></div></div>
 <figcaption class="small muted bk-note">${note}</figcaption></figure>`;
   }
-  return `<div class="bk-cover" role="img" aria-label="Cover of the ${esc(town.name)} book">
+  return `<figure class="bk-fig"><div class="bk-cover" role="img" aria-label="Cover of the ${esc(town.name)} book">
 <div class="bk-cover-in"><p class="bk-kicker">A TownTales history</p><p class="bk-title">${esc(town.name)}</p><p class="bk-prov">${esc(prov)}</p>
 <svg viewBox="0 0 120 70" aria-hidden="true" class="bk-art"><path d="M0 62h120" stroke="#E3B34A" stroke-width="3"/><path d="M14 62V30L24 18l10 12v32z" fill="#B4512C" stroke="#1E2930" stroke-width="2"/><path d="M40 62V44h46v18z" fill="#2B5C80" stroke="#1E2930" stroke-width="2"/><circle cx="50" cy="63" r="5" fill="#1E2930"/><circle cx="76" cy="63" r="5" fill="#1E2930"/><path d="M86 50h16v12H86z" fill="#B4512C" stroke="#1E2930" stroke-width="2"/></svg>
-<p class="bk-foot">Every fact sourced · Every name remembered</p></div></div>`;
+<p class="bk-foot">Every fact sourced · Every name remembered</p></div></div>
+<figcaption class="small muted bk-note">When purchased, ${esc(town.name)}'s main street will be on the cover.</figcaption></figure>`;
 }
 
 module.exports = async (req, res) => {

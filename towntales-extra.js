@@ -350,6 +350,7 @@
     sec.innerHTML = '<h2>Remembrance and clippings</h2><p class="muted">Family submissions and newspaper clippings waiting for a look. Nothing here is public until you publish it.</p>' +
       '<div class="btns"><button class="btn sm" data-tt="rm-load">Load remembrance queue</button><button class="btn sm" data-tt="cl-load">Load clippings queue</button></div><div id="tt-adm-out" class="stack"></div>';
     host.parentNode.insertBefore(sec, host.nextSibling);
+    linksBlock(sec);
     sec.addEventListener("click", function (e) {
       var b = e.target.closest("[data-tt]"); if (!b) return;
       var a = b.getAttribute("data-tt"), out = $("#tt-adm-out", sec);
@@ -368,6 +369,71 @@
       else if (a === "cl-item-yes" || a === "cl-item-no") p = api("clip-item", { id: id, decision: a === "cl-item-yes" ? "approve" : "decline" }).then(function (r) { done(r.item_id ? "Added to the archive. The timeline will rebuild." : "Suggested entry declined."); });
       if (p) p.catch(fail).then(function () { b.disabled = false; });
     });
+  }
+
+  /* ---------- 4b: AI link reader (admin) ---------- */
+  function linksBlock(after) {
+    var sec = document.createElement("section");
+    sec.className = "wrap stack"; sec.id = "tt-links";
+    sec.innerHTML = '<h2>Read links with AI</h2>' +
+      '<p class="muted">Paste web pages about one town (museum pages, RM histories, old newspaper archives, Wikipedia). The AI reads each page and lines up dated facts, in its own words, each sourced to that page. They land in the review queue above as <b>pending</b>. Nothing goes public until you publish it. Photos are never taken.</p>' +
+      '<div class="field"><label>Town</label><input type="text" id="lk-town" list="lk-towns" placeholder="Start typing a town, e.g. Wapella"><datalist id="lk-towns"></datalist></div>' +
+      '<div class="field"><label>Links (one per line)</label><textarea id="lk-urls" rows="6" placeholder="https://..."></textarea></div>' +
+      '<div class="btns"><button class="btn sm" data-lk="go">Read these links</button><button class="btn sm alt" data-lk="visitors">Check links visitors shared</button></div>' +
+      '<p class="small muted" id="lk-cap"></p><div id="lk-out" class="stack"></div>';
+    after.parentNode.insertBefore(sec, after.nextSibling);
+    var towns = [];
+    get("towns?select=slug,name,prov&order=name", true).then(function (rows) {
+      towns = rows || [];
+      $("#lk-towns", sec).innerHTML = towns.map(function (t) { return '<option value="' + esc(t.name + ", " + t.prov) + '">'; }).join("");
+    }).catch(function () {});
+    function townSlug(v) {
+      v = (v || "").trim().toLowerCase(); if (!v) return "";
+      for (var i = 0; i < towns.length; i++) { var t = towns[i]; if ((t.name + ", " + t.prov).toLowerCase() === v || t.slug === v || t.name.toLowerCase() === v) return t.slug; }
+      return "";
+    }
+    var out = $("#lk-out", sec), cap = $("#lk-cap", sec);
+    function status() { return api("links-status").then(function (r) { cap.textContent = r.used_today + " of " + r.cap + " links read in the last 24 hours."; return r; }); }
+    function row(label) { var d = document.createElement("div"); d.className = "qitem"; d.innerHTML = '<p class="small" style="word-break:break-all">' + esc(label) + '</p><p class="tt-msg" role="status">Waiting…</p>'; out.appendChild(d); return $(".tt-msg", d); }
+    function runAll(jobs, btn) {
+      btn.disabled = true; var total = 0, i = 0;
+      (function next() {
+        if (i >= jobs.length) {
+          btn.disabled = false; status().catch(function () {});
+          var s = document.createElement("div"); s.className = "notice ok";
+          s.innerHTML = "<p><b>Done.</b> " + total + " facts are waiting in the review queue. Scroll up and press <b>Load queue</b> to check and publish them.</p>";
+          out.appendChild(s); return;
+        }
+        var j = jobs[i++]; j.msg.textContent = "Reading… (about 20 to 40 seconds)"; j.msg.className = "tt-msg";
+        api("read-link", j.payload).then(function (r) {
+          total += r.facts || 0; j.msg.textContent = r.note || "Done."; j.msg.className = "tt-msg " + (r.ok === false ? "err" : "ok");
+        }).catch(function (e) { j.msg.textContent = e.message; j.msg.className = "tt-msg err"; if (/limit/i.test(e.message)) i = jobs.length; }).then(next);
+      })();
+    }
+    sec.addEventListener("click", function (e) {
+      var b = e.target.closest("[data-lk]"); if (!b) return;
+      if (!adminKey()) { out.innerHTML = '<div class="notice warn"><p>Enter the admin key at the top of this page first.</p></div>'; return; }
+      var a = b.getAttribute("data-lk");
+      if (a === "go") {
+        var slug = townSlug($("#lk-town", sec).value);
+        if (!slug) { out.innerHTML = '<div class="notice warn"><p>Pick a town from the list.</p></div>'; return; }
+        var urls = $("#lk-urls", sec).value.split(/\s+/).map(function (u) { return u.trim(); }).filter(function (u) { return /^https?:\/\/\S+\.\S+/i.test(u); });
+        urls = urls.filter(function (u, k) { return urls.indexOf(u) === k; }).slice(0, 25);
+        if (!urls.length) { out.innerHTML = '<div class="notice warn"><p>Paste at least one link starting with https://</p></div>'; return; }
+        out.innerHTML = "";
+        runAll(urls.map(function (u) { return { payload: { town: slug, url: u }, msg: row(u) }; }), b);
+      }
+      if (a === "visitors") {
+        out.innerHTML = '<p class="muted">Checking…</p>';
+        status().then(function (r) {
+          var L = r.visitor_links || []; out.innerHTML = "";
+          if (!L.length) { out.innerHTML = '<div class="empty">No new links from visitors.</div>'; return; }
+          var h = document.createElement("h3"); h.textContent = L.length + " visitor link" + (L.length > 1 ? "s" : "") + " to read"; out.appendChild(h);
+          runAll(L.map(function (l) { return { payload: { town: l.town, url: l.source_url, item_id: l.id }, msg: row(l.town + " · " + (l.contributor || "Anonymous") + " · " + l.source_url) }; }), b);
+        }).catch(function (er) { out.innerHTML = '<div class="notice warn"><p>' + esc(er.message) + ". Check the admin key above.</p></div>"; });
+      }
+    });
+    if (adminKey()) status().catch(function () {});
   }
   function inp(label, f, v, area) {
     return '<div class="field"><label>' + label + "</label>" + (area ? '<textarea data-f="' + f + '" rows="' + (area === 2 ? 10 : 3) + '">' + esc(v) + "</textarea>" : '<input type="text" data-f="' + f + '" value="' + esc(v) + '">') + "</div>";
