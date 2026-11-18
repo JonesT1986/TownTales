@@ -156,7 +156,7 @@ function waitlist(res, town) {
 <p>The more ${esc(town.name)} has on its page, the fuller its book will be. <a href="/#upload">Share a photo, a story or a clipping</a> to help.</p>
 </section>`;
   send(res, 200, page({
-    title: `A ${town.name}, ${prov} history book | TownTales`,
+    title: `${town.name}, ${prov} history book | TownTales`,
     desc: `Request a history book about ${town.name}, ${prov}, built from the TownTales collection.`,
     canonical: `${SITE}/${town.slug}/book`, main, noindex: true,
   }), 'public, s-maxage=3600, stale-while-revalidate=86400');
