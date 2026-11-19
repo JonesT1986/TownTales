@@ -1,0 +1,27 @@
+[
+ {
+  "name": "item-page-loads-its-town",
+  "find": "else if(r.startsWith(\"i-\")){html=P.item(r.slice(2));",
+  "replace": "else if(r.startsWith(\"i-\")){const iid=r.slice(2);if(LIVE&&!S.items.some(x=>x.id===iid)){try{const ir=await live.get(\"items?id=eq.\"+encodeURIComponent(iid)+\"&status=eq.published&select=town\");if(ir[0])await DB.ensureTown(ir[0].town);}catch(e){}}html=P.item(iid);"
+ },
+ {
+  "name": "admin-deep-links",
+  "find": "if(ALIAS[r])r=ALIAS[r];",
+  "replace": "if(ALIAS[r])r=ALIAS[r];if(r.indexOf(\"admin/\")===0){window.ttAdmFocus=r.slice(6);r=\"admin\";}"
+ },
+ {
+  "name": "timeline-card-read-full",
+  "find": "<div class=\"inner\"><p>${esc(e.body)}</p>${src.length?`<p class=\"from\">From the archive: ",
+  "replace": "<div class=\"inner\"><p>${esc(e.body)}</p>${src.length?`<p class=\"readfull\"><a href=\"#i-${esc(src[0].id)}\">Read the full ${src[0].kind===\"story\"?\"story\":\"entry\"} →</a></p>`:\"\"}${src.length?`<p class=\"from\">From the archive: "
+ },
+ {
+  "name": "timeline-card-read-full-css",
+  "find": ".tick .from{",
+  "replace": ".tick .readfull{margin:0}.tick .readfull a{font-weight:700;color:var(--denim)}\n.tick .from{"
+ },
+ {
+  "name": "expose-app-to-admin-addon",
+  "find": "let rideAt=0;",
+  "replace": "window.TTapp={A,P,DB,live,route,town,esc,KINDS,pending,LIVE,loadedTowns,get S(){return S;},get at(){return at;},set at(v){at=v;},get queueLoaded(){return queueLoaded;},set queueLoaded(v){queueLoaded=v;}};\nlet rideAt=0;"
+ }
+]

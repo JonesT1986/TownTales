@@ -79,6 +79,13 @@ const mockFetch = async (url, opts = {}) => {
 };
 
 
+// Whitewood: the real Oct 20 problem report (timeline card "Read" + "From the archive" link).
+towns.push({ slug: 'whitewood-sk', name: 'Whitewood', prov: 'SK', hidden: false });
+town_stats.push({ slug: 'whitewood-sk', items: 1, entries: 2, timeline_status: 'ready', timeline_built_at: '2026-11-01T00:00:00Z' });
+tables.items.push({ id: '568f3cdc-c042-4c15-a5b5-275cc5f7a05a', town: 'whitewood-sk', kind: 'document', title: 'First Agricultural Fair', body: 'The first Agricultural Fair was held in 1884 and the Presbyterian congregation was organized the same year.', year: 1884, date_label: '1884', image_url: '', source: 'Saskatchewan History', source_url: 'https://www.saskhistory.ca/whitewood-town-of/', contributor: 'TownTales research', origin: 'muse', status: 'published', created_at: '2026-10-01T00:00:00Z' });
+tables.timeline.push({ id: 'ww-1', town: 'whitewood-sk', year: 1884, label: '1884', title: 'First Agricultural Fair; Presbyterians organize', body: 'The first Agricultural Fair was held in 1884. The Presbyterian congregation was organized the same year.', cat: 'Churches', tier: 'documented', item_ids: ['568f3cdc-c042-4c15-a5b5-275cc5f7a05a'], cite: '', sort: 0 });
+tables.timeline.push({ id: 'ww-2', town: 'whitewood-sk', year: 1905, label: 'September 1, 1905', title: 'Saskatchewan becomes a province', body: 'Whitewood becomes part of the new province.', cat: 'Events', tier: 'documented', item_ids: ['568f3cdc-c042-4c15-a5b5-275cc5f7a05a'], cite: 'p. 27', sort: 1 });
+
 // Real McFadyen records from the live site, for the family report preview.
 try { const real = require('./data/mcfadyen.json'); tables.memorials.push(...real.memorials); tables.cemeteries.push(...real.cemeteries); } catch (e) {}
 module.exports = { mockFetch, tables };
