@@ -475,7 +475,7 @@
     try {
       var nb = $("#tt-notice"); if (nb) { try { if (localStorage.getItem("tt-notice-1")) nb.remove(); } catch (e) {} }
       var h = (location.hash || "").slice(1);
-      if (h === "admin") return adminBlock();
+      if (h === "admin" || h.indexOf("admin/") === 0) return adminBlock();
       var t = currentTown(); if (!t) return;
       if (t.archive) clipBlock(t); else { rmBlock(t); teamsBlock(t); bookBlock(t); }
     } catch (e) { if (window.console) console.error("towntales-extra", e); }

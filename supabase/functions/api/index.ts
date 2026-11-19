@@ -1,10 +1,12 @@
 // TownTales "api" edge function.
 // Routes: /ingest (Muse, x-api-key) | /research /contact /upload-url (public, guarded) | /queue /moderate /rebuild (admin, x-admin-key)
 // Added Nov 17 2026: /links-status /read-link (admin) — see links.ts
+// Added Nov 19 2026: /reports /report-resolve /report-delete /moderate-bulk /settings (admin), /rebuild-due (public, flagged towns only) — see admin.ts
 // Added Nov 2026: /rem-queue /rem-moderate /clip-queue /clip-moderate /clip-item (admin) — see remembrance.ts
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 import { remQueue, remModerate, clipQueue, clipModerate, clipItem } from "./remembrance.ts";
 import { linksStatus, readLink } from "./links.ts";
+import { reports, reportResolve, reportDelete, moderateBulk, settings, rebuildDue } from "./admin.ts";
 
 const SB_URL = Deno.env.get("SUPABASE_URL")!;
 const db = createClient(SB_URL, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
@@ -61,6 +63,7 @@ Deno.serve(async (req) => {
   if (action === "research") return research(body, req);
   if (action === "contact") return contact(body, req);
   if (action === "upload-url") return uploadUrl(body, req);
+  if (action === "rebuild-due") return rebuildDue({ db, json, queueRebuild }, body);
   const ak = Deno.env.get("TOWNTALES_ADMIN_KEY");
   if (!ak || req.headers.get("x-admin-key") !== ak) return json({ error: "Bad admin key" }, 401);
   if (action === "queue") {
@@ -81,6 +84,11 @@ Deno.serve(async (req) => {
   if (action === "clip-item") return clipItem(ctx, body);
   if (action === "links-status") return linksStatus(ctx, body);
   if (action === "read-link") return readLink(ctx, body);
+  if (action === "reports") return reports(ctx, body);
+  if (action === "report-resolve") return reportResolve(ctx, body);
+  if (action === "report-delete") return reportDelete(ctx, body);
+  if (action === "moderate-bulk") return moderateBulk(ctx, body);
+  if (action === "settings") return settings(ctx, body);
   return json({ error: "Unknown action" }, 404);
 });
 

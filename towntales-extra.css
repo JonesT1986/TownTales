@@ -160,3 +160,22 @@ input[type=search]:focus{border-color:var(--ink)}
 .bk-note{margin:12px auto 0;text-align:center;max-width:240px;line-height:1.4}
 .bk-photo .bk-cover-in{justify-content:space-between}
 .bk-fig{margin:0 auto;width:220px}
+
+/* Admin review queue + problem reports (towntales-admin.js, Nov 19 2026) */
+.tta-set{max-width:820px}
+.tta-set .hint{margin:6px 0 0}
+.tta-check{display:inline-flex;align-items:center;gap:8px;font-weight:700;cursor:pointer}
+.tta-check input{width:20px;height:20px;flex:none;accent-color:var(--denim,#2B5C80)}
+.tta-filters{margin:0}
+.tta-bar{display:flex;flex-direction:column;gap:8px;position:sticky;top:0;z-index:2;background:var(--paper,#F5EFDF);padding:10px 0;border-bottom:1px dashed var(--rule,#ccc)}
+.tta-bar .btns{display:flex;flex-wrap:wrap;gap:8px}
+.tta-bar button[disabled]{opacity:.5;cursor:not-allowed}
+.qitem .top .tta-pick{margin-right:4px}
+.qitem .top .tta-pick+h3{flex:1 1 auto;min-width:0}
+.tta-pick .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.pill.tta-src{background:#eef3f7;color:#2B5C80}
+.pill.tta-visitor{background:#fbeee5;color:#B4512C}
+.tta-focus{outline:4px solid #E3B34A;outline-offset:3px}
+.tta-done{opacity:.75}
+.tta-text{white-space:pre-wrap}
+@media (max-width:640px){.tta-bar .btns .btn{flex:1 1 100%}}
