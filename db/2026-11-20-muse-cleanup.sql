@@ -1,0 +1,18 @@
+-- Nov 20 2026: Muse data audit clean-up (applied through the Supabase connection).
+-- Backups taken first: public.backup_items_20261120, public.backup_timeline_20261120, public.backup_towns_20261120 (RLS on, no public access).
+--
+-- One-off data fixes (already run):
+--  * 233 exact duplicate Muse items removed (watrous, young, govan, wynyard, balcarres, manitou-beach, earl-grey); timeline item_ids repointed to the kept copy.
+--  * year/date_label filled on Muse items from their timeline entries (25,176), then from a single year in the title/body; 844 genuinely undated left.
+--  * Timeline labels "1922 — Title" trimmed to the date.
+--  * source cleaned with tt_clean_source() (6,354 items): "Source X —" labels, single-source/flag/FENCED/paraphrased/research-bundle notes, empty "()".
+--  * source_url: only the first link kept where two were joined; spaces encoded. (esask ".cfm-entryid=" links checked and left: they work.)
+--  * 562 Facebook-sourced or "Unverified:" items switched to kind 'story'; matching timeline entries set to tier 'memory'.
+--  * 240 cut-off/garbled titles fixed with tt_fix_title() (items and their timeline entries).
+--  * Existing Muse items given external_id 'muse:' || sha1(lower(title)|source_url)[0:20].
+--
+-- Standing rules (triggers) so it doesn't recur:
+--  * items_muse_clean (before insert on items, origin=muse): clean source, fix title, one link, year from date_label/title,
+--    Facebook/Unverified -> story, fingerprint external_id and silently skip repeats.
+--  * timeline_muse_clean (before insert on timeline): trim date labels, fix titles, community-memory tier when all supporting items are stories.
+-- Function bodies: see tt_clean_source, tt_fix_title, items_muse_clean, timeline_muse_clean in the database (pg_get_functiondef).
