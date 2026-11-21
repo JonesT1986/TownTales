@@ -117,7 +117,7 @@
       btn.disabled = true; btn.textContent = "Sending…";
       fetch(SB + "/rest/v1/book_interest", { method: "POST", headers: H({ "Content-Type": "application/json", Prefer: "return=minimal" }),
         body: JSON.stringify({ town: f.getAttribute("data-town"), name: v("name").slice(0, 120), email: v("email").slice(0, 200).toLowerCase(), format: v("format"), copies: parseInt(v("copies"), 10) || 1, updates_ok: f.elements.updates.type === "hidden" ? true : !!f.elements.updates.checked }) })
-        .then(function (r) { if (!r.ok) throw new Error("save"); f.hidden = true; $("#bk-done").innerHTML = f.getAttribute("data-waitlist") ? '<div class="rm-ok"><h3>You\'re on the list.</h3><p>Thank you. We\'ll email you when this town\'s book is ready.</p></div>' : '<div class="rm-ok"><h3>You\'re on the list.</h3><p>Thank you. We\'ll email you the price and let you know when your copy is ready to order.</p></div>'; })
+        .then(function (r) { if (!r.ok) throw new Error("save"); if (f.getAttribute("data-waitlist")) startPreview(f.getAttribute("data-town")); f.hidden = true; $("#bk-done").innerHTML = f.getAttribute("data-waitlist") ? '<div class="rm-ok"><h3>You\'re on the list.</h3><p>Thank you. We\'ll email you when this town\'s book is ready.</p></div>' : '<div class="rm-ok"><h3>You\'re on the list.</h3><p>Thank you. We\'ll email you the price and let you know when your copy is ready to order.</p></div>'; })
         .catch(function () { err.textContent = "Couldn't send that just now. Please try again in a minute."; btn.disabled = false; btn.textContent = "Request my copy"; });
     });
   }
@@ -776,6 +776,30 @@
   }
   window.ttHomeTownChanged = function (slug) { try { sessionStorage.removeItem("tt-near"); } catch (e) {} if (slug) { window.ttHomeSlug = slug; window.ttHomeWhy = "Welcome home"; window.ttHomeHold = true; } };
 
+  /* ---------- 10: book preview (first request for a town lays out a free preview) ---------- */
+  function startPreview(slug) {
+    fetch(SB + "/functions/v1/book-preview", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug: slug }) })
+      .catch(function () {})
+      .then(function () { pollPreview(slug, $("#bk-done"), true); });
+  }
+  function pollPreview(slug, box, fromRequest) {
+    var tries = 0;
+    if (box && fromRequest && !$(".bkp-status", box)) box.insertAdjacentHTML("beforeend", '<p class="bkp-status"><b>Putting together a free preview of the first pages…</b> It usually takes about a minute.</p>');
+    (function check() {
+      tries++;
+      get("book_previews?town=eq." + encodeURIComponent(slug) + "&select=status").then(function (r) {
+        var st = r && r[0] && r[0].status;
+        if (st === "ready" || st === "thin" || st === "failed") {
+          if (st === "ready") location.replace(location.pathname + "?p=" + Date.now() + "#preview");
+          else { var m = box && $(".bkp-status", box); if (m) m.remove(); }
+          return;
+        }
+        if (st === "queued" && tries % 4 === 0) fetch(SB + "/functions/v1/book-preview", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug: slug }) }).catch(function () {});
+        if (tries < 40) setTimeout(check, 6000);
+      }).catch(function () { if (tries < 40) setTimeout(check, 8000); });
+    })();
+  }
+
   /* ---------- hook into the app ---------- */
   function onView() {
     try {
@@ -793,6 +817,7 @@
     $$("[data-tt-bookform]").forEach(function (f) { try { wireBookForm(f); } catch (e) {} });
     $$("[data-tt-honourform]").forEach(function (f) { try { wireHonourForm(f); } catch (e) {} });
     $$("[data-tt-bookupload]").forEach(function (f) { try { wireBookUpload(f); } catch (e) {} });
+    $$("[data-tt-bkwait]").forEach(function (w) { try { pollPreview(w.getAttribute("data-town"), w, false); } catch (e) {} });
     $$("[data-copy]").forEach(function (b) { b.addEventListener("click", function () { copyText(b.getAttribute("data-copy")); }); });
     // Memorial pages: "Copy address" next to the page link (for corrections).
     $$("[data-copy-url]").forEach(function (b) {

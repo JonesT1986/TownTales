@@ -251,3 +251,27 @@ input[type=search]:focus{border-color:var(--ink)}
 .rm-copyrow{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .rm-copyrow .rm-url{flex:1 1 260px;margin:0;padding:10px 12px;font-size:.95rem;user-select:all}
 .rm-copied{font-weight:700;color:var(--ok);min-height:1em}
+
+/* ---- Book preview edition (Nov 21) ---- */
+.bkp-book{display:flex;flex-direction:column;gap:22px;max-width:760px}
+.bkp-page{background:#FFFDF7;border:1px solid var(--rule);box-shadow:0 1px 2px rgba(0,0,0,.08),6px 8px 0 var(--sunk);padding:34px 30px;font-family:Georgia,"Times New Roman",serif;font-size:1.08rem;line-height:1.7;display:flex;flex-direction:column;gap:12px;position:relative}
+@media (max-width:520px){.bkp-page{padding:24px 18px}}
+.bkp-page h3{font-family:Georgia,"Times New Roman",serif;font-size:1.7rem;font-weight:700}
+.bkp-page h4{font-family:Georgia,"Times New Roman",serif;font-size:1.12rem;margin:0}
+.bkp-chno{font:700 .85rem/1 var(--hand);letter-spacing:.14em;text-transform:uppercase;color:var(--red)}
+.bkp-yrs{font-style:italic;color:var(--ink-2);margin-top:-6px}
+.bkp-open{font-size:1.15rem}
+.bkp-entry{border-top:1px solid var(--rule);padding-top:12px;display:flex;flex-direction:column;gap:4px}
+.bkp-when{font:700 .9rem/1 var(--hand);color:var(--red-2)}
+.bkp-contents ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.bkp-contents li{display:flex;gap:8px;align-items:baseline}
+.bkp-dots{flex:1;border-bottom:2px dotted var(--rule);transform:translateY(-4px)}
+.bkp-locked{overflow:hidden}
+.bkp-locked::after{content:"";position:absolute;left:0;right:0;bottom:0;height:70px;background:linear-gradient(rgba(255,253,247,0),#FFFDF7)}
+.bkp-peek{color:var(--ink-2)}
+.bkp-more{font:700 .95rem/1.4 var(--body);color:var(--denim);position:relative;z-index:1}
+.bkp-names{list-style:none;margin:0;padding:0;columns:2 220px;column-gap:28px}
+.bkp-names li{break-inside:avoid;padding:3px 0;display:flex;flex-direction:column}
+.bkp-names span{font-size:.9rem;color:var(--ink-2)}
+.bkp-wait{background:var(--card);border:2px dashed var(--ink-2);padding:20px 22px;display:flex;flex-direction:column;gap:8px;max-width:760px}
+.bkp-status{margin-top:10px}

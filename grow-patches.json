@@ -12,7 +12,7 @@
  {
   "name": "extra-css",
   "find": "</head>",
-  "replace": "<link rel=\"stylesheet\" href=\"/towntales-extra.css?v=9\">\n</head>"
+  "replace": "<link rel=\"stylesheet\" href=\"/towntales-extra.css?v=10\">\n</head>"
  },
  {
   "name": "footer-province",

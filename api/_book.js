@@ -47,7 +47,7 @@ module.exports = async (req, res) => {
     const towns = await q(`towns?slug=eq.${s}&hidden=eq.false&select=slug,name,prov`);
     const town = towns[0];
     if (!town) return notFound(res, "We don't have a town at that address.");
-    if (!book) return waitlist(res, town);
+    if (!book) return await waitlist(res, town);
     const [timeline, items, mems, cems, teams] = await Promise.all([
       q(`timeline?town=eq.${s}&select=year,label,title&order=year,sort`, { all: true }),
       q(`items?town=eq.${s}&status=eq.published&select=id`, { all: true }),
@@ -132,16 +132,72 @@ ${timeline.length ? `<section class="wrap stack"><h2>${esc(town.name)} at a glan
 module.exports.BOOKS = BOOKS;
 module.exports.NEEDS_MAIN_STREET = NEEDS_MAIN_STREET;
 
+// ---- Preview edition (Nov 21 2026) ----
+// Built the first time someone requests a town's book (book_previews, filled by the book-preview function).
+// The AI wrote only the foreword and chapter openings, from this town's timeline; every entry below is live data.
+const paras = (t) => String(t || '').split(/\n\s*\n|\n/).map((x) => x.trim()).filter(Boolean).map((x) => `<p>${esc(x)}</p>`).join('');
+const lifeDates = (m) => [m.birth_date_label, m.death_date_label].filter(Boolean).join(' – ');
+const surname = (n) => { const x = String(n || '').trim(); return (x.includes(',') ? x.split(',')[0] : x.split(/\s+/).pop()).toLowerCase(); };
+
+async function previewSection(town, pv) {
+  if (!pv) return '';
+  const tn = esc(town.name);
+  if (pv.status === 'queued' || pv.status === 'building') {
+    return `<section class="wrap stack" id="preview"><div class="bkp-wait" data-tt-bkwait data-town="${esc(town.slug)}"><p class="eyebrow">Free preview</p><h2>Putting together the ${tn} preview…</h2><p>We're laying out the first pages of ${tn}'s book from its TownTales page. This usually takes about a minute. The page will refresh when it's ready.</p></div></section>`;
+  }
+  if (pv.status === 'thin') {
+    return `<section class="wrap stack" id="preview"><div class="pv-soon"><p><b>Not quite enough for a preview yet.</b> ${tn}'s page needs a few more dated stories, photos or clippings before we can lay out a book. <a href="/#upload">Share something</a> to help it along.</p></div></section>`;
+  }
+  if (pv.status !== 'ready' || !Array.isArray(pv.chapters) || !pv.chapters.length) return '';
+  const s = encodeURIComponent(town.slug);
+  const [tl, mems, teams] = await Promise.all([
+    q(`timeline?town=eq.${s}&select=year,label,title,body&order=year,sort`, { all: true }),
+    q(`memorials?town=eq.${s}&status=eq.published&select=name,birth_date_label,death_date_label`, { all: true }).catch(() => []),
+    q(`teams?town=eq.${s}&select=id`).catch(() => []),
+  ]);
+  const chs = pv.chapters;
+  const inCh = (c) => tl.filter((e) => Number.isInteger(e.year) && e.year >= c.from_year && e.year <= c.to_year);
+  const yrs = (c) => (c.from_year === c.to_year ? String(c.from_year) : `${c.from_year}–${c.to_year}`);
+  const entry = (e) => `<div class="bkp-entry"><p class="bkp-when">${esc(e.label || e.year)}</p><h4>${esc(e.title)}</h4><p>${esc(e.body)}</p></div>`;
+  const contents = chs.map((c, i) => `<li><span>${i + 1}. ${esc(c.title)}</span><span class="bkp-dots"></span><span>${esc(yrs(c))}</span></li>`).join('')
+    + (mems.length ? `<li><span>In Memory</span><span class="bkp-dots"></span><span>${mems.length.toLocaleString('en-CA')} names</span></li>` : '')
+    + (teams.length ? `<li><span>Teams and Sports</span><span class="bkp-dots"></span><span>${teams.length} teams</span></li>` : '')
+    + `<li><span>Sources</span><span class="bkp-dots"></span><span></span></li>`;
+  const c1 = chs[0], c1e = inCh(c1);
+  const chapterOne = `<article class="bkp-page"><p class="bkp-chno">Chapter 1</p><h3>${esc(c1.title)}</h3><p class="bkp-yrs">${esc(yrs(c1))}</p><p class="bkp-open">${esc(c1.opening)}</p>${c1e.slice(0, 10).map(entry).join('')}${c1e.length > 10 ? `<p class="bkp-more">…and ${c1e.length - 10} more in this chapter of the full book.</p>` : ''}</article>`;
+  const rest = chs.slice(1).map((c, i) => {
+    const es = inCh(c);
+    return `<article class="bkp-page bkp-locked"><p class="bkp-chno">Chapter ${i + 2}</p><h3>${esc(c.title)}</h3><p class="bkp-yrs">${esc(yrs(c))}</p><p class="bkp-open">${esc(c.opening)}</p>${es.slice(0, 2).map((e) => `<p class="bkp-peek"><b>${esc(e.label || e.year)}</b> ${esc(e.title)}</p>`).join('')}<p class="bkp-more">Continues in the full book${es.length ? ` · ${es.length} ${es.length === 1 ? 'entry' : 'entries'}` : ''}</p></article>`;
+  }).join('');
+  const names = mems.slice().sort((a, b) => surname(a.name).localeCompare(surname(b.name))).slice(0, 24);
+  const memory = mems.length ? `<article class="bkp-page"><p class="bkp-chno">In Memory</p><h3>Those we remember</h3><ul class="bkp-names">${names.map((m) => `<li><b>${esc(m.name)}</b>${lifeDates(m) ? `<span>${esc(lifeDates(m))}</span>` : ''}</li>`).join('')}</ul>${mems.length > names.length ? `<p class="bkp-more">…and ${(mems.length - names.length).toLocaleString('en-CA')} more names in the full book.</p>` : ''}</article>` : '';
+  const when = pv.built_at ? new Date(pv.built_at).toLocaleDateString('en-CA', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'America/Regina' }) : '';
+  return `<section class="wrap stack" id="preview">
+<p class="eyebrow">Free preview</p><h2>Look inside the ${tn} Book</h2>
+<p class="lede">The first pages of ${tn}'s book, laid out from its TownTales page. The finished book grows as more history is shared.</p>
+<div class="bkp-book">
+<article class="bkp-page bkp-contents"><h3>Contents</h3><ol>${contents}</ol></article>
+<article class="bkp-page"><p class="bkp-chno">Foreword</p><h3>${tn}</h3>${paras(pv.foreword)}</article>
+${chapterOne}${rest}${memory}
+</div>
+<p class="small muted">Preview laid out${when ? ` on ${esc(when)}` : ''} from ${tn}'s timeline (${pv.entry_count || tl.length} entries). The foreword and chapter introductions were written with AI from those entries only; every entry comes from a sourced record on TownTales.</p>
+</section>`;
+}
+
 // Towns without a book yet: a short waitlist. Requests show which towns to research next.
-function waitlist(res, town) {
+async function waitlist(res, town) {
   const prov = PROV[town.prov] || town.prov;
+  const [pv] = await q(`book_previews?town=eq.${encodeURIComponent(town.slug)}&select=status,foreword,chapters,entry_count,built_at`).catch(() => []);
+  const preview = await previewSection(town, pv).catch((e) => { console.error('preview failed', town.slug, e && e.message); return ''; });
   const main = `<section class="wrap stack" style="padding-top:22px">
 <p class="crumbs"><a href="/">TownTales</a> › <a href="/province/${esc(PROV_SLUG[town.prov] || '')}">${esc(prov)}</a> › <a href="/${esc(town.slug)}">${esc(town.name)}</a> › Book</p>
 <div class="bk-hero">${cover(town, prov)}<div class="stack">
 <p class="eyebrow">The ${esc(town.name)} Book</p>
 <h1>Want a book about ${esc(town.name)}?</h1>
 <p class="lede">We make a history book for each town from everything on its TownTales page. ${esc(town.name)}'s isn't ready yet. Add your name and we'll let you know when it is. The towns with the most requests get their books first.</p>
+${pv && pv.status === 'ready' ? `<div class="btns"><a class="btn" href="#preview">Look inside the preview</a><a class="btn alt" href="#request">Put me on the list</a></div>` : `<p><b>Request it and we'll lay out a free preview of the first pages right away.</b></p>`}
 </div></div></section>
+${preview}
 <section class="wrap stack" id="request"><h2>Put me on the list</h2>
 <form class="formbox" data-tt-bookform data-town="${esc(town.slug)}" data-waitlist="1" novalidate style="max-width:820px">
 <div class="grid2">
@@ -163,5 +219,5 @@ function waitlist(res, town) {
     title: `${town.name}, ${prov} history book | TownTales`,
     desc: `Request a history book about ${town.name}, ${prov}, built from the TownTales collection.`,
     canonical: `${SITE}/${town.slug}/book`, main, noindex: true,
-  }), 'public, s-maxage=3600, stale-while-revalidate=86400');
+  }), pv && pv.status === 'ready' ? 'public, s-maxage=600, stale-while-revalidate=86400' : 'public, s-maxage=30, stale-while-revalidate=60');
 }

@@ -75,6 +75,14 @@ tables.honour_pages = [
 tables.memorials.push(
   { id: 'mj-0001', town: 'moose-jaw-sk', name: 'Walter Kowalchuk', birth_date_label: '1912', death_date_label: '1990', status: 'published', tier: 'community', source: 'x' },
   { id: 'mj-0002', town: 'moose-jaw-sk', name: 'Helen Kowalchuk', maiden_name: 'Sawchuk', birth_date_label: '1915', death_date_label: '2004', status: 'published', tier: 'community', source: 'x' });
+tables.book_previews = [
+  { town: 'moose-jaw-sk', status: 'ready', entry_count: 6, built_at: '2026-11-21T19:50:00Z',
+    foreword: 'This book tells the story of Moose Jaw.\n\nIt is drawn from records, histories and memories shared by the community.',
+    chapters: [{ title: 'Rails and Prairie', from_year: 1800, to_year: 1910, opening: 'The railway arrived and a town grew around it.' },
+               { title: 'Growing Years', from_year: 1911, to_year: 1960, opening: 'Schools, rinks and churches filled the town.' },
+               { title: 'Modern Times', from_year: 1961, to_year: 2030, opening: 'The town kept its stories alive.' }] },
+  { town: 'regina-sk', status: 'building', chapters: [] },
+];
 const pendingMem = { id: 'm-pend1', town: 'wapella-sk', name: 'Agnes Fraser', birth_date_label: '1901', death_date_label: '1988', status: 'pending' };
 const mockFetch = async (url, opts = {}) => {
   const u = new URL(url);
