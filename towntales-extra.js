@@ -764,6 +764,20 @@
     $$("[data-tt-honourform]").forEach(function (f) { try { wireHonourForm(f); } catch (e) {} });
     $$("[data-tt-bookupload]").forEach(function (f) { try { wireBookUpload(f); } catch (e) {} });
     $$("[data-copy]").forEach(function (b) { b.addEventListener("click", function () { copyText(b.getAttribute("data-copy")); }); });
+    // Memorial pages: "Copy address" next to the page link (for corrections).
+    $$("[data-copy-url]").forEach(function (b) {
+      if (b.getAttribute("data-wired")) return; b.setAttribute("data-wired", "1");
+      b.addEventListener("click", function () {
+        var t = b.getAttribute("data-copy-url"), m = b.closest(".rm-fix") && $(".rm-copied", b.closest(".rm-fix"));
+        var done = function (ok) {
+          b.textContent = ok ? "Copied!" : "Copy address";
+          if (m) m.textContent = ok ? "Copied. Paste it into your message." : "Couldn't copy. Press and hold the address to copy it.";
+          setTimeout(function () { b.textContent = "Copy address"; }, 2500);
+        };
+        if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(t).then(function () { done(true); }, function () { done(fallback(t)); });
+        else done(fallback(t));
+      });
+    });
     var v = $("#view");
     if (v && !$(".rm", v)) {
       new MutationObserver(function () { onView(); }).observe(v, { childList: true });

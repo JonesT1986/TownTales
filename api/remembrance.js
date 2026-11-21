@@ -250,7 +250,9 @@ ${srcHtml(m.source, m.source_url)}
 <p class="small muted">Dates and places are shown exactly as the source records them.</p>
 ${!h && cfg.link ? honourOffer(m, town, cfg) : ''}
 <div class="btns"><a class="btn${!h && cfg.link ? ' alt' : ''}" href="/${esc(town.slug)}/remembrance#add">Add a family member</a><a class="btn alt" href="/${esc(town.slug)}/remembrance">Everyone remembered in ${esc(town.name)}</a></div>
-<p class="small">Something wrong or missing? <a href="/#corrections">Tell us</a> and mention this page's address:<br><code class="rm-url">${esc(pageUrl)}</code></p>
+<div class="rm-fix small"><p>Something wrong or missing? <a href="/#corrections">Tell us</a> and paste in this page's address:</p>
+<div class="rm-copyrow"><code class="rm-url">${esc(pageUrl)}</code><button type="button" class="btn sm alt" data-copy-url="${esc(pageUrl)}">Copy address</button></div>
+<p class="rm-copied" role="status" aria-live="polite"></p></div>
 </section>`;
 
   const desc = h && h.story
