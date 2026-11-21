@@ -5,6 +5,7 @@
    4. Remembrance + clippings review queue on the #admin page
    5. Sports & Teams on each town page (only when the town has teams)
    6. Honour Pages: order form (photos + story → Stripe), offer after a family adds someone, admin review queue
+   11. Sign in / My account link in the top menu on every page
    9. Train start: lands on the signed-in visitor's home town, else the stop matching their location
    8. Whole-book upload (/share-a-book): many page photos at once → private book-pages bucket; admin "Book uploads" queue
    7. Homepage "Recently remembered" carousel (Honour Pages first, then the newest names, max 3 per town)
@@ -800,8 +801,25 @@
     })();
   }
 
+  /* ---------- 11: Sign in / My account in the top menu (every page) ---------- */
+  function signedIn() {
+    try { var raw = localStorage.getItem("sb-zpqwrzsgpwwjrlbnfynn-auth-token"); var t = raw && JSON.parse(raw); return !!(t && (t.refresh_token || t.access_token) && t.user); } catch (e) { return false; }
+  }
+  function accountLink() {
+    var nav = $("nav.main"); if (!nav) return;
+    var app = !!window.ttRideToSlug || location.pathname === "/";
+    var a = $("a[data-tt-acct]", nav);
+    if (!a) { a = document.createElement("a"); a.setAttribute("data-tt-acct", ""); a.className = "tt-acct"; nav.appendChild(a); }
+    var inNow = signedIn();
+    a.textContent = inNow ? "My account" : "Sign in";
+    a.href = (app ? "" : "/") + (inNow ? "#families" : "#fam-login");
+  }
+  window.addEventListener("hashchange", function () { try { accountLink(); } catch (e) {} });
+  window.addEventListener("storage", function (e) { if (e.key && e.key.indexOf("auth-token") > -1) { try { accountLink(); } catch (x) {} } });
+
   /* ---------- hook into the app ---------- */
   function onView() {
+    try { accountLink(); } catch (e) {}
     try {
       var nb = $("#tt-notice"); if (nb) { try { if (localStorage.getItem("tt-notice-1")) nb.remove(); } catch (e) {} }
       var h = (location.hash || "").slice(1);
@@ -834,6 +852,7 @@
       });
     });
     if (window.ttRideToSlug) { try { trainStart(); } catch (e) {} } // main app page only
+    try { accountLink(); setTimeout(accountLink, 1500); } catch (e) {}
     var v = $("#view");
     if (v && !$(".rm", v)) {
       new MutationObserver(function () { onView(); }).observe(v, { childList: true });

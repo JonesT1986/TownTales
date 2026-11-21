@@ -219,7 +219,7 @@
     const next = sessionStorage.getItem("fam-next") || "#families";
     if (user) { location.hash = next.slice(1); return; }
     paint(`<section class="wrap stack" style="padding:36px 16px 56px;gap:20px">
-      <p class="eyebrow"><a href="#families">Family trees</a></p><h1>${mode === "up" ? "Create your free account" : mode === "forgot" ? "Reset your password" : "Sign in to build a tree"}</h1>
+      <p class="eyebrow"><a href="#families">Family trees</a></p><h1>${mode === "up" ? "Create your free account" : mode === "forgot" ? "Reset your password" : "Sign in to TownTales"}</h1>${mode !== "forgot" ? `<p class="lede" style="font-size:1.05rem">With a free account you can build family trees and pick your home town, so the train stops there when you visit.</p>` : ""}
       <p class="lede">You only need an account to build or edit a tree. Anyone can view published trees.</p>
       <form class="formbox" id="fam-auth" novalidate>
         <div class="fam-tabs"><button type="button" class="btn sm ${mode === "in" ? "" : "alt"}" data-m="in">Sign in</button><button type="button" class="btn sm ${mode === "up" ? "" : "alt"}" data-m="up">Create account</button></div>
