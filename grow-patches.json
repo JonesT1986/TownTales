@@ -7,7 +7,7 @@
  {
   "name": "home-grow-section",
   "find": "${donateBand(\"\")}`;};",
-  "replace": "<section class=\"wrap stack\" id=\"grow\"><div class=\"grow\"><h2>This site grows one town, and one memory, at a time.</h2><p>New towns are added every week, but the real history doesn't live in archives — it lives with the people who were there. If you know a story, hold a photo, or have your community's history book on a shelf, you can put it where it belongs: on your town's page, with your name on it as the source.</p><ul><li>Share a memory or correct a date on any town's timeline</li><li>Send us your community's history book — one copy is all it takes</li><li>Add your family's people to the town's Cemetery &amp; Remembrance section</li></ul><p>Every entry is sourced and credited. This history belongs to the towns — we're just keeping it safe.</p><div class=\"btns\"><a class=\"btn\" href=\"#upload\">Add your town's history</a><a class=\"btn alt\" href=\"/contact?topic=book\">Send a history book</a></div></div></section>\n${donateBand(\"\")}`;};"
+  "replace": "<section class=\"wrap stack\" id=\"grow\"><div class=\"grow\"><h2>This site grows one town, and one memory, at a time.</h2><p>New towns are added every week, but the real history doesn't live in archives — it lives with the people who were there. If you know a story, hold a photo, or have your community's history book on a shelf, you can put it where it belongs: on your town's page, with your name on it as the source.</p><ul><li>Share a memory or correct a date on any town's timeline</li><li>Share your community's history book — no scanner needed: clear phone photos of the pages work great, or mail us one copy</li><li>Add your family's people to the town's Cemetery &amp; Remembrance section</li></ul><p>Every entry is sourced and credited. This history belongs to the towns — we're just keeping it safe.</p><div class=\"btns\"><a class=\"btn\" href=\"#upload\">Add your town's history</a><a class=\"btn alt\" href=\"/contact?topic=book\">Send a history book</a></div></div></section>\n${donateBand(\"\")}`;};"
  },
  {
   "name": "extra-css",
@@ -48,5 +48,10 @@
   "name": "home-growing-notice",
   "find": "return `\n<section class=\"line-wrap\">",
   "replace": "return `\n<div class=\"tt-notice\" id=\"tt-notice\" role=\"note\"><div class=\"wrap\"><p><b>Now growing:</b> we're adding the history of every town in Canada, one by one. Don't see yours yet? It's coming, or <a href=\"#addtown\">add it yourself</a>.</p><button type=\"button\" class=\"tt-notice-x\" aria-label=\"Close this message\" onclick=\"try{localStorage.setItem('tt-notice-1','1')}catch(e){};this.closest('.tt-notice').remove()\">✕</button></div></div>\n<section class=\"line-wrap\">"
+ },
+ {
+  "name": "upload-phone-photo-hint",
+  "find": "<span class=\"hint\">Up to 25 MB per file. A phone photo of a clipping works fine. PDFs, audio and video are posted as they are.</span>",
+  "replace": "<span class=\"hint\">Up to 25 MB per file. No scanner needed: a clear phone photo works great. Lay the page flat in daylight, flash off, phone straight above so the whole page fits. PDFs, audio and video are posted as they are.</span>"
  }
 ]

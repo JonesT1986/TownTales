@@ -16,7 +16,9 @@ module.exports = async (req, res) => {
 <p class="eyebrow">Contact</p>
 <h1>Get in touch</h1>
 <p class="lede">Questions, ideas, a history book to send, or something on the site that needs fixing? Email us and we'll get back to you.</p>
-${book ? `<div class="pv-soon"><p><b>Sending a history book?</b> Email us your town and the book's title, and we'll get back to you about sending it. One copy is all it takes.</p></div>` : ''}
+${book ? `<div class="pv-soon stack" style="gap:10px"><p><b>Sharing a history book?</b> You don't need a scanner. Clear photos from your phone work great.</p>
+<ul class="phone-tips"><li>Lay the book flat near a window in daylight. Turn the flash off (it causes glare).</li><li>Hold the phone straight above the page so the whole page fits, edges included.</li><li>One page per photo, in order, and check each one is sharp before you turn the page.</li></ul>
+<p>Then email us the photos (or a shared Google Photos / Drive album link) with your town and the book's title. Single pages can also go straight onto your town's page with <a href="/#upload">Share history</a>. Rather mail the book? Email us and we'll sort it out. One copy is all it takes.</p></div>` : ''}
 <div class="grow ct-box" style="max-width:820px">
 <p style="font-size:1.1rem">Email us at</p>
 <div class="ct-row"><button type="button" class="ct-addr" data-copy="${EMAIL}" title="Click to copy">${EMAIL}</button><button type="button" class="btn ct-copy" data-copy="${EMAIL}">Copy</button></div>

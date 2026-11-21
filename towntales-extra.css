@@ -229,3 +229,6 @@ input[type=search]:focus{border-color:var(--ink)}
 .rc-add{background:var(--sunk);border-style:dashed}
 .rc-add .rc-name{text-decoration:underline}
 @media (max-width:600px){.rc-nav{display:none}.rc-card{flex-basis:72%}}
+
+/* ---- phone-photo tips for history books (Nov 21) ---- */
+.phone-tips{margin:0;padding-left:1.3em;display:grid;gap:6px}
