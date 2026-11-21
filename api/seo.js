@@ -158,7 +158,7 @@ module.exports = async (req, res) => {
           '<p>New towns are added every week — and every town\'s history grows with your help. <a href="/#upload">Add a memory, a photo, or your family\'s story →</a></p>' +
           '<h2>This site grows one town, and one memory, at a time.</h2>' +
           '<p>New towns are added every week, but the real history doesn\'t live in archives — it lives with the people who were there. If you know a story, hold a photo, or have your community\'s history book on a shelf, you can put it where it belongs: on your town\'s page, with your name on it as the source.</p>' +
-          '<ul><li>Share a memory or correct a date on any town\'s timeline</li><li>Share your community\'s history book — no scanner needed: clear phone photos of the pages work great, or mail us one copy</li><li>Add your family\'s people to the town\'s Cemetery &amp; Remembrance section</li></ul>' +
+          '<ul><li>Share a memory or correct a date on any town\'s timeline</li><li><a href="/share-a-book">Share your community\'s history book</a> — no scanner needed: clear phone photos of the pages work great</li><li>Add your family\'s people to the town\'s Cemetery &amp; Remembrance section</li></ul>' +
           '<p>Every entry is sourced and credited. This history belongs to the towns — we\'re just keeping it safe.</p>' +
           '<p><a href="/province">Browse towns by province</a></p></section>';
       } else {

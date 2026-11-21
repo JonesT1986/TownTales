@@ -32,6 +32,7 @@ function call(handler, reqUrl) {
     ['hn-form-done', rem, '/api/remembrance?slug=wapella-sk&id=wap-0001&honour=1'],
     ['hn-form-wrongtown', rem, '/api/remembrance?slug=moose-jaw-sk&id=wap-0002&honour=1'],
     ['hn-thanks', rem, '/api/remembrance?thanks=1'],
+    ['book-upload', require('../api/book-upload'), '/api/book-upload?town=wapella-sk'],
     ['sports-wapella', sports, '/api/sports?slug=wapella-sk'],
     ['sports-empty', sports, '/api/sports?slug=moose-jaw-sk'],
     ['sports-bad', sports, '/api/sports?slug=atlantis-sk'],

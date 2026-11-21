@@ -46,6 +46,10 @@
       "destination": "/api/extra?kind=partners"
     },
     {
+      "source": "/share-a-book",
+      "destination": "/api/book-upload"
+    },
+    {
       "source": "/contact",
       "destination": "/api/contact"
     },

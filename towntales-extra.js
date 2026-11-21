@@ -5,6 +5,7 @@
    4. Remembrance + clippings review queue on the #admin page
    5. Sports & Teams on each town page (only when the town has teams)
    6. Honour Pages: order form (photos + story → Stripe), offer after a family adds someone, admin review queue
+   8. Whole-book upload (/share-a-book): many page photos at once → private book-pages bucket; admin "Book uploads" queue
    7. Homepage "Recently remembered" carousel (Honour Pages first, then the newest names, max 3 per town)
    Nothing here can break the main app: every step is wrapped, and the app never depends on it. */
 (function () {
@@ -397,7 +398,7 @@
     var sec = document.createElement("section");
     sec.className = "wrap stack"; sec.id = "tt-adm";
     sec.innerHTML = '<h2>Remembrance and clippings</h2><p class="muted">Family submissions and newspaper clippings waiting for a look. Nothing here is public until you publish it.</p>' +
-      '<div class="btns"><button class="btn sm" data-tt="rm-load">Load remembrance queue</button><button class="btn sm" data-tt="cl-load">Load clippings queue</button><button class="btn sm" data-tt="hn-load">Load Honour Pages</button></div><div id="tt-adm-out" class="stack"></div>';
+      '<div class="btns"><button class="btn sm" data-tt="rm-load">Load remembrance queue</button><button class="btn sm" data-tt="cl-load">Load clippings queue</button><button class="btn sm" data-tt="hn-load">Load Honour Pages</button><button class="btn sm" data-tt="bk-load">Load book uploads</button></div><div id="tt-adm-out" class="stack"></div>';
     host.parentNode.insertBefore(sec, host.nextSibling);
     linksBlock(sec);
     sec.addEventListener("click", function (e) {
@@ -406,6 +407,9 @@
       if (a === "rm-load") return loadRm(out);
       if (a === "cl-load") return loadCl(out);
       if (a === "hn-load") return loadHn(out);
+      if (a === "bk-load") return loadBk(out);
+      if (a === "bk-all") { e.preventDefault(); return loadBk(out, true); }
+      if (a === "bk-pages" || a === "bk-set") return bkAct(b, a);
       if (a.indexOf("hn-") === 0) return hnAct(b, a);
       var card = b.closest("[data-id]"), id = card && card.getAttribute("data-id");
       var fields = {}; $$("[data-f]", card).forEach(function (el) { fields[el.getAttribute("data-f")] = el.value; });
@@ -622,6 +626,126 @@
     });
   }
 
+  /* ---------- 8: whole-book upload (/share-a-book) ---------- */
+  function bookOrder(files) {
+    var list = Array.prototype.slice.call(files);
+    // Camera names (IMG_1234, PXL_20261121_…) sort in the order they were taken; otherwise keep the order picked.
+    var numbered = list.length > 1 && list.every(function (f) { return /\d{3,}/.test(f.name); });
+    if (numbered) list.sort(function (a, b) { return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" }); });
+    return list;
+  }
+  function wireBookUpload(f) {
+    if (f.getAttribute("data-wired")) return; f.setAttribute("data-wired", "1");
+    var fi = $("#bk-files", f), count = $("#bk-count", f);
+    fi.addEventListener("change", function () {
+      var n = fi.files.length, mb = 0; for (var i = 0; i < n; i++) mb += fi.files[i].size / 1048576;
+      count.textContent = n ? n + (n === 1 ? " file" : " pages") + " chosen" + (mb >= 1 ? " (" + Math.round(mb) + " MB)" : "") : "";
+    });
+    f.addEventListener("submit", function (ev) {
+      ev.preventDefault();
+      var v = function (n) { var el = f.elements[n]; return el ? String(el.value || "").trim() : ""; };
+      var err = $("#bk-err", f), btn = f.querySelector('button[type="submit"]'), prog = $("#bk-prog", f), bar = $("#bk-bar", f), st = $("#bk-status", f);
+      var files = bookOrder(fi.files);
+      err.textContent = "";
+      if (!v("town")) return (err.textContent = "Please choose the town.");
+      if (!v("title")) return (err.textContent = "Please enter the book's title.");
+      if (!files.length) return (err.textContent = "Please choose the photos of the pages.");
+      if (files.length > 2000) return (err.textContent = "That's more than 2,000 files. Please email us and we'll help.");
+      if (!v("name")) return (err.textContent = "Please enter your name.");
+      if (!okEmail(v("email"))) return (err.textContent = "Please enter a working email address. It's never shown.");
+      var perm = (f.querySelector('input[name="perm"]:checked') || {}).value || "unsure";
+      btn.disabled = true; btn.textContent = "Sending…"; prog.hidden = false; st.textContent = "Getting ready…";
+      $$("input,select,textarea", f).forEach(function (x) { x.disabled = true; });
+      var id, done = 0, failed = [];
+      function sendOne(file, i, tries) {
+        return shrink(file).then(function (blob) {
+          var ext = /pdf$/.test(blob.type) ? "pdf" : blob.type === "image/png" ? "png" : blob.type === "image/webp" ? "webp" : /hei[cf]$/.test(blob.type) ? "heic" : "jpg";
+          var nm = ("000" + (i + 1)).slice(-4) + "-" + String(file.name || "page").replace(/\.[^.]+$/, "").replace(/[^A-Za-z0-9_-]+/g, "_").slice(0, 40) + "." + ext;
+          return fetch(SB + "/storage/v1/object/book-pages/" + id + "/" + nm, { method: "POST", headers: H({ "Content-Type": blob.type || "image/jpeg", "x-upsert": "false" }), body: blob });
+        }).then(function (r) {
+          if (r.ok || r.status === 409) return; // 409 = already there (a retry after a dropped reply)
+          throw new Error("upload " + r.status);
+        }).catch(function (e) {
+          if (tries >= 4) { failed.push(i + 1); return; }
+          return new Promise(function (res) { setTimeout(res, 1500 * (tries + 1)); }).then(function () {
+            return navigator.onLine === false ? new Promise(function (res) { window.addEventListener("online", res, { once: true }); }) : null;
+          }).then(function () { return sendOne(file, i, tries + 1); });
+        });
+      }
+      rpc("start_book_upload", { p_town: v("town"), p_title: v("title"), p_year: v("year"), p_permission: perm, p_notes: v("notes"), p_name: v("name"), p_email: v("email") })
+        .then(function (r) {
+          if (!r || !r.ok) throw Object.assign(new Error((r && r.error) || "Couldn't start the upload."), { user: 1 });
+          id = r.id;
+          // Three at a time: quick on good signal, gentle on rural cell.
+          var next = 0;
+          function worker() {
+            if (next >= files.length) return Promise.resolve();
+            var i = next++;
+            return sendOne(files[i], i, 0).then(function () {
+              done++; bar.value = Math.round(done / files.length * 100);
+              st.textContent = "Sent " + done + " of " + files.length + (files.length === 1 ? "" : " pages") + "…";
+              return worker();
+            });
+          }
+          return Promise.all([worker(), worker(), worker()]);
+        })
+        .then(function () { return rpc("finish_book_upload", { p_id: id, p_pages: files.length - failed.length }); })
+        .then(function (r) {
+          if (!r || !r.ok) throw Object.assign(new Error((r && r.error) || "Couldn't finish the upload."), { user: 1 });
+          f.hidden = true;
+          $("#bk-done").innerHTML = '<div class="rm-ok"><h3>Thank you! We got ' + (files.length - failed.length) + ' pages of ' + esc(v("title")) + '.</h3>' +
+            (failed.length ? '<p><b>' + failed.length + ' page' + (failed.length === 1 ? "" : "s") + ' didn\'t go through</b> (number' + (failed.length === 1 ? " " : "s ") + failed.slice(0, 20).join(", ") + (failed.length > 20 ? "…" : "") + '). Reply to our email and we\'ll sort it out.</p>' : "") +
+            '<p>We\'ll check the pages and email you at ' + esc(v("email")) + '. Your photos stay private until we\'ve sorted out who owns the book.</p><p><a href="/share-a-book">Send another book</a></p></div>';
+          window.scrollTo(0, 0);
+        })
+        .catch(function (e) {
+          err.textContent = e && e.user ? e.message : "Something went wrong sending the pages. Please check your signal and try again, or email towntalesinfo@gmail.com.";
+          btn.disabled = false; btn.textContent = "Try again";
+          $$("input,select,textarea", f).forEach(function (x) { x.disabled = false; });
+        });
+    });
+  }
+
+  /* ---------- 8b: Book uploads admin queue ---------- */
+  var BK_LABEL = { uploading: "Still uploading", received: "New", processing: "Working on it", done: "Done", declined: "Declined" };
+  function loadBk(out, all) {
+    out.innerHTML = '<p class="muted">Loading…</p>';
+    api("book-queue", { all: !!all }).then(function (r) {
+      var rows = r.books || [];
+      if (!rows.length) { out.innerHTML = '<div class="empty">No book uploads waiting.</div><p><a href="" data-tt="bk-all">Show finished ones too</a></p>'; return; }
+      out.innerHTML = '<h3>Book uploads (' + rows.length + ')</h3>' + (all ? "" : '<p class="small"><a href="" data-tt="bk-all">Show finished and declined too</a></p>') + rows.map(function (b) {
+        var t = b.town_row || {};
+        return '<div class="formbox stack" data-bk="' + esc(b.id) + '" style="gap:8px">' +
+          '<p><span class="rm-pill ' + (b.status === "received" ? "rm-ver" : "rm-mem") + '">' + esc(BK_LABEL[b.status] || b.status) + '</span> <b>' + esc(b.title) + '</b>' + (b.published_year ? " (" + esc(b.published_year) + ")" : "") + ' · ' + esc(t.name ? t.name + ", " + t.prov : b.town) + ' · <b>' + esc(b.page_count) + ' pages</b></p>' +
+          '<p class="small">From <b>' + esc(b.uploader_name) + '</b> · <a href="mailto:' + esc(b.uploader_email) + '?subject=' + encodeURIComponent("Your " + b.title + " pages") + '">' + esc(b.uploader_email) + '</a> · ' + esc(new Date(b.created_at).toLocaleString("en-CA")) +
+          ' · Owner: ' + esc({ owner: "uploader holds rights", committee: "town/committee", unsure: "not sure" }[b.permission] || b.permission) + '</p>' +
+          (b.notes ? '<p class="small">“' + esc(b.notes) + '”</p>' : "") +
+          (b.status === "uploading" ? '<p class="small muted">Started but not finished (they may still be sending, or gave up).</p>' : "") +
+          '<div class="field"><label>Your note</label><input type="text" data-bknote value="' + esc(b.admin_note || "") + '" placeholder="e.g. sent to Muse; asked committee for permission"></div>' +
+          '<div class="btns"><button class="btn sm" data-tt="bk-pages">See the pages</button><button class="btn sm alt" data-tt="bk-set" data-s="processing">Working on it</button><button class="btn sm alt" data-tt="bk-set" data-s="done">Done</button><button class="btn sm alt" data-tt="bk-set" data-s="declined">Decline</button></div>' +
+          '<p class="tt-msg" role="status"></p><div class="bk-pages"></div></div>';
+      }).join("");
+    }).catch(function (e) { out.innerHTML = '<div class="notice warn"><p>' + esc(e.message) + ". Check the admin key above.</p></div>"; });
+  }
+  function bkAct(b, a) {
+    var card = b.closest("[data-bk]"), id = card.getAttribute("data-bk"), msg = $(".tt-msg", card);
+    if (a === "bk-pages") {
+      var box = $(".bk-pages", card); box.innerHTML = '<p class="muted">Loading pages…</p>';
+      return api("book-queue", { id: id }).then(function (r) {
+        var pages = r.pages || [];
+        box.innerHTML = pages.length ? '<p class="small">' + pages.length + ' files. Links work for 1 hour. Tap a page to open it full size.</p><div class="bk-grid">' + pages.map(function (p, i) {
+          return /\.pdf$/i.test(p.name) ? '<a class="bk-pdf" href="' + esc(p.url) + '" target="_blank" rel="noopener">PDF ' + (i + 1) + '</a>' :
+            '<a href="' + esc(p.url) + '" target="_blank" rel="noopener" title="' + esc(p.name) + '"><img src="' + esc(p.url) + '" alt="Page ' + (i + 1) + '" loading="lazy"><span>' + (i + 1) + '</span></a>';
+        }).join("") + '</div>' : '<p class="muted">No pages arrived for this one.</p>';
+      }).catch(function (e) { box.innerHTML = '<p class="err">' + esc(e.message) + '</p>'; });
+    }
+    b.disabled = true;
+    api("book-moderate", { id: id, status: b.getAttribute("data-s"), admin_note: $("[data-bknote]", card).value })
+      .then(function (r) { msg.className = "tt-msg ok"; msg.textContent = "Marked: " + (BK_LABEL[r.status] || r.status) + "."; })
+      .catch(function (e) { msg.className = "tt-msg err"; msg.textContent = e.message; })
+      .then(function () { b.disabled = false; });
+  }
+
   /* ---------- hook into the app ---------- */
   function onView() {
     try {
@@ -638,6 +762,7 @@
     $$("[data-tt-contact]").forEach(function (f) { try { wireContact(f); } catch (e) {} });
     $$("[data-tt-bookform]").forEach(function (f) { try { wireBookForm(f); } catch (e) {} });
     $$("[data-tt-honourform]").forEach(function (f) { try { wireHonourForm(f); } catch (e) {} });
+    $$("[data-tt-bookupload]").forEach(function (f) { try { wireBookUpload(f); } catch (e) {} });
     $$("[data-copy]").forEach(function (b) { b.addEventListener("click", function () { copyText(b.getAttribute("data-copy")); }); });
     var v = $("#view");
     if (v && !$(".rm", v)) {

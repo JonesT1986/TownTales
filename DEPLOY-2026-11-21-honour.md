@@ -15,6 +15,14 @@ Nothing shows to the public until `HONOUR_PAYMENT_LINK` is set in Vercel.
 - `towntales-extra.js` section 7 + CSS: swipeable row above "This site grows…". Honour Pages first (with their photo), then the newest names, max 3 per town so one cemetery upload doesn't fill it. Last card invites people to add someone (free).
 - Stays hidden until there are at least 3 published names, so it's safe to deploy before any data is loaded.
 
+## Whole-book upload (/share-a-book)
+- People photograph every page with their phone and send them all at once (3 at a time, each page retried up to 5 times, camera-numbered photos put in order, saved as 0001-…, 0002-…).
+- Pages go to a PRIVATE bucket `book-pages/<upload id>/`. The public can only add files to an upload that is still open (24 h). Nothing is public.
+- #admin → "Load book uploads": who sent it, title/year, page count, who owns it (their answer), notes → "See the pages" (signed links, 1 h) → Working on it / Done / Decline + your note.
+- Linked from: homepage "Send a history book" button and bullet, contact page, "Share history" upload hint.
+- Files: `db/2026-11-21-book-uploads.sql`, `supabase/functions/api/books.ts` (+ index.ts), `api/book-upload.js`, `vercel.json` (/share-a-book), `towntales-extra.js` section 8, CSS.
+- Deploy: apply `db/2026-11-21-book-uploads.sql` along with the Honour migration; same function + site deploy.
+
 ## Files
 | What | Where |
 |---|---|

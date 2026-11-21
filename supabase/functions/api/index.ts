@@ -2,12 +2,14 @@
 // Routes: /ingest (Muse, x-api-key) | /research /contact /upload-url (public, guarded) | /queue /moderate /rebuild (admin, x-admin-key)
 // Added Nov 17 2026: /links-status /read-link (admin) — see links.ts
 // Added Nov 19 2026: /reports /report-resolve /report-delete /moderate-bulk /settings (admin), /rebuild-due (public, flagged towns only) — see admin.ts
+// Added Nov 21 2026: /book-queue /book-moderate (admin, whole-book uploads — see books.ts)
 // Added Nov 21 2026: /stripe-webhook (public, Stripe-signed) /honour-queue /honour-moderate (admin) — see honour.ts
 // Added Nov 2026: /rem-queue /rem-moderate /clip-queue /clip-moderate /clip-item (admin) — see remembrance.ts
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 import { remQueue, remModerate, clipQueue, clipModerate, clipItem } from "./remembrance.ts";
 import { linksStatus, readLink } from "./links.ts";
 import { stripeWebhook, honourQueue, honourModerate } from "./honour.ts";
+import { bookQueue, bookModerate } from "./books.ts";
 import { reports, reportResolve, reportDelete, moderateBulk, settings, rebuildDue } from "./admin.ts";
 
 const SB_URL = Deno.env.get("SUPABASE_URL")!;
@@ -95,6 +97,8 @@ Deno.serve(async (req) => {
   if (action === "settings") return settings(ctx, body);
   if (action === "honour-queue") return honourQueue(ctx, body);
   if (action === "honour-moderate") return honourModerate(ctx, body);
+  if (action === "book-queue") return bookQueue(ctx, body);
+  if (action === "book-moderate") return bookModerate(ctx, body);
   return json({ error: "Unknown action" }, 404);
 });
 
