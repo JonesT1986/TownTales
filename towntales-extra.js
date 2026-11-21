@@ -4,6 +4,7 @@
    3. Newspaper clippings on each town's Archive tab, with an upload form
    4. Remembrance + clippings review queue on the #admin page
    5. Sports & Teams on each town page (only when the town has teams)
+   6. Honour Pages: order form (photos + story → Stripe), offer after a family adds someone, admin review queue
    Nothing here can break the main app: every step is wrapped, and the app never depends on it. */
 (function () {
   "use strict";
@@ -75,7 +76,8 @@
       }).then(function (r) {
         if (!r || !r.ok) { err.textContent = (r && r.error) || "Couldn't send that. Please try again."; btn.disabled = false; btn.textContent = "Send for review"; return; }
         f.hidden = true;
-        $("#mf-done").innerHTML = '<div class="rm-ok"><h3>Thank you.</h3><p>We\'ve received ' + esc(v("name")) + '. A volunteer will look it over, usually within a few days, and then it will appear here as Community Memory with you named as the source.</p><p><a href="" data-act="mf-again">Add another person</a></p></div>';
+        var hn = f.getAttribute("data-honour") && r.id ? '<div class="hn-offer hn-after"><p class="eyebrow">Want to do more?</p><h3>Give ' + esc(v("name")) + ' an Honour Page</h3><p>Add family photos and their life story to their page, with "Placed by" your family and a certificate to print. One time, no subscription.</p><div class="btns"><a class="btn" href="/' + encodeURIComponent(f.getAttribute("data-town")) + '/remembrance/' + encodeURIComponent(r.id) + '/honour">Add photos and their story</a></div></div>' : "";
+        $("#mf-done").innerHTML = '<div class="rm-ok"><h3>Thank you.</h3><p>We\'ve received ' + esc(v("name")) + '. A volunteer will look it over, usually within a few days, and then it will appear here as Community Memory with you named as the source.</p><p><a href="" data-act="mf-again">Add another person</a></p></div>' + hn;
         var again = $('[data-act="mf-again"]'); if (again) again.addEventListener("click", function (e) { e.preventDefault(); f.reset(); f.hidden = false; $("#mf-done").innerHTML = ""; btn.disabled = false; btn.textContent = "Send for review"; f.scrollIntoView({ block: "start" }); });
       }).catch(function () { err.textContent = "Couldn't send that just now. Please try again in a minute."; btn.disabled = false; btn.textContent = "Send for review"; });
     });
@@ -336,6 +338,52 @@
     });
   }
 
+  /* ---------- 6: Honour Page order form (/<town>/remembrance/<id>/honour) ---------- */
+  function wireHonourForm(f) {
+    if (f.getAttribute("data-wired")) return; f.setAttribute("data-wired", "1");
+    var fi = $("#hn-files", f), prev = $("#hn-prev", f), picked = [];
+    function draw() {
+      prev.innerHTML = picked.map(function (p, i) {
+        return '<div class="hn-pic"><img alt="" src="' + p.preview + '"><div class="field"><label for="hn-cap-' + i + '">Caption <span class="hint">(optional)</span></label><input type="text" id="hn-cap-' + i + '" data-cap="' + i + '" maxlength="200" value="' + esc(p.caption) + '" placeholder="e.g. Harvest, 1948"></div><button type="button" class="btn sm alt" data-rm="' + i + '">Remove</button></div>';
+      }).join("");
+    }
+    fi.addEventListener("change", function () {
+      Array.prototype.slice.call(fi.files).forEach(function (x) { if (/^image\//.test(x.type) && picked.length < 6) picked.push({ file: x, preview: URL.createObjectURL(x), caption: "" }); });
+      fi.value = ""; draw();
+    });
+    prev.addEventListener("input", function (e) { var i = e.target.getAttribute("data-cap"); if (i != null) picked[+i].caption = e.target.value; });
+    prev.addEventListener("click", function (e) { var i = e.target.getAttribute("data-rm"); if (i != null) { picked.splice(+i, 1); draw(); } });
+    f.addEventListener("submit", function (ev) {
+      ev.preventDefault();
+      var v = function (n) { var el = f.elements[n]; return el ? String(el.value || "").trim() : ""; };
+      var err = $("#hn-err", f), btn = f.querySelector('button[type="submit"]'), mem = f.getAttribute("data-mem");
+      err.textContent = "";
+      if (!v("story") && !picked.length) return (err.textContent = "Please add their story or at least one photo.");
+      if (!v("name")) return (err.textContent = "Please enter your name.");
+      if (!okEmail(v("email"))) return (err.textContent = "Please enter a working email address. It's never shown.");
+      if (!f.elements.ok.checked) return (err.textContent = "Please tick the box to confirm you can share these.");
+      btn.disabled = true; btn.textContent = picked.length ? "Uploading photos…" : "One moment…";
+      var urls = [];
+      var chain = Promise.resolve();
+      picked.forEach(function (p) {
+        chain = chain.then(function () { return shrink(p.file); }).then(function (blob) {
+          if (blob.size > 15 * 1024 * 1024) throw Object.assign(new Error("One of the photos is too large (15 MB maximum)."), { user: 1 });
+          var ext = blob.type === "image/png" ? "png" : blob.type === "image/webp" ? "webp" : "jpg";
+          var path = mem + "/" + Date.now() + "-" + Math.random().toString(36).slice(2, 8) + "." + ext;
+          return fetch(SB + "/storage/v1/object/honour/" + path, { method: "POST", headers: H({ "Content-Type": blob.type || "image/jpeg" }), body: blob })
+            .then(function (r) { if (!r.ok) throw new Error("upload"); urls.push({ url: SB + "/storage/v1/object/public/honour/" + path, caption: p.caption.trim() }); });
+        });
+      });
+      chain.then(function () {
+        return rpc("submit_honour", { p_memorial_id: mem, p_story: v("story"), p_photos: urls, p_placed_by: v("by"), p_purchaser_name: v("name"), p_purchaser_email: v("email"), p_relationship: v("rel") });
+      }).then(function (r) {
+        if (!r || !r.ok) throw Object.assign(new Error((r && r.error) || "Couldn't save that."), { user: 1 });
+        btn.textContent = "Opening secure payment…";
+        location.href = f.getAttribute("data-link") + "?client_reference_id=" + encodeURIComponent(r.id) + "&prefilled_email=" + encodeURIComponent(v("email"));
+      }).catch(function (e) { err.textContent = e && e.user ? e.message : "Couldn't send that just now. Please try again in a minute."; btn.disabled = false; btn.textContent = "Continue to payment"; });
+    });
+  }
+
   /* ---------- 4: admin review queue ---------- */
   function adminKey() { try { return sessionStorage.getItem("tt-admin") || ""; } catch (e) { return ""; } }
   function api(action, payload) {
@@ -348,7 +396,7 @@
     var sec = document.createElement("section");
     sec.className = "wrap stack"; sec.id = "tt-adm";
     sec.innerHTML = '<h2>Remembrance and clippings</h2><p class="muted">Family submissions and newspaper clippings waiting for a look. Nothing here is public until you publish it.</p>' +
-      '<div class="btns"><button class="btn sm" data-tt="rm-load">Load remembrance queue</button><button class="btn sm" data-tt="cl-load">Load clippings queue</button></div><div id="tt-adm-out" class="stack"></div>';
+      '<div class="btns"><button class="btn sm" data-tt="rm-load">Load remembrance queue</button><button class="btn sm" data-tt="cl-load">Load clippings queue</button><button class="btn sm" data-tt="hn-load">Load Honour Pages</button></div><div id="tt-adm-out" class="stack"></div>';
     host.parentNode.insertBefore(sec, host.nextSibling);
     linksBlock(sec);
     sec.addEventListener("click", function (e) {
@@ -356,6 +404,8 @@
       var a = b.getAttribute("data-tt"), out = $("#tt-adm-out", sec);
       if (a === "rm-load") return loadRm(out);
       if (a === "cl-load") return loadCl(out);
+      if (a === "hn-load") return loadHn(out);
+      if (a.indexOf("hn-") === 0) return hnAct(b, a);
       var card = b.closest("[data-id]"), id = card && card.getAttribute("data-id");
       var fields = {}; $$("[data-f]", card).forEach(function (el) { fields[el.getAttribute("data-f")] = el.value; });
       var msg = $(".tt-msg", card);
@@ -470,6 +520,44 @@
     }).catch(function (e) { out.innerHTML = '<div class="notice warn"><p>' + esc(e.message) + ". Check the admin key above.</p></div>"; });
   }
 
+  /* ---------- 6b: Honour Pages admin queue ---------- */
+  function money(o) { return o && o.amount_cents != null ? "$" + (o.amount_cents / 100).toFixed(2) + " " + String(o.currency || "").toUpperCase() : ""; }
+  function loadHn(out) {
+    out.innerHTML = '<p class="muted">Loading…</p>';
+    api("honour-queue", { all: true }).then(function (r) {
+      var rows = r.honour || [];
+      if (!rows.length) { out.innerHTML = '<div class="empty">No Honour Pages waiting.</div>'; return; }
+      out.innerHTML = '<h3>Honour Pages (' + rows.length + ')</h3><p class="small muted">"Paid" ones are ready for you. "Waiting for payment" means they filled the form but haven\'t paid (yet).</p>' + rows.map(function (h) {
+        var m = h.memorial || {}, o = h.order || {}, paid = h.status === "paid";
+        var photos = (h.photos || []).map(function (p, i) { return '<label class="hn-adm-pic"><img alt="" src="' + esc(p.url) + '"><span><input type="checkbox" data-keep="' + i + '" checked> Keep</span><input type="text" data-capx="' + i + '" value="' + esc(p.caption || "") + '" placeholder="Caption"><input type="hidden" data-urlx="' + i + '" value="' + esc(p.url) + '"></label>'; }).join("");
+        return '<div class="formbox stack" data-id="' + esc(h.id) + '" style="gap:10px">' +
+          '<p><b>' + (paid ? '<span class="rm-pill rm-ver">Paid ' + esc(money(o)) + '</span>' : '<span class="rm-pill rm-mem">Waiting for payment</span>') + '</b> ' +
+          '<a href="/' + esc(m.town || h.town) + '/remembrance/' + encodeURIComponent(h.memorial_id) + '" target="_blank" rel="noopener"><b>' + esc(m.name || h.memorial_id) + '</b></a> ' + esc(dates(m)) + (m.status !== "published" ? ' <span class="rm-pill rm-mem">record not published yet</span>' : '') + '</p>' +
+          '<p class="small">From <b>' + esc(o.purchaser_name || "") + '</b>' + (o.relationship ? " (" + esc(o.relationship) + ")" : "") + ' · <a href="mailto:' + esc(o.purchaser_email || "") + '">' + esc(o.purchaser_email || "") + '</a> · ' + esc(new Date(h.created_at).toLocaleString("en-CA")) + '</p>' +
+          '<div class="field"><label>Placed by</label><input type="text" data-hf="placed_by" value="' + esc(h.placed_by || "") + '"></div>' +
+          '<div class="field"><label>Story</label><textarea data-hf="story" rows="8">' + esc(h.story || "") + '</textarea></div>' +
+          (photos ? '<div class="hn-adm-pics">' + photos + '</div>' : '<p class="small muted">No photos.</p>') +
+          '<div class="btns">' + (paid ? '<button class="btn sm" data-tt="hn-publish">Publish</button>' : '<button class="btn sm alt" data-tt="hn-mark-paid">Mark paid (paid another way)</button>') +
+          '<button class="btn sm alt" data-tt="hn-comp">Publish free</button><button class="btn sm alt" data-tt="hn-save">Save edits</button><button class="btn sm alt" data-tt="hn-decline">Decline</button></div>' +
+          '<p class="tt-msg" role="status"></p></div>';
+      }).join("");
+    }).catch(function (e) { out.innerHTML = '<div class="notice warn"><p>' + esc(e.message) + ". Check the admin key above.</p></div>"; });
+  }
+  function hnAct(b, a) {
+    var card = b.closest("[data-id]"), msg = $(".tt-msg", card), act = a.slice(3);
+    if (act === "decline" && !confirm("Decline this Honour Page? If they paid, refund them in Stripe.")) return;
+    var patch = { story: $('[data-hf="story"]', card).value, placed_by: $('[data-hf="placed_by"]', card).value, photos: [] };
+    $$("[data-keep]", card).forEach(function (k) { var i = k.getAttribute("data-keep"); if (k.checked) patch.photos.push({ url: $('[data-urlx="' + i + '"]', card).value, caption: $('[data-capx="' + i + '"]', card).value }); });
+    var final = false;
+    b.disabled = true;
+    api("honour-moderate", { id: card.getAttribute("data-id"), action: act, patch: patch }).then(function (r) {
+      msg.className = "tt-msg ok"; final = r.status === "published" || r.status === "declined";
+      msg.textContent = r.status === "published" ? "Published. It shows on their page within about 10 minutes. Email the family to let them know." : r.status === "declined" ? "Declined." : r.status === "paid" ? "Marked paid. You can publish it now." : "Saved.";
+      if (final) $$("button", card).forEach(function (x) { x.disabled = true; });
+      if (r.status === "paid" && act === "mark-paid") loadHn($("#tt-adm-out"));
+    }).catch(function (e) { msg.className = "tt-msg err"; msg.textContent = e.message; }).then(function () { if (!final) b.disabled = false; });
+  }
+
   /* ---------- hook into the app ---------- */
   function onView() {
     try {
@@ -485,6 +573,7 @@
     $$("[data-tt-memform]").forEach(function (f) { try { wireMemForm(f); } catch (e) {} });
     $$("[data-tt-contact]").forEach(function (f) { try { wireContact(f); } catch (e) {} });
     $$("[data-tt-bookform]").forEach(function (f) { try { wireBookForm(f); } catch (e) {} });
+    $$("[data-tt-honourform]").forEach(function (f) { try { wireHonourForm(f); } catch (e) {} });
     $$("[data-copy]").forEach(function (b) { b.addEventListener("click", function () { copyText(b.getAttribute("data-copy")); }); });
     var v = $("#view");
     if (v && !$(".rm", v)) {

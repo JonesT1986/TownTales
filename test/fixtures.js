@@ -66,9 +66,23 @@ function filt(rows, params) {
   }
   return rows;
 }
+// Honour Pages (Nov 21): wap-0001 is honoured; m-pend1 is a family submission still waiting for review.
+tables.honour_pages = [
+  { id: 'hp_aaaaaaaaaaaaaaaaaaaaaaaa', memorial_id: 'wap-0001', town: 'wapella-sk', status: 'published', placed_by: 'The Anderson family', published_at: '2026-11-21T12:00:00Z',
+    story: 'John came west on the CPR in 1882 with two oxen and a plough.\n\nHe farmed north of town for forty years, sang bass in the church choir, and never missed a Sports Day. <b>not bold</b>',
+    photos: [{ url: 'https://zpqwrzsgpwwjrlbnfynn.supabase.co/storage/v1/object/public/honour/wap-0001/a.jpg', caption: 'John and Mary, 1910' }, { url: 'https://zpqwrzsgpwwjrlbnfynn.supabase.co/storage/v1/object/public/honour/wap-0001/b.jpg', caption: 'Harvest, 1948' }, { url: 'https://zpqwrzsgpwwjrlbnfynn.supabase.co/storage/v1/object/public/honour/wap-0001/c.jpg', caption: null }] },
+];
+const pendingMem = { id: 'm-pend1', town: 'wapella-sk', name: 'Agnes Fraser', birth_date_label: '1901', death_date_label: '1988', status: 'pending' };
 const mockFetch = async (url, opts = {}) => {
   const u = new URL(url);
   const table = u.pathname.split('/').pop();
+  if (table === 'honour_target') {
+    const id = u.searchParams.get('p_id');
+    const m = id === pendingMem.id ? pendingMem : tables.memorials.find((x) => x.id === id && x.status === 'published');
+    const out = m ? { id: m.id, town: m.town, name: m.name, maiden_name: m.maiden_name || null, birth_date_label: m.birth_date_label, death_date_label: m.death_date_label, status: m.status,
+      honoured: tables.honour_pages.some((h) => h.memorial_id === m.id && h.status === 'published') } : { id: null };
+    return new Response(JSON.stringify(out), { status: 200, headers: { 'content-type': 'application/json' } });
+  }
   let rows = tables[table];
   if (!rows) return new Response(JSON.stringify({ message: 'relation does not exist' }), { status: 404 });
   rows = filt(rows, u.searchParams);

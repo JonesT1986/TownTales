@@ -74,6 +74,14 @@
       "destination": "/api/remembrance?slug=:slug&id=:id"
     },
     {
+      "source": "/:slug([a-z0-9-]+-(?:sk|mb|ab|bc|on|qc|nb|ns|pe|nl|yt|nt|nu))/remembrance/:id([A-Za-z0-9._-]+)/honour",
+      "destination": "/api/remembrance?slug=:slug&id=:id&honour=1"
+    },
+    {
+      "source": "/honour/thanks",
+      "destination": "/api/remembrance?thanks=1"
+    },
+    {
       "source": "/:slug([a-z0-9-]+-(?:sk|mb|ab|bc|on|qc|nb|ns|pe|nl|yt|nt|nu))/sports",
       "destination": "/api/sports?slug=:slug"
     },

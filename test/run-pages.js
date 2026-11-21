@@ -4,6 +4,7 @@ const OUT = process.argv[2] || '/tmp/tt-out';
 fs.mkdirSync(OUT, { recursive: true });
 const { mockFetch } = require('./fixtures');
 global.fetch = mockFetch;
+if (!process.env.NO_HONOUR) process.env.HONOUR_PAYMENT_LINK = process.env.HONOUR_PAYMENT_LINK || 'https://buy.stripe.com/test_abc123';
 
 function call(handler, reqUrl) {
   return new Promise((resolve) => {
@@ -23,6 +24,14 @@ function call(handler, reqUrl) {
     ['rem-missing', rem, '/api/remembrance?slug=wapella-sk&id=nope'],
     ['rem-empty-town', rem, '/api/remembrance?slug=moose-jaw-sk'],
     ['rem-bad-town', rem, '/api/remembrance?slug=atlantis-sk'],
+    ['hn-honoured', rem, '/api/remembrance?slug=wapella-sk&id=wap-0001'],
+    ['hn-certificate', rem, '/api/remembrance?slug=wapella-sk&id=wap-0001&certificate=1'],
+    ['hn-offer', rem, '/api/remembrance?slug=wapella-sk&id=wap-0002'],
+    ['hn-form', rem, '/api/remembrance?slug=wapella-sk&id=wap-0002&honour=1'],
+    ['hn-form-pending', rem, '/api/remembrance?slug=wapella-sk&id=m-pend1&honour=1'],
+    ['hn-form-done', rem, '/api/remembrance?slug=wapella-sk&id=wap-0001&honour=1'],
+    ['hn-form-wrongtown', rem, '/api/remembrance?slug=moose-jaw-sk&id=wap-0002&honour=1'],
+    ['hn-thanks', rem, '/api/remembrance?thanks=1'],
     ['sports-wapella', sports, '/api/sports?slug=wapella-sk'],
     ['sports-empty', sports, '/api/sports?slug=moose-jaw-sk'],
     ['sports-bad', sports, '/api/sports?slug=atlantis-sk'],
