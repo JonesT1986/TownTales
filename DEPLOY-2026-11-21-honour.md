@@ -11,6 +11,10 @@ Free stays free: every name, dates and cemetery. An Honour Page adds up to 6 pho
 
 Nothing shows to the public until `HONOUR_PAYMENT_LINK` is set in Vercel.
 
+## Homepage "Recently remembered" carousel
+- `towntales-extra.js` section 7 + CSS: swipeable row above "This site grows…". Honour Pages first (with their photo), then the newest names, max 3 per town so one cemetery upload doesn't fill it. Last card invites people to add someone (free).
+- Stays hidden until there are at least 3 published names, so it's safe to deploy before any data is loaded.
+
 ## Files
 | What | Where |
 |---|---|

@@ -208,3 +208,24 @@ input[type=search]:focus{border-color:var(--ink)}
 .hn-adm-pics{display:flex;flex-wrap:wrap;gap:10px}
 .hn-adm-pic{display:flex;flex-direction:column;gap:4px;width:150px;font-size:.9rem}
 .hn-adm-pic img{width:150px;height:110px;object-fit:cover;border:1px solid var(--rule)}
+
+/* ---- Homepage "Recently remembered" carousel (Nov 21) ---- */
+.rc{padding-top:28px}
+.rc-head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.rc-head h2{font-family:Georgia,"Times New Roman",serif}
+.rc-nav{display:flex;gap:8px}
+.rc-track{list-style:none;margin:0;padding:4px 2px 14px;display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:thin}
+.rc-card{flex:0 0 220px;scroll-snap-align:start;background:var(--card);border:1px solid var(--rule);box-shadow:3px 3px 0 var(--sunk)}
+.rc-card a{display:flex;flex-direction:column;height:100%;color:inherit;text-decoration:none}
+.rc-card a:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+.rc-card img{width:100%;height:150px;object-fit:cover;display:block;background:var(--sunk)}
+.rc-mark{display:flex;align-items:center;justify-content:center;height:70px;font-size:1.6rem;color:var(--ink-2);background:var(--sunk)}
+.rc-body{display:flex;flex-direction:column;gap:4px;padding:12px 14px 14px;align-items:flex-start}
+.rc-name{font:700 1.15rem/1.25 Georgia,"Times New Roman",serif}
+.rc-nee{font-weight:400;color:var(--ink-2)}
+.rc-dates{font-weight:700;color:var(--red)}
+.rc-town{font-size:.95rem;color:var(--ink-2)}
+.rc-hon{border:2px solid var(--ink);box-shadow:4px 4px 0 var(--wheat)}
+.rc-add{background:var(--sunk);border-style:dashed}
+.rc-add .rc-name{text-decoration:underline}
+@media (max-width:600px){.rc-nav{display:none}.rc-card{flex-basis:72%}}

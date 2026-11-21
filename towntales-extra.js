@@ -5,6 +5,7 @@
    4. Remembrance + clippings review queue on the #admin page
    5. Sports & Teams on each town page (only when the town has teams)
    6. Honour Pages: order form (photos + story → Stripe), offer after a family adds someone, admin review queue
+   7. Homepage "Recently remembered" carousel (Honour Pages first, then the newest names, max 3 per town)
    Nothing here can break the main app: every step is wrapped, and the app never depends on it. */
 (function () {
   "use strict";
@@ -558,13 +559,76 @@
     }).catch(function (e) { msg.className = "tt-msg err"; msg.textContent = e.message; }).then(function () { if (!final) b.disabled = false; });
   }
 
+  /* ---------- 7: homepage "Recently remembered" carousel ---------- */
+  var recentP = null;
+  function loadRecent() {
+    if (recentP) return recentP;
+    recentP = Promise.all([
+      get("honour_pages?status=eq.published&select=memorial_id,photos,placed_by,published_at&order=published_at.desc&limit=6"),
+      get("memorials?status=eq.published&select=id,town,name,maiden_name,birth_date_label,death_date_label,created_at&order=created_at.desc&limit=80"),
+    ]).then(function (r) {
+      var hon = r[0], mems = r[1], byId = {}, picked = [], perTown = {};
+      mems.forEach(function (m) { byId[m.id] = m; });
+      var hid = hon.map(function (h) { return h.memorial_id; }).filter(function (id) { return !byId[id]; });
+      return (hid.length ? get("memorials?status=eq.published&id=in.(" + hid.map(encodeURIComponent).join(",") + ")&select=id,town,name,maiden_name,birth_date_label,death_date_label,created_at") : Promise.resolve([])).then(function (extra) {
+        extra.forEach(function (m) { byId[m.id] = m; });
+        hon.forEach(function (h) { var m = byId[h.memorial_id]; if (m) { m.honour = h; picked.push(m); } });
+        var seen = {}; picked.forEach(function (m) { seen[m.id] = 1; });
+        mems.forEach(function (m) {
+          if (picked.length >= 14 || seen[m.id]) return;
+          perTown[m.town] = (perTown[m.town] || 0) + 1;
+          if (perTown[m.town] > 3) return; // one cemetery upload shouldn't fill the whole row
+          seen[m.id] = 1; picked.push(m);
+        });
+        var towns = picked.map(function (m) { return m.town; }).filter(function (t, i, a) { return a.indexOf(t) === i; });
+        return (towns.length ? get("towns?slug=in.(" + towns.map(encodeURIComponent).join(",") + ")&select=slug,name,prov") : Promise.resolve([])).then(function (ts) {
+          var tn = {}; ts.forEach(function (t) { tn[t.slug] = t.name + ", " + t.prov; });
+          picked.forEach(function (m) { m.townLabel = tn[m.town] || ""; });
+          return picked;
+        });
+      });
+    }).catch(function () { recentP = null; return []; });
+    return recentP;
+  }
+  function recentBlock() {
+    var view = $("#view"), grow = view && $("#grow", view);
+    if (!grow || $("#tt-recent", view)) return;
+    var sec = document.createElement("section");
+    sec.id = "tt-recent"; sec.className = "wrap stack rc"; sec.hidden = true;
+    grow.parentNode.insertBefore(sec, grow);
+    loadRecent().then(function (list) {
+      if (list.length < 3 || !sec.isConnected) return; // not enough to make a row yet
+      var cards = list.map(function (m) {
+        var href = "/" + encodeURIComponent(m.town) + "/remembrance/" + encodeURIComponent(m.id);
+        var ph = m.honour && (m.honour.photos || [])[0];
+        var d = dates(m);
+        return '<li class="rc-card' + (m.honour ? " rc-hon" : "") + '"><a href="' + href + '">' +
+          (ph ? '<img src="' + esc(ph.url) + '" alt="" loading="lazy">' : '<span class="rc-mark" aria-hidden="true">❦</span>') +
+          '<span class="rc-body"><span class="rc-name">' + esc(m.name) + (m.maiden_name ? ' <span class="rc-nee">(née ' + esc(m.maiden_name) + ")</span>" : "") + "</span>" +
+          (d ? '<span class="rc-dates">' + esc(d) + "</span>" : "") +
+          (m.townLabel ? '<span class="rc-town">' + esc(m.townLabel) + "</span>" : "") +
+          (m.honour ? '<span class="hn-badge">Honour Page</span>' : "") + "</span></a></li>";
+      }).join("");
+      sec.innerHTML = '<div class="rc-head"><div><p class="eyebrow">Cemetery &amp; Remembrance</p><h2>Recently remembered</h2><p class="small muted">People just added to their town\'s pages by families and volunteers.</p></div>' +
+        '<div class="rc-nav"><button type="button" class="btn sm alt" data-rc="-1" aria-label="Scroll back">←</button><button type="button" class="btn sm alt" data-rc="1" aria-label="Scroll forward">→</button></div></div>' +
+        '<ul class="rc-track" tabindex="0" aria-label="Recently remembered people">' + cards +
+        '<li class="rc-card rc-add"><a href="#towns"><span class="rc-body"><span class="rc-name">Add someone you remember</span><span class="rc-town">Find their town, then open Cemetery &amp; Remembrance. It\'s free.</span></span></a></li></ul>';
+      sec.hidden = false;
+      var tr = $(".rc-track", sec);
+      sec.addEventListener("click", function (e) {
+        var b = e.target.closest("[data-rc]"); if (!b) return;
+        tr.scrollBy({ left: +b.getAttribute("data-rc") * Math.max(240, tr.clientWidth * 0.8), behavior: "smooth" });
+      });
+    });
+  }
+
   /* ---------- hook into the app ---------- */
   function onView() {
     try {
       var nb = $("#tt-notice"); if (nb) { try { if (localStorage.getItem("tt-notice-1")) nb.remove(); } catch (e) {} }
       var h = (location.hash || "").slice(1);
       if (h === "admin" || h.indexOf("admin/") === 0) return adminBlock();
-      var t = currentTown(); if (!t) return;
+      var t = currentTown(); if (!t) return recentBlock();
       if (t.archive) clipBlock(t); else { rmBlock(t); teamsBlock(t); bookBlock(t); }
     } catch (e) { if (window.console) console.error("towntales-extra", e); }
   }

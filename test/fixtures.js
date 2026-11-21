@@ -72,6 +72,9 @@ tables.honour_pages = [
     story: 'John came west on the CPR in 1882 with two oxen and a plough.\n\nHe farmed north of town for forty years, sang bass in the church choir, and never missed a Sports Day. <b>not bold</b>',
     photos: [{ url: 'https://zpqwrzsgpwwjrlbnfynn.supabase.co/storage/v1/object/public/honour/wap-0001/a.jpg', caption: 'John and Mary, 1910' }, { url: 'https://zpqwrzsgpwwjrlbnfynn.supabase.co/storage/v1/object/public/honour/wap-0001/b.jpg', caption: 'Harvest, 1948' }, { url: 'https://zpqwrzsgpwwjrlbnfynn.supabase.co/storage/v1/object/public/honour/wap-0001/c.jpg', caption: null }] },
 ];
+tables.memorials.push(
+  { id: 'mj-0001', town: 'moose-jaw-sk', name: 'Walter Kowalchuk', birth_date_label: '1912', death_date_label: '1990', status: 'published', tier: 'community', source: 'x' },
+  { id: 'mj-0002', town: 'moose-jaw-sk', name: 'Helen Kowalchuk', maiden_name: 'Sawchuk', birth_date_label: '1915', death_date_label: '2004', status: 'published', tier: 'community', source: 'x' });
 const pendingMem = { id: 'm-pend1', town: 'wapella-sk', name: 'Agnes Fraser', birth_date_label: '1901', death_date_label: '1988', status: 'pending' };
 const mockFetch = async (url, opts = {}) => {
   const u = new URL(url);
