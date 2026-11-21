@@ -64,6 +64,7 @@
   /* ---------- styles ---------- */
   const css = `
 .fam-hero{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-end;justify-content:space-between}
+.fam-home-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.fam-home-row select{flex:1 1 240px;width:auto}
 .fam-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,280px),1fr));gap:16px}
 .fam-card{background:var(--card);border:2px solid var(--ink);border-radius:2px;padding:18px;display:flex;flex-direction:column;gap:8px;text-decoration:none;color:var(--ink);box-shadow:4px 4px 0 var(--wheat)}
 .fam-card:hover{color:var(--ink);box-shadow:4px 4px 0 var(--red)}
@@ -180,6 +181,7 @@
     paint(`<section class="wrap stack" style="padding:36px 16px 56px;gap:24px">
       <div class="fam-hero"><div class="stack" style="gap:10px"><p class="eyebrow">Family trees</p><h1>The families who built these towns</h1><p class="lede">Browse family trees from prairie towns, or build your own. Free to view, free to build.</p></div>
       <div class="btns">${user ? `<a class="btn" href="#fam-new">Build a family tree</a><button class="btn alt sm" id="fam-out" type="button">Sign out</button>` : `<a class="btn" href="#fam-login">Sign in to build a tree</a>`}</div></div>
+      ${user ? `<div class="fam-home formbox" style="max-width:620px;gap:10px"><h2 style="font-size:1.3rem">Your home town</h2><p class="small">Pick your home town and the train on the front page will stop there whenever you visit while signed in.</p><div class="fam-home-row"><select id="fam-home" aria-label="Your home town"><option value="">Loading towns…</option></select><button class="btn sm" id="fam-home-save" type="button">Save</button></div><p class="small" id="fam-home-msg" role="status"></p></div>` : ""}
       ${my.length ? `<div class="stack" style="gap:10px"><h2>Your trees</h2><div class="fam-plist">${my.map((t) => `<div class="fam-prow"><div class="who"><b>${esc(t.title)}</b><span class="small muted">${t.status === "published" ? "Published" : t.status === "draft" ? "Draft, only you can see it" : "Hidden by TownTales"}</span></div><div class="btns"><a class="btn alt sm" href="#fam-${esc(t.slug)}">View</a><a class="btn sm" href="#fam-edit-${esc(t.slug)}">Edit</a></div></div>`).join("")}</div></div>` : ""}
       <div class="stack" style="gap:12px"><h2>All family trees</h2>
       <div class="field" style="max-width:480px"><label for="fam-q">Search by family name or tree</label><input type="text" id="fam-q" placeholder="e.g. Henderson"></div>
@@ -187,6 +189,22 @@
       <p class="fam-fine">${esc(FINE_GENERAL)} <b>Towns:</b> a tree connected to a town also shows on that town's page.</p>
     </section>`);
     const out = $("#fam-out"); if (out) out.onclick = async () => { await sb.auth.signOut(); user = null; render(); };
+    const hs = $("#fam-home");
+    if (hs && user) {
+      const cur = (user.user_metadata && user.user_metadata.home_town) || "";
+      towns().then((ts) => {
+        hs.innerHTML = `<option value="">Choose your home town…</option>` + ts.map((t) => `<option value="${esc(t.slug)}"${t.slug === cur ? " selected" : ""}>${esc(t.name)}, ${esc(t.prov)}</option>`).join("");
+      }).catch(() => { hs.innerHTML = `<option value="">Couldn't load towns</option>`; });
+      $("#fam-home-save").onclick = async () => {
+        const msg = $("#fam-home-msg"), slug = hs.value;
+        msg.textContent = "Saving…";
+        const { data, error } = await sb.auth.updateUser({ data: { home_town: slug || null } });
+        if (error) { msg.textContent = "Couldn't save that. Please try again."; return; }
+        user = data.user || user;
+        if (window.ttHomeTownChanged) window.ttHomeTownChanged(slug);
+        msg.textContent = slug ? "Saved. The train will stop at " + hs.options[hs.selectedIndex].text + " when you visit." : "Cleared.";
+      };
+    }
     let tm; const q = $("#fam-q");
     if (q) q.addEventListener("input", () => { clearTimeout(tm); tm = setTimeout(async () => {
       const { data: d } = await sb.rpc("family_list", { p_town: null, p_q: q.value.trim() || null });

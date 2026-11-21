@@ -12,7 +12,7 @@
  {
   "name": "extra-css",
   "find": "</head>",
-  "replace": "<link rel=\"stylesheet\" href=\"/towntales-extra.css?v=8\">\n</head>"
+  "replace": "<link rel=\"stylesheet\" href=\"/towntales-extra.css?v=9\">\n</head>"
  },
  {
   "name": "footer-province",
@@ -53,5 +53,25 @@
   "name": "upload-phone-photo-hint",
   "find": "<span class=\"hint\">Up to 25 MB per file. A phone photo of a clipping works fine. PDFs, audio and video are posted as they are.</span>",
   "replace": "<span class=\"hint\">Up to 25 MB per file. No scanner needed: a clear phone photo works great. Lay the page flat in daylight, flash off, phone straight above so the whole page fits. PDFs, audio and video are posted as they are. Whole book? <a href=\"/share-a-book\">Send all the pages at once</a>.</span>"
+ },
+ {
+  "name": "train-start-at-home-town",
+  "find": "if(r===\"home\"){drawLine();arrive();",
+  "replace": "if(r===\"home\"){if(window.ttHomeSlug){const hi=lineStops().findIndex(s=>s.town&&s.town.slug===window.ttHomeSlug);if(hi>=0)rideAt=hi;}drawLine();{const l0=document.getElementById(\"line\");if(l0)l0.scrollLeft=Math.max(0,STOP_PAD+rideAt*STOP_GAP-l0.clientWidth/2);}arrive();"
+ },
+ {
+  "name": "train-no-auto-tour-at-home-town",
+  "find": "setTimeout(()=>{if(document.getElementById(\"line\")&&!tourT)setTour(true);},2600);}",
+  "replace": "setTimeout(()=>{if(document.getElementById(\"line\")&&!tourT&&!window.ttHomeHold)setTour(true);},2600);}"
+ },
+ {
+  "name": "train-ride-to-slug",
+  "find": "let tourT=null;",
+  "replace": "let tourT=null;window.ttRideToSlug=function(slug){const i=lineStops().findIndex(s=>s.town&&s.town.slug===slug);if(i<0||!document.getElementById(\"line\"))return false;setTour(false);if(i!==rideAt)rideTo(i);else drawStopCard();return true;};"
+ },
+ {
+  "name": "train-stopcard-label",
+  "find": "const t=s.town;c.innerHTML=`<div class=\"stopcard\"><div class=\"stack\"><span class=\"now\">Now stopping at</span>",
+  "replace": "const t=s.town;c.innerHTML=`<div class=\"stopcard\"><div class=\"stack\"><span class=\"now\">${window.ttHomeSlug===t.slug&&window.ttHomeWhy?esc(window.ttHomeWhy):\"Now stopping at\"}</span>"
  }
 ]

@@ -5,6 +5,7 @@
    4. Remembrance + clippings review queue on the #admin page
    5. Sports & Teams on each town page (only when the town has teams)
    6. Honour Pages: order form (photos + story → Stripe), offer after a family adds someone, admin review queue
+   9. Train start: lands on the signed-in visitor's home town, else the stop matching their location
    8. Whole-book upload (/share-a-book): many page photos at once → private book-pages bucket; admin "Book uploads" queue
    7. Homepage "Recently remembered" carousel (Honour Pages first, then the newest names, max 3 per town)
    Nothing here can break the main app: every step is wrapped, and the app never depends on it. */
@@ -746,6 +747,35 @@
       .then(function () { b.disabled = false; });
   }
 
+  /* ---------- 9: where the train starts ---------- */
+  // 1) Signed in with a home town saved (Family trees → Your home town): "Welcome home".
+  // 2) Otherwise the stop matching the town Vercel sees for their connection (/api/near): "The closest stop to you".
+  // Looked up once per visit; nothing is stored on our side.
+  function signedInHomeTown() {
+    try {
+      var raw = localStorage.getItem("sb-zpqwrzsgpwwjrlbnfynn-auth-token");
+      var u = raw && JSON.parse(raw).user;
+      var ht = u && u.user_metadata && u.user_metadata.home_town;
+      return /^[a-z0-9-]+$/.test(ht || "") ? ht : null;
+    } catch (e) { return null; }
+  }
+  function landTrain(slug, why) {
+    window.ttHomeSlug = slug; window.ttHomeWhy = why; window.ttHomeHold = true;
+    if (window.ttRideToSlug) window.ttRideToSlug(slug); // only moves the train when the homepage line is showing
+  }
+  function trainStart() {
+    var home = signedInHomeTown();
+    if (home) return landTrain(home, "Welcome home");
+    var cached = null;
+    try { cached = JSON.parse(sessionStorage.getItem("tt-near") || "null"); } catch (e) {}
+    if (cached) { if (cached.slug) landTrain(cached.slug, "The closest stop to you"); return; }
+    fetch("/api/near", { credentials: "omit" }).then(function (r) { return r.json(); }).then(function (j) {
+      try { sessionStorage.setItem("tt-near", JSON.stringify({ slug: j.slug || null })); } catch (e) {}
+      if (j && j.slug && !signedInHomeTown()) landTrain(j.slug, "The closest stop to you");
+    }).catch(function () {});
+  }
+  window.ttHomeTownChanged = function (slug) { try { sessionStorage.removeItem("tt-near"); } catch (e) {} if (slug) { window.ttHomeSlug = slug; window.ttHomeWhy = "Welcome home"; window.ttHomeHold = true; } };
+
   /* ---------- hook into the app ---------- */
   function onView() {
     try {
@@ -778,6 +808,7 @@
         else done(fallback(t));
       });
     });
+    if (window.ttRideToSlug) { try { trainStart(); } catch (e) {} } // main app page only
     var v = $("#view");
     if (v && !$(".rm", v)) {
       new MutationObserver(function () { onView(); }).observe(v, { childList: true });
