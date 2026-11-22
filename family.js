@@ -54,9 +54,15 @@
   async function towns() {
     if (townsCache) return townsCache;
     await loadSB();
-    const { data, error } = await sb.from("towns").select("slug,name,prov").eq("hidden", false).order("name");
-    if (error) throw error;
-    townsCache = data || [];
+    // Page through every town: the API returns at most 1000 rows per call.
+    const all = [];
+    for (let from = 0, step = 1000; ; from += step) {
+      const { data, error } = await sb.from("towns").select("slug,name,prov").eq("hidden", false).order("name").order("slug").range(from, from + step - 1);
+      if (error) throw error;
+      all.push(...(data || []));
+      if (!data || data.length < step) break;
+    }
+    townsCache = all;
     return townsCache;
   }
   const errMsg = (e) => (e && (e.message || e.error_description)) || String(e);
