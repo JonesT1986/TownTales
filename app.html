@@ -348,9 +348,10 @@ if(document.getElementById("tl-list")||document.getElementById("aibar"))route();
 const live={
 h(extra){return Object.assign({apikey:CFG.anon,Authorization:"Bearer "+CFG.anon,"Content-Type":"application/json"},extra||{});},
 async get(path){const r=await fetch(CFG.url+"/rest/v1/"+path,{headers:this.h()});if(!r.ok)throw new Error(await r.text());return r.json();},
+async getAll(path){const out=[],step=1000;for(let from=0;;from+=step){const r=await fetch(CFG.url+"/rest/v1/"+path,{headers:this.h({"Range-Unit":"items",Range:from+"-"+(from+step-1)})});if(!r.ok)throw new Error(await r.text());const rows=await r.json();out.push(...rows);if(rows.length<step)return out;}},
 async post(table,row){const r=await fetch(CFG.url+"/rest/v1/"+table,{method:"POST",headers:this.h({Prefer:"return=minimal"}),body:JSON.stringify(row)});if(!r.ok)throw new Error(await r.text());},
 async load(){
-const [towns,stats]=await Promise.all([this.get("towns?hidden=eq.false&select=slug,name,prov,est,line,intro,hidden,timeline_status,timeline_built_at,created_at&order=name"),this.get("town_stats?select=*")]);
+const [towns,stats]=await Promise.all([this.getAll("towns?hidden=eq.false&select=slug,name,prov,est,line,intro,hidden,timeline_status,timeline_built_at,created_at&order=name,slug"),this.getAll("town_stats?select=*&order=slug")]);
 S.towns=towns;S.stats={};stats.forEach(s=>{S.stats[s.slug]=s;S.meta[s.slug]={timeline_status:s.timeline_status,timeline_built_at:s.timeline_built_at};});},
 async ensureTown(slug){if(loadedTowns.has(slug))return;
 const [items,tl]=await Promise.all([this.get(`items?town=eq.${encodeURIComponent(slug)}&status=eq.published&select=id,town,kind,title,body,year,date_label,image_url,source,source_url,contributor,origin,status,created_at&order=created_at.desc`),this.get(`timeline?town=eq.${encodeURIComponent(slug)}&select=*&order=year,sort`)]);

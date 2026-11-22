@@ -439,7 +439,7 @@
       '<p class="small muted" id="lk-cap"></p><div id="lk-out" class="stack"></div>';
     after.parentNode.insertBefore(sec, after.nextSibling);
     var towns = [];
-    get("towns?select=slug,name,prov&order=name", true).then(function (rows) {
+    get("towns?select=slug,name,prov&order=name,slug", true).then(function (rows) {
       towns = rows || [];
       $("#lk-towns", sec).innerHTML = towns.map(function (t) { return '<option value="' + esc(t.name + ", " + t.prov) + '">'; }).join("");
     }).catch(function () {});

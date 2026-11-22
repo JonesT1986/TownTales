@@ -26,16 +26,25 @@ function supa() {
   creds = url && key ? { url, key } : false;
   return creds;
 }
-async function q(path) {
+// all=true pages through results: the API returns at most 1000 rows per call.
+async function q(path, all) {
   const c = supa();
   if (!c) throw new Error('no db config');
-  const ctl = new AbortController();
-  const t = setTimeout(() => ctl.abort(), 4000);
-  try {
-    const r = await fetch(c.url + '/rest/v1/' + path, { headers: { apikey: c.key, Authorization: 'Bearer ' + c.key }, signal: ctl.signal });
-    if (!r.ok) throw new Error('db ' + r.status);
-    return await r.json();
-  } finally { clearTimeout(t); }
+  const out = [];
+  for (let from = 0, step = 1000; ; from += step) {
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), 4000);
+    let rows;
+    try {
+      const h = { apikey: c.key, Authorization: 'Bearer ' + c.key };
+      if (all) { h['Range-Unit'] = 'items'; h.Range = from + '-' + (from + step - 1); }
+      const r = await fetch(c.url + '/rest/v1/' + path, { headers: h, signal: ctl.signal });
+      if (!r.ok) throw new Error('db ' + r.status);
+      rows = await r.json();
+    } finally { clearTimeout(t); }
+    out.push(...rows);
+    if (!all || rows.length < step) return out;
+  }
 }
 
 // Run page.js against a capturing response so we can edit its HTML.
@@ -146,7 +155,7 @@ module.exports = async (req, res) => {
       const url = new URL(req.url, 'http://localhost');
       const slug = String(url.searchParams.get('slug') || '').toLowerCase();
       const archive = url.searchParams.get('sub') === 'archive';
-      const towns = await q('towns?select=slug,name,prov&hidden=eq.false&order=name.asc');
+      const towns = await q('towns?select=slug,name,prov&hidden=eq.false&order=name.asc,slug.asc', true);
       const inject = [];
       let main = '';
 
