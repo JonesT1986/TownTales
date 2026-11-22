@@ -103,6 +103,17 @@ textarea{min-height:140px;resize:vertical}
 .up-link ol{margin:6px 0 0 1.2em;padding:0}
 .up-link li{margin:2px 0}
 .up-easy .btn[type=submit]{font-size:1.15rem;padding:14px 26px}
+.tpick{position:relative}
+.tpick [hidden]{display:none!important}
+.tpick input[type=search]{width:100%;box-sizing:border-box;font:inherit;font-size:1.08rem;padding:12px 14px;border:2px solid var(--rule);border-radius:3px;background:#FFFEFA;color:var(--ink);-webkit-appearance:none;appearance:none}
+.tpick input[type=search]:focus{border-color:var(--ink);outline:none}
+.tpick-list{list-style:none;margin:6px 0 0;padding:0;border:2px solid var(--ink);background:#FFFEFA;max-height:340px;overflow:auto}
+.tpick-list li{margin:0}
+.tpick-list button{display:block;width:100%;text-align:left;font:inherit;font-size:1.08rem;padding:13px 14px;border:0;border-bottom:1px solid var(--rule);background:none;color:var(--ink);cursor:pointer}
+.tpick-list button:hover,.tpick-list button:focus{background:#FBF0EA;outline:none}
+.tpick-list .none{padding:13px 14px;color:var(--ink-2)}
+.tpick-chosen{display:flex;align-items:center;justify-content:space-between;gap:10px;border:2px solid var(--red);background:#FBF0EA;padding:12px 14px;font-size:1.1rem;font-weight:700}
+.tpick-chosen button{font:inherit;font-size:.98rem;font-weight:400;background:none;border:0;color:var(--denim);text-decoration:underline;cursor:pointer;padding:4px}
 .pill{display:inline-block;font:700 .82rem/1 var(--hand);padding:5px 8px;border-radius:2px;white-space:nowrap}
 .pill.doc{background:#E4EDE2;color:var(--green)}
 .pill.mem{background:#F5E2DC;color:var(--red-2);font-style:italic}
@@ -394,6 +405,15 @@ const countItems=t=>LIVE&&S.stats&&S.stats[t]&&!loadedTowns.has(t)?S.stats[t].it
 const countTl=t=>LIVE&&S.stats&&S.stats[t]&&!loadedTowns.has(t)?S.stats[t].entries:tlOf(t).length;
 const pending=()=>S.items.filter(i=>i.status==="pending");
 const plural=(n,a,b)=>`${n} ${n===1?a:b}`;
+function townPicker(){const q=document.getElementById("u-town-q"),list=document.getElementById("u-town-list"),hid=document.getElementById("u-town"),find=document.getElementById("u-town-find"),chosen=document.getElementById("u-town-chosen");if(!q)return;
+const pick=t=>{upTown=t.slug;hid.value=t.slug;document.getElementById("u-town-name").textContent=t.name+", "+t.prov;chosen.hidden=false;find.hidden=true;list.hidden=true;};
+const draw=()=>{const v=norm(q.value);if(!v){list.hidden=true;list.innerHTML="";return;}
+const all=liveTowns();const starts=all.filter(t=>norm(t.name).startsWith(v));const has=all.filter(t=>!norm(t.name).startsWith(v)&&norm(t.name).includes(v));const hits=starts.concat(has).slice(0,12);
+list.innerHTML=hits.length?hits.map(t=>`<li><button type="button" data-slug="${esc(t.slug)}">${esc(t.name)}, ${esc(provName(t.prov))}</button></li>`).join(""):`<li class="none">No town called "${esc(q.value)}" yet. Check the spelling, or <a href="#addtown" data-act="addpre" data-town="${esc(q.value)}">add it</a>.</li>`;list.hidden=false;};
+q.addEventListener("input",draw);
+q.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();const b=list.querySelector("button");if(b)b.click();}});
+list.addEventListener("click",e=>{const b=e.target.closest("button[data-slug]");if(!b)return;const t=town(b.dataset.slug);if(t)pick(t);});
+document.getElementById("u-town-change").addEventListener("click",()=>{upTown="";hid.value="";chosen.hidden=true;find.hidden=false;q.value="";list.hidden=true;q.focus();});}
 function townOpts(sel){return liveTowns().map(t=>`<option value="${esc(t.slug)}"${t.slug===sel?" selected":""}>${esc(t.name)}, ${esc(t.prov)}</option>`).join("");}
 function sign(t){const bits=[provName(t.prov)];if(t.est)bits.push("Est. "+t.est);if(t.line)bits.push(t.line);return `<div class="sign" aria-label="Welcome to ${esc(t.name)}"><div class="board"><i>Welcome to</i><b>${esc(t.name)}</b><span>${bits.map(esc).join(" · ")}</span></div><div class="posts"></div></div>`;}
 function townCard(t){return `<a class="towncard" href="#t-${esc(t.slug)}"><b>${esc(t.name)}</b><span class="muted">${esc(provName(t.prov))}</span><span class="muted">${plural(countItems(t.slug),"thing","things")} in the archive · ${plural(countTl(t.slug),"timeline entry","timeline entries")}</span></a>`;}
@@ -418,7 +438,7 @@ function shareBlock(t,compact){const u=shareURL(t),id=compact?"x":"";return `<di
 <div class="postbox" id="sh-post${id}">${esc(sharePost(t))}</div></div>`;}
 const donateBand=name=>`<section class="wrap"><div class="share" style="flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:space-between"><div class="stack" style="gap:6px;flex:1 1 320px"><h2>Help keep this going</h2><p>Hosting, storage and the work of digging up old records all cost money. If ${name?esc(name)+"'s":"small-town"} history matters to you, a few dollars keeps it online.</p></div><div class="btns"><a class="btn" href="#donate">Donate</a></div></div></section>`;
 const notFound=()=>`<section class="wrap stack"><h1>We couldn't find that page</h1><p><a href="#towns">See all towns</a></p></section>`;
-let prefill={};
+let prefill={};let upTown="";
 const P={};
 P.home=()=>{const ts=liveTowns();const nItems=ts.reduce((a,t)=>a+countItems(t.slug),0);return `
 <section class="line-wrap">
@@ -536,12 +556,16 @@ ${i.body?`<p class="body">${esc(i.body)}</p>`:""}
 ${used.length?`<div class="stack"><h2>On the timeline</h2><div class="stack">${used.map(entryRow).join("")}</div></div>`:`<p class="muted">Not on the timeline yet. It's used the next time the timeline is rebuilt, if it has a date to hang on.</p>`}
 <div class="btns"><a class="btn alt" href="#t-${esc(t.slug)}/archive">Back to the archive</a><button class="btn alt" data-act="correct" data-id="${esc(i.id)}">Report a problem</button></div>
 </section>`;};
-P.upload=()=>{const sel=prefill.town||(liveTowns()[0]||{}).slug;const has=liveTowns().length;return `
+P.upload=()=>{if(prefill.town&&town(prefill.town))upTown=prefill.town;const sel=upTown&&town(upTown)?upTown:"";const has=liveTowns().length;return `
 <section class="wrap stack up-easy"><p class="eyebrow">Share history</p><h1>Add something to your town's history</h1>
 <p class="lede">An old photo, a newspaper clipping, a story only you remember, or a link to a website. Fill in what you can. Nothing needs to be perfect.</p>
 <div class="up-help"><span class="t">How it works</span>Fill in the boxes below, top to bottom, then press the big <b>Send it to TownTales</b> button at the bottom. We look at everything before it goes on the website, so you can't break anything. Stuck? <a href="/contact">Send us a note</a> and we'll help.</div>
 ${has?`<form class="formbox" data-form="upload" novalidate>
-<div class="field"><span class="up-step">Step 1</span><label for="u-town">Which town is it about?</label><select id="u-town" name="town">${townOpts(sel)}</select><span class="hint">Click the box to see the list. Not there? <a href="#addtown">Add your town</a> first.</span></div>
+<div class="field tpick" id="u-tpick"><span class="up-step">Step 1</span><label for="u-town-q">Which town is it about?</label>
+<input type="hidden" id="u-town" name="town" value="${esc(sel)}">
+<div class="tpick-chosen" id="u-town-chosen"${sel?"":" hidden"}><span id="u-town-name">${sel&&town(sel)?esc(town(sel).name+", "+town(sel).prov):""}</span><button type="button" id="u-town-change">Change town</button></div>
+<div id="u-town-find"${sel?" hidden":""}><input type="search" id="u-town-q" autocomplete="off" autocapitalize="words" enterkeyhint="search" placeholder="Type your town's name"><ul class="tpick-list" id="u-town-list" hidden></ul>
+<span class="hint">Type the first few letters, then tap your town in the list. Not there? <a href="#addtown">Add your town</a> first.</span></div></div>
 <fieldset class="stack" style="border:0;padding:0;margin:0"><legend class="lbl" style="margin-bottom:10px"><span class="up-step">Step 2</span>What do you have? Tap one.</legend>
 <div class="kinds">${Object.entries(UPKINDS).map(([k,[ic,l,d]],n)=>`<label class="kind"><input type="radio" name="kind" value="${k}"${n===0?" checked":""}><span class="ico" aria-hidden="true">${ic}</span><span><b>${esc(l)}</b>${esc(d)}</span></label>`).join("")}</div>
 <p class="hint">Have a website link you want to add? Choose <b>A website link</b> above, or paste it in the link box further down.</p></fieldset>
@@ -663,7 +687,7 @@ if(r==="home"){drawLine();arrive();const ln=document.getElementById("line");if(l
 if(r==="timeline"){drawTimeline();const q=document.getElementById("f-q");if(q)q.addEventListener("input",()=>{tf.q=q.value;drawTimeline();});}
 if(r==="archive"){drawArchive();[["a-q","input","q"],["a-kind","change","kind"],["a-sort","change","sort"]].forEach(([id,ev,k])=>{const el=document.getElementById(id);if(el)el.addEventListener(ev,()=>{af[k]=el.value;drawArchive();});});}
 if(r==="towns"){drawTowns();document.getElementById("tw-q").addEventListener("input",e=>{townFilter.q=e.target.value;drawTowns();});document.getElementById("tw-prov").addEventListener("change",e=>{townFilter.prov=e.target.value;drawTowns();});}
-if(r==="upload"){const f=document.querySelector('[data-form="upload"]');if(f){f.addEventListener("change",ev=>{if(ev.target.name==="kind")kindUI(f);});document.getElementById("u-file").addEventListener("change",onPhoto);kindUI(f);}}
+if(r==="upload"){const f=document.querySelector('[data-form="upload"]');if(f){townPicker();f.addEventListener("change",ev=>{if(ev.target.name==="kind")kindUI(f);});document.getElementById("u-file").addEventListener("change",onPhoto);kindUI(f);}}
 }
 function kindUI(f){const k=(f.querySelector('input[name="kind"]:checked')||{}).value;document.getElementById("u-filebox").hidden=k==="story"||k==="link";document.getElementById("u-urlbox").hidden=false;const ul=document.getElementById("u-url-l");if(ul)ul.innerHTML=k==="link"?'Paste the website address here':'Have a website link you want to add? Paste it here <span class="hint">(optional)</span>';
 document.getElementById("u-body-l").textContent=k==="story"?"Your story":k==="document"?"What does it say? (a summary or the text itself)":"Tell us about it";}
@@ -709,6 +733,7 @@ const t={slug,name,prov:val(f,"prov"),est,line:val(f,"line"),intro:val(f,"intro"
 try{await DB.addTown(t);}catch(err){return fail(e,"Couldn't save that just now. Please try again in a minute.");}
 done("at-done",`<div class="notice ok"><h3>${esc(name)} is the newest stop on the line. Thank you, ${esc(val(f,"you"))}.</h3><p>Its page is live. Best next step: add the first photo or story, then share the page in your town's Facebook group.</p><div class="btns"><a class="btn" href="#upload" data-act="settown" data-town="${esc(slug)}">Add the first thing</a><a class="btn alt" href="#t-${esc(slug)}">Go to ${esc(name)}'s page</a></div></div>${shareBlock(t,true)}`,f);};
 F.upload=async f=>{if(val(f,"website"))return;const e="u-err";const kind=(f.querySelector('input[name="kind"]:checked')||{}).value;
+if(!val(f,"town")||!town(val(f,"town")))return fail(e,"Please pick your town in Step 1: type its name, then tap it in the list.");
 if(kind==="photo"&&!photoData)return fail(e,"Choose a photo first.");
 if(!val(f,"title"))return fail(e,"Please give it a short name in Step 3.");
 if(kind==="story"&&val(f,"body").length<30)return fail(e,"Tell us a little more of the story.");
