@@ -87,6 +87,22 @@ textarea{min-height:140px;resize:vertical}
 .kind{flex:1 1 150px;border:2px solid var(--rule);border-radius:3px;padding:12px 14px;background:#FFFEFA;cursor:pointer;display:flex;gap:10px;align-items:center;font-weight:700}
 .kind:has(input:checked){border-color:var(--red);background:#FBF0EA}
 .kind input{width:22px;height:22px;accent-color:var(--red);flex:none;margin:0}
+.up-easy{font-size:1.08rem}
+.up-easy .field label,.up-easy legend.lbl{font-size:1.12rem}
+.up-easy .hint{font-size:.98rem;line-height:1.45}
+.up-easy input[type=text],.up-easy input[type=email],.up-easy select,.up-easy textarea{font-size:1.08rem;padding:12px 14px}
+.up-step{display:block;font:700 .9rem/1 var(--hand);color:var(--red);letter-spacing:.04em;text-transform:uppercase;margin:0 0 4px}
+.up-help{border:2px solid var(--ink);background:#FFFEFA;padding:12px 16px;font-size:1.02rem}
+.up-help .t{display:block;font-weight:700;margin-bottom:2px}
+.up-easy .kinds{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:560px){.up-easy .kinds{grid-template-columns:1fr}}
+.up-easy .kind{align-items:flex-start;padding:14px 16px;font-weight:400}
+.up-easy .kind b{display:block;font-size:1.1rem;margin-bottom:2px}
+.up-easy .kind .ico{font-size:1.5rem;line-height:1;flex:none}
+.up-link{border:2px dashed var(--red);background:#FBF0EA;padding:14px 16px}
+.up-link ol{margin:6px 0 0 1.2em;padding:0}
+.up-link li{margin:2px 0}
+.up-easy .btn[type=submit]{font-size:1.15rem;padding:14px 26px}
 .pill{display:inline-block;font:700 .82rem/1 var(--hand);padding:5px 8px;border-radius:2px;white-space:nowrap}
 .pill.doc{background:#E4EDE2;color:var(--green)}
 .pill.mem{background:#F5E2DC;color:var(--red-2);font-style:italic}
@@ -284,6 +300,7 @@ const CFG={url:"https://zpqwrzsgpwwjrlbnfynn.supabase.co",anon:"eyJhbGciOiJIUzI1
 const LIVE=!!(CFG.url&&CFG.anon);
 const PROVS=[["SK","Saskatchewan"],["MB","Manitoba"],["AB","Alberta"],["BC","British Columbia"],["ON","Ontario"],["QC","Quebec"],["NB","New Brunswick"],["NS","Nova Scotia"],["PE","Prince Edward Island"],["NL","Newfoundland and Labrador"],["YT","Yukon"],["NT","Northwest Territories"],["NU","Nunavut"]];
 const KINDS={photo:"Photo",story:"Story or memory",document:"Document or clipping",link:"Link to something online"};
+const UPKINDS={photo:["📷","A photo","An old picture, or a phone photo of one."],story:["✍️","A story or memory","Type it in, like you'd tell a friend."],document:["📄","A clipping or document","Newspaper story, letter, booklet page, certificate."],link:["🔗","A website link","Found something about your town online? Share the address."]};
 const KEY="towntales-v3";
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const norm=s=>String(s||"").toLowerCase().replace(/[^\p{L}\p{N}\s]/gu,"").replace(/\s+/g," ").trim();
@@ -520,25 +537,28 @@ ${used.length?`<div class="stack"><h2>On the timeline</h2><div class="stack">${u
 <div class="btns"><a class="btn alt" href="#t-${esc(t.slug)}/archive">Back to the archive</a><button class="btn alt" data-act="correct" data-id="${esc(i.id)}">Report a problem</button></div>
 </section>`;};
 P.upload=()=>{const sel=prefill.town||(liveTowns()[0]||{}).slug;const has=liveTowns().length;return `
-<section class="wrap stack"><p class="eyebrow">Share history</p><h1>Add something to your town's archive</h1>
-<p class="lede">An old photo, a clipping, a page from an anniversary booklet, or a story only you remember. It goes into the town's archive, and the timeline is rebuilt to include it.</p>
+<section class="wrap stack up-easy"><p class="eyebrow">Share history</p><h1>Add something to your town's history</h1>
+<p class="lede">An old photo, a newspaper clipping, a story only you remember, or a link to a website. Fill in what you can. Nothing needs to be perfect.</p>
+<div class="up-help"><span class="t">How it works</span>Fill in the boxes below, top to bottom, then press the big <b>Send it to TownTales</b> button at the bottom. We look at everything before it goes on the website, so you can't break anything. Stuck? <a href="/contact">Send us a note</a> and we'll help.</div>
 ${has?`<form class="formbox" data-form="upload" novalidate>
-<div class="field"><label for="u-town">Town</label><select id="u-town" name="town">${townOpts(sel)}</select><span class="hint">Not listed? <a href="#addtown">Add your town</a> first.</span></div>
-<fieldset class="stack" style="border:0;padding:0;margin:0"><legend class="lbl" style="margin-bottom:10px">What are you sharing?</legend>
-<div class="kinds">${Object.entries(KINDS).map(([k,l],n)=>`<label class="kind"><input type="radio" name="kind" value="${k}"${n===0?" checked":""}> ${esc(l)}</label>`).join("")}</div></fieldset>
+<div class="field"><span class="up-step">Step 1</span><label for="u-town">Which town is it about?</label><select id="u-town" name="town">${townOpts(sel)}</select><span class="hint">Click the box to see the list. Not there? <a href="#addtown">Add your town</a> first.</span></div>
+<fieldset class="stack" style="border:0;padding:0;margin:0"><legend class="lbl" style="margin-bottom:10px"><span class="up-step">Step 2</span>What do you have? Tap one.</legend>
+<div class="kinds">${Object.entries(UPKINDS).map(([k,[ic,l,d]],n)=>`<label class="kind"><input type="radio" name="kind" value="${k}"${n===0?" checked":""}><span class="ico" aria-hidden="true">${ic}</span><span><b>${esc(l)}</b>${esc(d)}</span></label>`).join("")}</div>
+<p class="hint">Have a website link you want to add? Choose <b>A website link</b> above, or paste it in the link box further down.</p></fieldset>
 <div class="field" id="u-filebox"><label for="u-file">Photo or picture of the page</label><input type="file" id="u-file" name="file" accept="image/*"><span class="hint">A phone photo of a clipping or a booklet page works fine.</span><div id="u-prev"></div></div>
-<div class="field"><label for="u-title">Give it a short title</label><input type="text" id="u-title" name="title" placeholder="e.g. Main Street after the 1947 blizzard"></div>
-<div class="field"><label for="u-body" id="u-body-l">Tell us about it</label><textarea id="u-body" name="body" placeholder="Who's in it, what was happening, anything you know."></textarea></div>
+<div class="field"><span class="up-step">Step 3</span><label for="u-title">Give it a short name</label><input type="text" id="u-title" name="title" placeholder="e.g. Main Street after the 1947 blizzard"><span class="hint">A few words, like a caption under a picture.</span></div>
+<div class="field"><label for="u-body" id="u-body-l">Tell us about it</label><textarea id="u-body" name="body" rows="5" placeholder="Who's in it, what was happening, anything you know."></textarea><span class="hint">Write it the way you'd say it. Spelling doesn't matter.</span></div>
 <div class="grid2">
-<div class="field"><label for="u-when">When? <span class="hint">(a rough year is fine)</span></label><input type="text" id="u-when" name="when" placeholder="e.g. 1947, or 1950s"></div>
-<div class="field"><label for="u-source">Where is it from?</label><input type="text" id="u-source" name="source" placeholder="e.g. Grandma's album, the Leader-Post"></div>
+<div class="field"><label for="u-when">When was it? <span class="hint">(a guess is fine)</span></label><input type="text" id="u-when" name="when" placeholder="e.g. 1947, or 1950s"></div>
+<div class="field"><label for="u-source">Where did it come from?</label><input type="text" id="u-source" name="source" placeholder="e.g. Grandma's album, the Leader-Post"></div>
 </div>
-<div class="field" id="u-urlbox" hidden><label for="u-url">Link</label><input type="url" id="u-url" name="url" placeholder="https://"></div>
-<div class="grid2"><div class="field"><label for="u-name">Your name</label><input type="text" id="u-name" name="name"><span class="hint">Shown as "Shared by". Leave blank to stay anonymous.</span></div><div class="field"><label for="u-email">Your email</label><input type="email" id="u-email" name="email"><span class="hint">Only if we have a question. Never shown.</span></div></div>
-<label class="check"><input type="checkbox" name="rights"> This is mine to share (or it's from a public source), and TownTales can show it on the town's page with credit.</label>
+<div class="field up-link" id="u-urlbox"><label for="u-url" id="u-url-l">Have a website link you want to add? Paste it here <span class="hint">(optional)</span></label><input type="text" inputmode="url" autocomplete="off" id="u-url" name="url" placeholder="e.g. www.saskhistory.ca/wapella">
+<span class="hint">How to copy a link:<ol><li>Go to the web page you want to share.</li><li>Click the address bar at the very top of the screen (on a phone, press and hold it), then choose <b>Copy</b>.</li><li>Come back here, click in this box (on a phone, press and hold), and choose <b>Paste</b>.</li></ol></span></div>
+<span class="up-step">Step 4</span><div class="grid2"><div class="field"><label for="u-name">Your name</label><input type="text" id="u-name" name="name"><span class="hint">Shown as "Shared by". Leave blank to stay anonymous.</span></div><div class="field"><label for="u-email">Your email</label><input type="email" id="u-email" name="email"><span class="hint">Only if we have a question. Never shown.</span></div></div>
+<label class="check"><input type="checkbox" name="rights"> <span><b>Tick this box:</b> it's OK to share this (it's mine, or it's already public), and TownTales can show it on the town's page with credit.</span></label>
 <input type="text" name="website" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px" aria-hidden="true">
 <p class="err" id="u-err" role="alert"></p>
-<button class="btn" type="submit" id="u-go">Add to the archive</button>
+<button class="btn" type="submit" id="u-go">Send it to TownTales</button>
 </form><div id="u-done"></div>`:`<div class="notice info"><b>There are no towns yet.</b><p>Start with your town's page, then come back here.</p><div class="btns"><a class="btn" href="#addtown">Add your town</a></div></div>`}
 </section>`;};
 P.how=()=>`
@@ -645,7 +665,7 @@ if(r==="archive"){drawArchive();[["a-q","input","q"],["a-kind","change","kind"],
 if(r==="towns"){drawTowns();document.getElementById("tw-q").addEventListener("input",e=>{townFilter.q=e.target.value;drawTowns();});document.getElementById("tw-prov").addEventListener("change",e=>{townFilter.prov=e.target.value;drawTowns();});}
 if(r==="upload"){const f=document.querySelector('[data-form="upload"]');if(f){f.addEventListener("change",ev=>{if(ev.target.name==="kind")kindUI(f);});document.getElementById("u-file").addEventListener("change",onPhoto);kindUI(f);}}
 }
-function kindUI(f){const k=(f.querySelector('input[name="kind"]:checked')||{}).value;document.getElementById("u-filebox").hidden=k==="story"||k==="link";document.getElementById("u-urlbox").hidden=k!=="link";
+function kindUI(f){const k=(f.querySelector('input[name="kind"]:checked')||{}).value;document.getElementById("u-filebox").hidden=k==="story"||k==="link";document.getElementById("u-urlbox").hidden=false;const ul=document.getElementById("u-url-l");if(ul)ul.innerHTML=k==="link"?'Paste the website address here':'Have a website link you want to add? Paste it here <span class="hint">(optional)</span>';
 document.getElementById("u-body-l").textContent=k==="story"?"Your story":k==="document"?"What does it say? (a summary or the text itself)":"Tell us about it";}
 window.addEventListener("hashchange",route);
 let rideAt=0;
@@ -690,12 +710,14 @@ try{await DB.addTown(t);}catch(err){return fail(e,"Couldn't save that just now. 
 done("at-done",`<div class="notice ok"><h3>${esc(name)} is the newest stop on the line. Thank you, ${esc(val(f,"you"))}.</h3><p>Its page is live. Best next step: add the first photo or story, then share the page in your town's Facebook group.</p><div class="btns"><a class="btn" href="#upload" data-act="settown" data-town="${esc(slug)}">Add the first thing</a><a class="btn alt" href="#t-${esc(slug)}">Go to ${esc(name)}'s page</a></div></div>${shareBlock(t,true)}`,f);};
 F.upload=async f=>{if(val(f,"website"))return;const e="u-err";const kind=(f.querySelector('input[name="kind"]:checked')||{}).value;
 if(kind==="photo"&&!photoData)return fail(e,"Choose a photo first.");
-if(!val(f,"title"))return fail(e,"Give it a short title.");
+if(!val(f,"title"))return fail(e,"Please give it a short name in Step 3.");
 if(kind==="story"&&val(f,"body").length<30)return fail(e,"Tell us a little more of the story.");
-if(kind==="link"&&!safeUrl(val(f,"url")))return fail(e,"Add the link, starting with https://");
+let url=val(f,"url").replace(/\s+/g,"");if(url&&!/^https?:\/\//i.test(url))url="https://"+url.replace(/^\/+/,"");
+if(url&&!/^https?:\/\/[^\/\s.]+\.[^\/\s]+/i.test(url))return fail(e,"That link doesn't look right. Copy it from the address bar at the top of the web page and paste it again.");
+if(kind==="link"&&!url)return fail(e,"Paste the website address in the link box.");
 if(val(f,"email")&&!okEmail(val(f,"email")))return fail(e,"That email doesn't look right. You can leave it blank.");
 if(!f.elements.rights.checked)return fail(e,"Please tick the box to confirm it's OK to share.");
-const when=val(f,"when");const it={id:uid("i"),town:val(f,"town"),kind,title:val(f,"title"),body:val(f,"body"),year:yearOf(when),date_label:when,image_url:LIVE?"":(kind!=="story"&&kind!=="link"?photoData:""),source:val(f,"source"),source_url:kind==="link"?val(f,"url"):"",contributor:val(f,"name"),contact_email:val(f,"email"),origin:"community",status:"pending",created_at:now()};
+const when=val(f,"when");const it={id:uid("i"),town:val(f,"town"),kind,title:val(f,"title"),body:val(f,"body"),year:yearOf(when),date_label:when,image_url:LIVE?"":(kind!=="story"&&kind!=="link"?photoData:""),source:val(f,"source"),source_url:url,contributor:val(f,"name"),contact_email:val(f,"email"),origin:"community",status:"pending",created_at:now()};
 const btn=document.getElementById("u-go");btn.disabled=true;btn.textContent="Saving…";
 try{await DB.addItem(it,LIVE&&kind!=="story"&&kind!=="link"?photoBlob:null);}catch(err){btn.disabled=false;btn.textContent="Add to the archive";return fail(e,"Couldn't save that just now. Please try again in a minute.");}
 photoBlob=null;photoData="";const t=town(it.town)||{name:"",slug:it.town};
