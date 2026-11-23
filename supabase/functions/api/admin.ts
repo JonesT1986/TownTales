@@ -76,19 +76,3 @@ export async function rebuildDue({ db, json, queueRebuild }: Ctx, body: any) {
   queueRebuild(slug);
   return json({ ok: true, status: "queued", slug });
 }
-
-// Added Nov 22 2026: admin towns list (needs x-admin-key, checked in index.ts).
-//   towns → { q, letter, needs, limit, offset } → { rows, total, needs, needs_all, letters, stats_at }
-//   Filtering, counts and paging all happen in the database (public.admin_towns), so the
-//   1,000-row API cap never applies. Stats come from public.town_rebuild_stats (refreshed
-//   every 5 min, and per town the moment its timeline build finishes).
-export async function adminTowns({ db, json }: Ctx, body: any) {
-  const { data, error } = await db.rpc("admin_towns", {
-    p_q: String(body.q ?? "").slice(0, 80),
-    p_letter: String(body.letter ?? "").slice(0, 1),
-    p_needs: !!body.needs,
-    p_limit: Math.min(Math.max(parseInt(body.limit) || 100, 1), 500),
-    p_offset: Math.max(parseInt(body.offset) || 0, 0),
-  });
-  return error ? json({ error: error.message }, 500) : json(data);
-}

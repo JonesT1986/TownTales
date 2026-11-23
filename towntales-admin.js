@@ -4,7 +4,7 @@
    - Problem reports tab: open reports with Resolve (stamps the resolved date), Reopen, Delete; "show resolved" toggle.
    - Direct links from the daily email: #admin/item-<id> and #admin/report-<id> open and highlight that entry.
    - Towns tab (Nov 22 2026): "Needs rebuild" toggle with count, search box, A–Z letter bar, 100 towns per page,
-     status per town; a rebuilt town updates in place. Data comes from the api "towns" route (database-side filtering).
+     status per town; a rebuilt town updates in place. Data comes from the admin-towns edge function (database-side filtering).
    It uses the app's internals through window.TTapp. If that is missing it does nothing. */
 (function () {
   "use strict";
@@ -164,13 +164,20 @@
   };
 
   /* ---------- towns tab (Nov 22 2026): Needs-rebuild view, search, A–Z, paging ----------
-     Everything is filtered and counted in the database (api "towns" → public.admin_towns), one page
+     Everything is filtered and counted in the database (admin-towns function → public.admin_towns), one page
      at a time, so towns past the first 1,000 are never dropped. Typing only redraws the list, not the
      whole page, so the search box keeps its focus. */
   var townsOrig = A.towns;
   var PAGE = 100;
   var tf = { q: "", letter: "", needs: false, offset: 0, data: null, err: "", seq: 0, timer: 0, watch: {} };
   var LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ#".split("");
+  // Separate small edge function (supabase/functions/admin-towns), same admin key as the main api.
+  var TOWNS_URL = "https://zpqwrzsgpwwjrlbnfynn.supabase.co/functions/v1/admin-towns";
+  function townsApi(payload) {
+    var key = ""; try { key = sessionStorage.getItem("tt-admin") || ""; } catch (e) {}
+    return fetch(TOWNS_URL, { method: "POST", headers: { "Content-Type": "application/json", "x-admin-key": key }, body: JSON.stringify(payload) })
+      .then(function (r) { return r.ok ? r.json() : r.text().then(function (t) { var m = t; try { m = JSON.parse(t).error || t; } catch (e) {} throw new Error(m); }); });
+  }
 
   function whyNeeds(r) {
     var w = [];
@@ -215,7 +222,7 @@
   function loadTowns(keepOffset) {
     if (!keepOffset) tf.offset = 0;
     var my = ++tf.seq;
-    return live.api("towns", { q: tf.q, letter: tf.letter, needs: tf.needs, limit: PAGE, offset: tf.offset }).then(function (r) {
+    return townsApi({ q: tf.q, letter: tf.letter, needs: tf.needs, limit: PAGE, offset: tf.offset }).then(function (r) {
       if (my !== tf.seq) return;
       if (!r.rows.length && tf.offset > 0 && r.total > 0) { tf.offset = Math.max(0, Math.floor((r.total - 1) / PAGE) * PAGE); return loadTowns(true); }
       tf.err = ""; tf.data = r; drawTowns();
@@ -227,7 +234,7 @@
     tf.watch[slug] = true;
     (function poll() {
       setTimeout(function () {
-        live.api("towns", { q: slug, limit: 20 }).then(function (r) {
+        townsApi({ q: slug, limit: 20 }).then(function (r) {
           var row = (r.rows || []).filter(function (x) { return x.slug === slug; })[0];
           if (row && row.status === "rebuilding" && Date.now() - started < 240000) return poll();
           delete tf.watch[slug];
