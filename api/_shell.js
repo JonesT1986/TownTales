@@ -9,7 +9,7 @@ const SB = 'https://zpqwrzsgpwwjrlbnfynn.supabase.co';
 const KEY = 'sb_publishable_j_Vw3H_ebMP7WL4uZwRowQ_u-DX37QU'; // public key, same as api/_towns.js; RLS limits what it can read
 const PROV = { SK: 'Saskatchewan', MB: 'Manitoba', AB: 'Alberta', BC: 'British Columbia', ON: 'Ontario', QC: 'Quebec', NB: 'New Brunswick', NS: 'Nova Scotia', PE: 'Prince Edward Island', NL: 'Newfoundland and Labrador', YT: 'Yukon', NT: 'Northwest Territories', NU: 'Nunavut' };
 const PROV_SLUG = Object.fromEntries(Object.entries(PROV).map(([c, n]) => [c, n.toLowerCase().replace(/ /g, '-')]));
-const ASSET_V = '12';
+const ASSET_V = '13';
 
 const esc = (v) => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 const jsonLd = (o) => '<script type="application/ld+json">' + JSON.stringify(o).replace(/</g, '\\u003c') + '</script>';
