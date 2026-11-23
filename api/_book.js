@@ -8,7 +8,19 @@ const { SITE, PROV, PROV_SLUG, esc, q, page, send, notFound } = require('./_shel
 // Rule: the cover is always the main street. No photo yet → illustrated cover + a request for one, and the town is
 // listed in NEEDS_MAIN_STREET so it can be reported.
 const BOOKS = {
-  'wapella-sk': { pages: 77, sample: null, mainStreet: null },
+  'wapella-sk': {
+    pages: 78, sample: null, mainStreet: null,
+    // "Look inside" images: /book-preview/<slug>/<file>.jpg, rendered from the print PDF (KDP edition, Nov 23 2026).
+    look: {
+      title: 'Wapella: Railway Town, Prairie Crossroads', format: '8.5 × 11 in · 78 pages · black & white inside',
+      pages: [
+        ['p3', 'Title page'], ['p7', 'Contents'], ['p9', 'Before You Begin'], ['p13', 'Chapter 1: Before the Townsite'],
+        ['p14', 'Treaty 4 and the meaning of “Wapella”'], ['p19', 'Chapter 3: Crofters and Pioneers'], ['p23', 'Chapter 4: The Colony'],
+        ['p24', 'Abraham Klenman and the families'], ['p25', 'The farmer-rabbi; life on a colony farm'], ['p49', 'The Roll of Remembrance'],
+        ['p67', 'Wapella at a Glance'],
+      ],
+    },
+  },
 };
 // Until each town has its own, every cover shows Wapella's main street, with a note under it.
 // Put the photo at /img/wapella-main-street.jpg (in the site folder: img/wapella-main-street.jpg).
@@ -35,11 +47,32 @@ function orderSection(town) {
   const eds = printCfg();
   if (!eds.length) return '';
   return `<section class="wrap stack" id="order"><h2>Order the printed book</h2>
-<p>Pick a cover. You'll pay on Stripe's secure page, add your shipping address there, and Stripe emails you a receipt.</p>
+<p>Pick a cover. You'll pay on Stripe's secure page, add your shipping address there, and Stripe emails you a receipt.${town.slug && BOOKS[town.slug] && BOOKS[town.slug].look ? ` Not sure yet? <a href="/${esc(town.slug)}/book/preview">Look inside the book first</a>.` : ''}</p>
 <div class="bk-eds">${eds.map((e) => `<div class="rm-cem"><h3>${esc(e.name)}${e.price ? ` <span class="muted">${esc(e.price)}</span>` : ''}</h3><p>${esc(e.blurb)}</p>
 <p style="margin-top:10px"><a class="btn" href="${esc(orderUrl(e.link, town.slug))}" rel="noopener">Order the ${esc(e.name.toLowerCase())}${e.price ? ' · ' + esc(e.price) : ''}</a></p></div>`).join('')}</div>
 <p class="small muted">Each copy is printed after you order, with ${esc(town.name)}'s history as it stands that day. Shipping and any tax are added at checkout. Questions? Email <a href="mailto:towntalesinfo@gmail.com">towntalesinfo@gmail.com</a>.</p>
 </section>`;
+}
+function lookPage(res, town, book) {
+  const L = book.look, prov = PROV[town.prov] || town.prov, base = `/book-preview/${town.slug}/`;
+  const eds = printCfg();
+  const buy = eds.length ? `<div class="btns">${eds.map((e) => `<a class="btn" href="${esc(orderUrl(e.link, town.slug))}" rel="noopener">Order the ${esc(e.name.toLowerCase())}${e.price ? ' · ' + esc(e.price) : ''}</a>`).join('')}</div>`
+    : `<div class="btns"><a class="btn" href="/${esc(town.slug)}/book#request">Request the book</a></div>`;
+  const main = `<section class="wrap stack" style="padding-top:22px">
+<p class="crumbs"><a href="/">TownTales</a> › <a href="/${esc(town.slug)}">${esc(town.name)}</a> › <a href="/${esc(town.slug)}/book">The ${esc(town.name)} Book</a> › Look inside</p>
+<div class="bk-hero"><figure class="bk-fig"><img class="lk-cover" src="${base}cover.jpg" alt="Front cover of ${esc(L.title)}" width="936" height="1212"></figure>
+<div class="stack"><p class="eyebrow">Look inside</p><h1>${esc(L.title)}</h1>
+<p class="lede">Turn through real pages from the printed book: ${esc(L.format)}. Every fact is sourced, and the Roll of Remembrance names ${esc(town.name)}’s people one by one.</p>
+${buy}<p class="small muted">Printed when you order. Shipping and any tax are added at checkout.</p></div></div></section>
+<section class="wrap stack"><h2>Sample pages</h2><p class="small muted">Tap a page to see it full size.</p>
+<div class="lk-grid">${L.pages.map(([f, cap], i) => `<figure class="lk-pg"><a href="${base}${f}.jpg" target="_blank" rel="noopener"><img src="${base}${f}.jpg" alt="Page: ${esc(cap)}" loading="${i < 3 ? 'eager' : 'lazy'}" width="935" height="1210"></a><figcaption>${esc(cap)}</figcaption></figure>`).join('')}</div></section>
+<section class="wrap stack" id="order"><h2>Get your copy</h2>${buy}<p><a href="/${esc(town.slug)}/book">More about the book</a></p></section>
+<style>.lk-cover{width:100%;max-width:360px;display:block;box-shadow:0 10px 24px rgba(30,41,48,.35)}.lk-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,230px),1fr));gap:22px}.lk-pg{margin:0}.lk-pg img{width:100%;height:auto;display:block;border:1px solid #cfc6b0;box-shadow:0 4px 12px rgba(30,41,48,.18);background:#fff}.lk-pg figcaption{font-size:.95rem;margin-top:6px;color:var(--ink-2)}</style>`;
+  send(res, 200, page({
+    title: `Look inside: ${L.title} | TownTales`,
+    desc: `Sample pages from the printed history of ${town.name}, ${prov}: ${L.format}.`,
+    canonical: `${SITE}/${town.slug}/book/preview`, main,
+  }), 'public, s-maxage=600, stale-while-revalidate=86400');
 }
 function thanksPage(res) {
   const main = `<section class="wrap stack" style="padding-top:28px">
@@ -78,6 +111,11 @@ module.exports = async (req, res) => {
   const slug = String(url.searchParams.get('slug') || '').toLowerCase();
   const book = BOOKS[slug];
   try {
+    if (url.searchParams.get('look')) {
+      const [t] = await q(`towns?slug=eq.${encodeURIComponent(slug)}&hidden=eq.false&select=slug,name,prov`);
+      if (!t || !book || !book.look) return notFound(res, "There's no preview for this book yet.");
+      return lookPage(res, t, book);
+    }
     const s = encodeURIComponent(slug);
     const towns = await q(`towns?slug=eq.${s}&hidden=eq.false&select=slug,name,prov`);
     const town = towns[0];
@@ -110,7 +148,7 @@ ${cover(town, prov, book.mainStreet)}
 <p class="lede">Everything on ${esc(town.name)}'s TownTales page, gathered into ${book.pages ? 'a ' + book.pages + '-page' : 'one'} book: the timeline, the people, the cemeteries and the teams. Every fact keeps its source.</p>
 <div class="btns">${book.sample
       ? `<a class="btn" href="${esc(book.sample)}" target="_blank" rel="noopener">Read the free sample (PDF)</a>`
-      : `<span class="btn alt" aria-disabled="true" style="opacity:.6;cursor:default">Free sample coming soon</span>`}${printCfg().length ? `<a class="btn" href="#order">Order the printed book</a>` : `<a class="btn alt" href="#request">Request the full book</a>`}</div>
+      : `<span class="btn alt" aria-disabled="true" style="opacity:.6;cursor:default">Free sample coming soon</span>`}${book.look ? `<a class="btn alt" href="/${esc(town.slug)}/book/preview">Look inside</a>` : ''}${printCfg().length ? `<a class="btn" href="#order">Order the printed book</a>` : `<a class="btn alt" href="#request">Request the full book</a>`}</div>
 <p class="small muted">The sample has the cover, the contents, the timeline at a glance and the first chapter. Free, nothing to sign up for.</p>
 </div></div>
 </section>

@@ -118,7 +118,7 @@
     var tn = townName(), sec = document.createElement("section");
     sec.className = "wrap"; sec.id = "tt-book";
     sec.innerHTML = '<div class="grow" style="max-width:none"><p class="eyebrow">The ' + esc(tn) + ' Book</p><h2>Get the ' + esc(tn) + ' Book</h2><p>' + esc(tn) + "'s history in one book: the timeline, the people, the cemeteries and the teams, with every source. See a free sample first.</p>" +
-      '<div class="btns"><a class="btn" href="/' + esc(t.slug) + '/book">See the free sample</a><a class="btn alt" href="/' + esc(t.slug) + '/book#request">Request the book</a></div></div>';
+      '<div class="btns"><a class="btn" href="/' + esc(t.slug) + '/book/preview">Look inside the book</a><a class="btn alt" href="/' + esc(t.slug) + '/book#order">Order a copy</a></div></div>';
     anchor.parentNode.insertBefore(sec, anchor);
   }
 

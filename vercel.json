@@ -94,6 +94,10 @@
       "destination": "/api/sports?slug=:slug"
     },
     {
+      "source": "/:slug([a-z0-9-]+-(?:sk|mb|ab|bc|on|qc|nb|ns|pe|nl|yt|nt|nu))/book/preview",
+      "destination": "/api/extra?kind=book&slug=:slug&look=1"
+    },
+    {
       "source": "/:slug([a-z0-9-]+-(?:sk|mb|ab|bc|on|qc|nb|ns|pe|nl|yt|nt|nu))/book",
       "destination": "/api/extra?kind=book&slug=:slug"
     },
