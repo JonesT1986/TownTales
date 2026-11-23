@@ -10,7 +10,7 @@ import { remQueue, remModerate, clipQueue, clipModerate, clipItem } from "./reme
 import { linksStatus, readLink } from "./links.ts";
 import { stripeWebhook, honourQueue, honourModerate } from "./honour.ts";
 import { bookQueue, bookModerate } from "./books.ts";
-import { reports, reportResolve, reportDelete, moderateBulk, settings, rebuildDue, adminTowns } from "./admin.ts";
+import { reports, reportResolve, reportDelete, moderateBulk, settings, rebuildDue } from "./admin.ts";
 
 const SB_URL = Deno.env.get("SUPABASE_URL")!;
 const db = createClient(SB_URL, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
@@ -95,7 +95,6 @@ Deno.serve(async (req) => {
   if (action === "report-delete") return reportDelete(ctx, body);
   if (action === "moderate-bulk") return moderateBulk(ctx, body);
   if (action === "settings") return settings(ctx, body);
-  if (action === "towns") return adminTowns(ctx, body);
   if (action === "honour-queue") return honourQueue(ctx, body);
   if (action === "honour-moderate") return honourModerate(ctx, body);
   if (action === "book-queue") return bookQueue(ctx, body);
