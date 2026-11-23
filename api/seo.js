@@ -10,6 +10,7 @@
 // Any failure falls back to serving page.js exactly as before.
 
 const page = require('./page');
+const MS = require('./_milestones');
 const { getApp } = require('./_app');
 
 const SITE = 'https://www.towntales.ca';
@@ -155,7 +156,8 @@ module.exports = async (req, res) => {
       const url = new URL(req.url, 'http://localhost');
       const slug = String(url.searchParams.get('slug') || '').toLowerCase();
       const archive = url.searchParams.get('sub') === 'archive';
-      const towns = await q('towns?select=slug,name,prov&hidden=eq.false&order=name.asc,slug.asc', true);
+      const towns = await q('towns?select=slug,name,prov,est&hidden=eq.false&order=name.asc,slug.asc', true);
+      const msYear = MS.yearNow();
       const inject = [];
       let main = '';
 
@@ -170,6 +172,8 @@ module.exports = async (req, res) => {
           '<ul><li>Share a memory or correct a date on any town\'s timeline</li><li><a href="/share-a-book">Share your community\'s history book</a> — no scanner needed: clear phone photos of the pages work great</li><li>Add your family\'s people to the town\'s Cemetery &amp; Remembrance section</li></ul>' +
           '<p>Every entry is sourced and credited. This history belongs to the towns — we\'re just keeping it safe.</p>' +
           '<p><a href="/province">Browse towns by province</a></p></section>';
+        const ms = MS.celebrating(towns, msYear);
+        if (ms.length) main += '<style>' + MS.CSS + '</style>' + MS.section(ms, msYear, { provName: (c) => PROV[c] || c });
       } else {
         const town = towns.find((t) => t.slug === slug);
         if (town) {
@@ -183,6 +187,8 @@ module.exports = async (req, res) => {
             archive ? Promise.resolve([]) : soft(q('teams?town=eq.' + s + '&select=name,sport,league,years_label,home_venue,championships,note,tier,source&order=sport,name')),
           ]);
           main = townBody(town, timeline, items, archive, cems, clips, teams);
+          const msBanner = MS.banner(town, msYear);
+          if (msBanner) main = '<style>' + MS.CSS + '</style>' + main.replace('<h1>', msBanner + '<h1>');
           const prov = PROV[town.prov] || town.prov;
           const pageUrl = SITE + '/' + slug + (archive ? '/archive' : '');
           inject.push(jsonLd({

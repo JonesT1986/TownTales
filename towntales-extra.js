@@ -47,18 +47,9 @@
 
   /* ---------- 1 & 2: standalone remembrance page ---------- */
   function wireIndexFilter() {
-    var qi = $("#rm-q"), ci = $("#rm-c"), list = $("#rm-list"), count = $("#rm-count");
-    if (!qi || !list) return;
-    var items = $$("#rm-list li"), total = items.length;
-    function run() {
-      var q = norm(qi.value).trim(), c = ci ? ci.value : "", n = 0;
-      items.forEach(function (li) { var show = (!c || li.getAttribute("data-c") === c) && (!q || li.getAttribute("data-n").indexOf(q) >= 0); li.hidden = !show; if (show) n++; });
-      $$("#rm-list .rm-group").forEach(function (g) { g.hidden = !$$("li", g).some(function (li) { return !li.hidden; }); });
-      if (count) count.textContent = n === total ? "Showing all " + total.toLocaleString("en-CA") + " names, by surname." : "Showing " + n.toLocaleString("en-CA") + " of " + total.toLocaleString("en-CA") + " names.";
-    }
-    qi.addEventListener("input", run); if (ci) ci.addEventListener("change", run);
-    var form = qi.form; if (form) form.addEventListener("submit", function (e) { e.preventDefault(); run(); var l = $("#rm-list"); if (l) l.scrollIntoView({ block: "start" }); });
+    // Nov 23 2026: the page shows 20 random names; searching submits to the server, which searches all of them.
   }
+
 
   function wireMemForm(f) {
     if (f.getAttribute("data-wired")) return; f.setAttribute("data-wired", "1");
@@ -157,10 +148,12 @@
   function loadTownMem(slug) {
     if (memCache[slug]) return memCache[slug];
     var s = encodeURIComponent(slug);
+    // Nov 23 2026: never load every name. Count + a random 12; searches run in the database.
     memCache[slug] = Promise.all([
       get("cemeteries?town=eq." + s + "&select=id,name,location_desc,affiliation&order=name"),
-      get("memorials?town=eq." + s + "&status=eq.published&select=id,name,maiden_name,birth_date_label,death_date_label,cemetery_id,cemetery_name,tier", true),
-    ]).then(function (r) { r[1].sort(function (a, b) { return surnameKey(a.name).localeCompare(surnameKey(b.name)); }); return { cems: r[0], mems: r[1] }; })
+      rpc("memorials_summary", { p_town: slug }),
+      rpc("memorials_sample", { p_town: slug, p_n: 12 }),
+    ]).then(function (r) { var bySur = function (a, b) { return surnameKey(a.name).localeCompare(surnameKey(b.name)); }; return { cems: r[0], total: Number(r[1] && r[1].total) || 0, sample: (r[2] || []).sort(bySur), bySur: bySur }; })
       .catch(function (e) { delete memCache[slug]; throw e; });
     return memCache[slug];
   }
@@ -179,32 +172,40 @@
 
   function drawRm(sec, slug, d) {
     var tn = townName(), base = "/" + slug + "/remembrance";
-    if (!d.mems.length && !d.cems.length) {
+    if (!d.total && !d.cems.length) {
       sec.innerHTML = '<p class="eyebrow">Cemetery &amp; Remembrance</p><h2>Remembering the people of ' + esc(tn) + '</h2>' +
         '<p>No names have been added for ' + esc(tn) + ' yet. If someone from your family rests here, you can be the first to add them. Every entry is checked by a volunteer and credited to you.</p>' +
-        '<div class="btns"><a class="btn" href="' + base + '#add">Add someone from your family</a></div>';
+        '<div class="btns"><a class="btn" href="' + base + '/add">Add a family member</a></div>';
       return;
     }
     var cname = {}; d.cems.forEach(function (c) { cname[c.id] = c.name; });
     sec.innerHTML = '<p class="eyebrow">Cemetery &amp; Remembrance</p><h2>Remembering the people of ' + esc(tn) + '</h2>' +
-      '<p>' + (d.mems.length === 1 ? "One person is" : d.mems.length.toLocaleString("en-CA") + " people are") + ' remembered here' + (d.cems.length ? ", in " + d.cems.map(function (c) { return esc(c.name); }).join(", ").replace(/, ([^,]*)$/, " and $1") : "") + '. Every name carries its source: ' + pill("documented") + ' from records, ' + pill("community") + ' from families.</p>' +
+      '<p>' + (d.total === 1 ? "One person is" : d.total.toLocaleString("en-CA") + " people are") + ' remembered here' + (d.cems.length ? ", in " + d.cems.map(function (c) { return esc(c.name); }).join(", ").replace(/, ([^,]*)$/, " and $1") : "") + '. Every name carries its source: ' + pill("documented") + ' from records, ' + pill("community") + ' from families.</p>' +
       '<form class="tt-rm-search" role="search"><div class="field"><label for="tt-rm-q">Search by name</label><input type="search" id="tt-rm-q" placeholder="e.g. Anderson" autocomplete="off"></div>' +
       (d.cems.length > 1 ? '<div class="field"><label for="tt-rm-c">Cemetery</label><select id="tt-rm-c"><option value="">All cemeteries</option>' + d.cems.map(function (c) { return '<option value="' + esc(c.id) + '">' + esc(c.name) + "</option>"; }).join("") + "</select></div>" : "") +
       '</form><p class="small muted" id="tt-rm-n" role="status"></p><ul class="rm-names" id="tt-rm-list"></ul>' +
-      '<div class="btns"><a class="btn" href="' + base + '">See all ' + d.mems.length.toLocaleString("en-CA") + ' names and the cemeteries</a><a class="btn alt" href="' + base + '#add">Add someone from your family</a></div>';
+      '<div class="btns"><a class="btn" href="' + base + '">See the names and the cemeteries</a><a class="btn alt" href="' + base + '/add">Add someone from your family</a></div>';
     var qi = $("#tt-rm-q", sec), ci = $("#tt-rm-c", sec), list = $("#tt-rm-list", sec), n = $("#tt-rm-n", sec);
+    var seq = 0, timer = 0;
     function draw() {
-      var q = norm(qi.value).trim(), c = ci ? ci.value : "";
-      var hits = d.mems.filter(function (m) { return (!c || m.cemetery_id === c) && (!q || norm(m.name + " " + (m.maiden_name || "")).indexOf(q) >= 0); });
-      var max = q || c ? 60 : 12, shown = hits.slice(0, max);
-      n.textContent = q || c ? (hits.length ? "Found " + hits.length.toLocaleString("en-CA") + (hits.length > max ? ". Showing the first " + max + "." : ".") : "No names match that search.") : "A few of the names, by surname:";
+      var q = String(qi.value || "").trim(), c = ci ? ci.value : "";
+      if (!q && !c) { n.textContent = d.total > d.sample.length ? "A few of the names, picked at random:" : "The names, by surname:"; paint(d.sample); return; }
+      var my = ++seq; n.textContent = "Searching…";
+      rpc("memorials_search", { p_town: slug, p_q: q, p_cem: c || null, p_limit: 60 }).then(function (r) {
+        if (my !== seq) return;
+        var rows = (r.rows || []).sort(d.bySur), t = Number(r.total) || 0;
+        n.textContent = t ? "Found " + t.toLocaleString("en-CA") + (t > rows.length ? ". Showing the first " + rows.length + "." : ".") : "No names match that search.";
+        paint(rows);
+      }, function () { if (my === seq) n.textContent = "Search isn't working right now. Please try again."; });
+    }
+    function paint(shown) {
       list.innerHTML = shown.map(function (m) {
         var cn = cname[m.cemetery_id] || m.cemetery_name || "", dt = dates(m);
         return '<li><a href="' + base + "/" + encodeURIComponent(m.id) + '"><b class="rm-name">' + esc(m.name) + (m.maiden_name ? ' <span class="rm-nee">(née ' + esc(m.maiden_name) + ")</span>" : "") + '</b></a><span class="rm-meta">' + (dt ? esc(dt) : '<span class="muted">Dates not recorded</span>') + (cn ? " · " + esc(cn) : "") + "</span>" + pill(m.tier) + "</li>";
       }).join("");
     }
-    qi.addEventListener("input", draw); if (ci) ci.addEventListener("change", draw);
-    $(".tt-rm-search", sec).addEventListener("submit", function (e) { e.preventDefault(); draw(); });
+    qi.addEventListener("input", function () { clearTimeout(timer); timer = setTimeout(draw, 300); }); if (ci) ci.addEventListener("change", draw);
+    $(".tt-rm-search", sec).addEventListener("submit", function (e) { e.preventDefault(); clearTimeout(timer); draw(); });
     draw();
   }
 

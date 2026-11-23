@@ -75,7 +75,7 @@ ${born.length ? `<p class="small">Includes ${born.length === 1 ? 'one woman' : b
 <li class="fr-soon"><b>The ${esc(fam)} name in ${esc(town.name)}'s history</b>: timeline events, teams and archive pieces that mention the family <span class="pill">as the archive grows</span></li>
 <li class="fr-ok"><b>A printable PDF</b> to share with the rest of the family</li>
 </ul>
-<div class="btns"><a class="btn" href="${esc(mail)}">Request the full ${esc(fam)} report</a><a class="btn alt" href="/${esc(town.slug)}/remembrance#add">Add a ${esc(fam)} who's missing</a></div>
+<div class="btns"><a class="btn" href="${esc(mail)}">Request the full ${esc(fam)} report</a><a class="btn alt" href="/${esc(town.slug)}/remembrance/add">Add a ${esc(fam)} who's missing</a></div>
 <p class="small muted">Request by email at ${EMAIL}. No payment is taken on this page.</p>
 </section>
 
