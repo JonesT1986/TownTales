@@ -3,8 +3,9 @@
 // town.js is left untouched; if anything here fails the page is served as before.
 const town = require('./town');
 const TAG = '<script src="/api/fam?v=3" defer></script>';
-const EXTRA_TAG = '<script src="/towntales-extra.js?v=11" defer></script>';
+const EXTRA_TAG = '<script src="/towntales-extra.js?v=13" defer></script>';
 const ADMIN_TAG = '<script src="/towntales-admin.js?v=2" defer></script>';
+const MS_TAG = '<script src="/towntales-milestones.js?v=1" defer></script>';
 
 // Exact-match swaps on the served page. A swap that no longer matches is skipped.
 const SWAPS = [
@@ -52,6 +53,8 @@ module.exports = async (req, res) => {
         if (!body.includes('/towntales-extra.js')) body = body.replace('</body>', EXTRA_TAG + '\n</body>');
         // Admin review queue, problem reports and email deep links (towntales-admin.js). Only acts on #admin.
         if (!body.includes('/towntales-admin.js')) body = body.replace('</body>', ADMIN_TAG + '\n</body>');
+        // Milestone birthdays: banner + gold on the town page, badges on town lists, homepage list (towntales-milestones.js).
+        if (!body.includes('/towntales-milestones.js')) body = body.replace('</body>', MS_TAG + '\n</body>');
         if (res.getHeader && res.getHeader('Content-Length')) res.removeHeader('Content-Length');
       }
     } catch (e) { /* serve unchanged */ }

@@ -120,21 +120,26 @@ function memForm(town, cems) {
 }
 
 async function indexPage(req, res, town, url) {
+  // Nov 23 2026: never load every name (Moose Jaw alone has 31,000+). With no search, show 20 people picked
+  // at random on each visit; a search or cemetery filter runs in the database (up to 200 matches shown).
   const s = encodeURIComponent(town.slug);
-  const [cems, mems, hon] = await Promise.all([
+  const fq = String(url.searchParams.get('q') || '').trim().slice(0, 80);
+  const fc = String(url.searchParams.get('c') || '').trim().slice(0, 120);
+  const filtered = !!(fq || fc);
+  const [cems, summary, hon, found] = await Promise.all([
     q(`cemeteries?town=eq.${s}&select=*&order=name`),
-    q(`memorials?town=eq.${s}&status=eq.published&select=id,name,maiden_name,birth_date_label,death_date_label,cemetery_id,cemetery_name,tier`, { all: true }),
+    rpcGet('memorials_summary', { p_town: town.slug }),
     q(`honour_pages?town=eq.${s}&status=eq.published&select=memorial_id`, { all: true }).catch(() => []),
+    filtered
+      ? rpcGet('memorials_search', { p_town: town.slug, p_q: fq, p_cem: fc, p_limit: 200 })
+      : rpcGet('memorials_sample', { p_town: town.slug, p_n: 20 }).then((rows) => ({ total: rows.length, rows })),
   ]);
   const honoured = new Set(hon.map((h) => h.memorial_id));
   const prov = PROV[town.prov] || town.prov;
-  const fq = String(url.searchParams.get('q') || '').trim().slice(0, 80);
-  const fc = String(url.searchParams.get('c') || '').trim().slice(0, 120);
-  const norm = (v) => String(v || '').toLowerCase().normalize('NFKD').replace(/[^a-z0-9 ]/g, '');
-  mems.sort((a, b) => surnameKey(a.name).localeCompare(surnameKey(b.name)) || String(a.birth_date_label || '').localeCompare(String(b.birth_date_label || '')));
-  const shown = mems.filter((m) => (!fc || m.cemetery_id === fc) && (!fq || norm(m.name + ' ' + (m.maiden_name || '')).includes(norm(fq))));
-  const count = {};
-  for (const m of mems) count[m.cemetery_id] = (count[m.cemetery_id] || 0) + 1;
+  const total = Number(summary && summary.total) || 0;
+  const count = (summary && summary.by_cemetery) || {};
+  const shown = (found.rows || []).slice().sort((a, b) => surnameKey(a.name).localeCompare(surnameKey(b.name)) || String(a.birth_date_label || '').localeCompare(String(b.birth_date_label || '')));
+  const mems = { length: total }; // the rest of the page only needs the total
 
   const groups = {};
   for (const m of shown) (groups[initial(m.name)] = groups[initial(m.name)] || []).push(m);
@@ -142,10 +147,13 @@ async function indexPage(req, res, town, url) {
   const row = (m) => {
     const cn = cemName(m, cems);
     const d = dates(m);
-    return `<li data-n="${esc(norm(m.name + ' ' + (m.maiden_name || '')))}" data-c="${esc(m.cemetery_id || '')}"><a href="/${esc(town.slug)}/remembrance/${encodeURIComponent(m.id)}"><b class="rm-name">${fullName(m)}</b></a>` +
+    return `<li><a href="/${esc(town.slug)}/remembrance/${encodeURIComponent(m.id)}"><b class="rm-name">${fullName(m)}</b></a>` +
       `<span class="rm-meta">${d ? esc(d) : '<span class="muted">Dates not recorded</span>'}${cn ? ' · ' + esc(cn) : ''}</span>${honoured.has(m.id) ? '<span class="hn-badge">Honour Page</span>' : ''}${pill(m.tier)}</li>`;
   };
-
+  const n = (v) => Number(v).toLocaleString('en-CA');
+  const statusLine = filtered
+    ? (found.total ? `Found ${n(found.total)} ${found.total === 1 ? 'name' : 'names'}${found.total > shown.length ? `. Showing the first ${n(shown.length)}; add more of the name to narrow it down` : ''}. <a href="?#names">Clear the search</a>` : `No names match that search. <a href="?#names">Clear the search</a>`)
+    : `${shown.length === total ? `All ${n(total)} ${total === 1 ? 'name' : 'names'}, by surname.` : `${n(shown.length)} of ${n(total)} names, picked at random. Search above for anyone by name, or <a href="?#names">show another ${n(shown.length)}</a>.`}`;
   const intro = mems.length
     ? `<p class="lede">${mems.length === 1 ? 'One person is' : mems.length.toLocaleString('en-CA') + ' people are'} remembered here${cems.length ? `, across ${cems.length === 1 ? 'one cemetery' : cems.length + ' cemeteries'}` : ''}. Every name carries its source.</p>`
     : `<p class="lede">No names have been added for ${esc(town.name)} yet. If your family has someone resting here, you can be the first to add them.</p>`;
@@ -156,7 +164,7 @@ ${crumbs(town, 'Cemetery &amp; Remembrance')}
 <h1>Remembering the people of ${esc(town.name)}</h1>
 ${intro}
 <div class="rm-legend"><p>${pill('documented')} ${esc(TIER.documented.note)}</p><p>${pill('community')} ${esc(TIER.community.note)}</p></div>
-<div class="btns"><a class="btn" href="#add">Add someone from your family</a><a class="btn alt" href="/${esc(town.slug)}">Back to ${esc(town.name)}'s history</a></div>
+<div class="btns"><a class="btn" href="/${esc(town.slug)}/remembrance/add">Add a family member</a><a class="btn alt" href="/${esc(town.slug)}">Back to ${esc(town.name)}'s history</a></div>
 </section>
 ${cems.length ? `<section class="wrap stack"><h2>${cems.length === 1 ? 'The cemetery' : 'The cemeteries'}</h2><div class="rm-cems">${cems.map((c) => cemeteryCard(c, count[c.id] || 0)).join('')}</div></section>` : ''}
 ${mems.length ? `<section class="wrap stack" id="names"><h2>Names</h2>
@@ -165,11 +173,11 @@ ${mems.length ? `<section class="wrap stack" id="names"><h2>Names</h2>
 ${cems.length > 1 ? `<div class="field"><label for="rm-c">Cemetery</label><select id="rm-c" name="c"><option value="">All cemeteries</option>${cems.map((c) => `<option value="${esc(c.id)}"${c.id === fc ? ' selected' : ''}>${esc(c.name)}</option>`).join('')}</select></div>` : ''}
 <div class="field rm-go"><button class="btn" type="submit">Search</button></div>
 </form>
-<p class="small muted" id="rm-count" role="status">${shown.length === mems.length ? `Showing all ${mems.length.toLocaleString('en-CA')} names, by surname.` : `Showing ${shown.length.toLocaleString('en-CA')} of ${mems.length.toLocaleString('en-CA')} names. <a href="?#names">Show everyone</a>`}</p>
-${letters.length > 3 ? `<nav class="rm-az" aria-label="Jump to a letter">${letters.map((l) => `<a href="#l-${esc(l)}">${esc(l)}</a>`).join('')}</nav>` : ''}
-<div id="rm-list">${letters.map((l) => `<div class="rm-group" id="l-${esc(l)}"><h3 class="rm-letter">${esc(l)}</h3><ul class="rm-names">${groups[l].map(row).join('')}</ul></div>`).join('') || '<div class="empty">No names match that search.</div>'}</div>
+<p class="small muted" id="rm-count" role="status">${statusLine}</p>
+${filtered && letters.length > 3 ? `<nav class="rm-az" aria-label="Jump to a letter">${letters.map((l) => `<a href="#l-${esc(l)}">${esc(l)}</a>`).join('')}</nav>` : ''}
+<div id="rm-list">${!filtered ? (shown.length ? `<ul class="rm-names">${shown.map(row).join('')}</ul>` : '') : letters.map((l) => `<div class="rm-group" id="l-${esc(l)}"><h3 class="rm-letter">${esc(l)}</h3><ul class="rm-names">${groups[l].map(row).join('')}</ul></div>`).join('') || '<div class="empty">No names match that search.</div>'}</div>
 </section>` : ''}
-${memForm(town, cems)}`;
+<section class="wrap stack"><div class="notice info"><b>Someone missing?</b><p>Add a family member who rests in or near ${esc(town.name)}. A volunteer checks every entry, and you're credited as the source.</p><div class="btns"><a class="btn" href="/${esc(town.slug)}/remembrance/add">Add a family member</a></div></div></section>`;
 
   const canonical = `${SITE}/${town.slug}/remembrance`;
   const html = page({
@@ -187,7 +195,26 @@ ${memForm(town, cems)}`;
       ] },
     }],
   });
-  send(res, 200, html, 'public, s-maxage=900, stale-while-revalidate=86400');
+  // The random 20 change on every visit, so that version is never cached; searches are.
+  send(res, 200, html, filtered ? 'public, s-maxage=900, stale-while-revalidate=86400' : NOSTORE);
+}
+
+// The family form on its own page: /<town>/remembrance/add
+async function addPage(req, res, town) {
+  const cems = await q(`cemeteries?town=eq.${encodeURIComponent(town.slug)}&select=id,name&order=name`).catch(() => []);
+  const prov = PROV[town.prov] || town.prov;
+  const main = `<section class="wrap stack rm" style="padding-top:22px">
+${crumbs(town, `<a href="/${esc(town.slug)}/remembrance">Cemetery &amp; Remembrance</a> › Add a family member`)}
+<p class="eyebrow">Cemetery &amp; Remembrance</p>
+<h1>Add a family member</h1>
+<div class="btns"><a class="btn alt" href="/${esc(town.slug)}/remembrance">Back to everyone remembered in ${esc(town.name)}</a></div>
+</section>
+${memForm(town, cems)}`;
+  send(res, 200, page({
+    title: `Add a family member — ${town.name}, ${prov} Cemetery & Remembrance | TownTales`,
+    desc: `Add someone from your family who rests in or near ${town.name}, ${prov}. Checked by a volunteer and credited to you.`,
+    canonical: `${SITE}/${town.slug}/remembrance/add`, main, noindex: true,
+  }), NOSTORE);
 }
 
 function honourSection(m, h, town) {
@@ -249,7 +276,7 @@ ${srcHtml(m.source, m.source_url)}
 </div>
 <p class="small muted">Dates and places are shown exactly as the source records them.</p>
 ${!h && cfg.link ? honourOffer(m, town, cfg) : ''}
-<div class="btns"><a class="btn${!h && cfg.link ? ' alt' : ''}" href="/${esc(town.slug)}/remembrance#add">Add a family member</a><a class="btn alt" href="/${esc(town.slug)}/remembrance">Everyone remembered in ${esc(town.name)}</a></div>
+<div class="btns"><a class="btn${!h && cfg.link ? ' alt' : ''}" href="/${esc(town.slug)}/remembrance/add">Add a family member</a><a class="btn alt" href="/${esc(town.slug)}/remembrance">Everyone remembered in ${esc(town.name)}</a></div>
 <div class="rm-fix small"><p>Something wrong or missing? <a href="/#corrections">Tell us</a> and paste in this page's address:</p>
 <div class="rm-copyrow"><code class="rm-url">${esc(pageUrl)}</code><button type="button" class="btn sm alt" data-copy-url="${esc(pageUrl)}">Copy address</button></div>
 <p class="rm-copied" role="status" aria-live="polite"></p></div>
@@ -388,6 +415,7 @@ module.exports = async (req, res) => {
   try {
     const town = await loadTown(slug);
     if (!town) return notFound(res, "We don't have a town at that address.");
+    if (id === 'add') return await addPage(req, res, town);
     if (id && url.searchParams.get('honour')) return await honourFormPage(req, res, town, id);
     if (id) return await memorialPage(req, res, town, id, url);
     return await indexPage(req, res, town, url);
