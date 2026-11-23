@@ -170,6 +170,9 @@
   var townsOrig = A.towns;
   var PAGE = 100;
   var tf = { q: "", letter: "", needs: false, offset: 0, data: null, err: "", seq: 0, timer: 0, watch: {} };
+  // "Rebuild all" (Nov 23 2026): one town every few seconds, so the AI and the edge function aren't flooded.
+  var bulkRun = { on: false, stop: false, done: 0, total: 0, failed: [] };
+  var BULK_GAP_MS = 4000;
   var LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ#".split("");
   // Separate small edge function (supabase/functions/admin-towns), same admin key as the main api.
   var TOWNS_URL = "https://zpqwrzsgpwwjrlbnfynn.supabase.co/functions/v1/admin-towns";
@@ -215,7 +218,10 @@
     var what = (tf.needs ? "towns needing a rebuild" : "towns") + (tf.letter ? ' starting with "' + tf.letter + '"' : "") + (tf.q ? ' matching "' + tf.q + '"' : "");
     var pager = d.total > PAGE ? '<div class="btns"><button class="btn sm alt" data-ttt="page" data-d="-1"' + (d.offset ? "" : " disabled") + '>← Previous</button><button class="btn sm alt" data-ttt="page" data-d="1"' + (to < d.total ? "" : " disabled") + ">Next →</button></div>" : "";
     var foot = d.stats_at ? '<p class="small muted">Rebuild check last refreshed ' + new Date(d.stats_at).toLocaleTimeString("en-CA", { hour: "numeric", minute: "2-digit" }) + " (every 5 minutes, and right after each rebuild). " + plural(d.needs_all, "town") + " need a rebuild in total.</p>" : "";
-    box.innerHTML = '<p class="small muted" role="status">' + (d.total ? "Showing " + from + "–" + to + " of " + d.total + " " + what + "." : "No " + what + ".") + "</p>" + pager +
+    var bulkBar = "";
+    if (bulkRun.on) bulkBar = '<div class="ttt-bulk"><p><b>Rebuilding all:</b> started ' + bulkRun.done + " of " + bulkRun.total + (bulkRun.failed.length ? " (" + bulkRun.failed.length + " couldn't start)" : "") + '. Keep this page open until it finishes.</p><progress max="' + bulkRun.total + '" value="' + bulkRun.done + '"></progress><div class="btns"><button class="btn sm alt" data-ttt="bulk-stop"' + (bulkRun.stop ? " disabled" : "") + ">" + (bulkRun.stop ? "Stopping…" : "Stop") + "</button></div></div>";
+    else if (tf.needs && d.needs_all > 0) bulkBar = '<div class="ttt-bulk"><p>' + plural(d.needs_all, "town") + ' need a rebuild. Rebuild them all in one go: one town starts every few seconds, and each takes about a minute.</p><div class="btns"><button class="btn sm" data-ttt="bulk">Rebuild all ' + d.needs_all + "</button></div></div>";
+    box.innerHTML = bulkBar + '<p class="small muted" role="status">' + (d.total ? "Showing " + from + "–" + to + " of " + d.total + " " + what + "." : "No " + what + ".") + "</p>" + pager +
       (d.rows.length ? '<div class="tbl"><table><thead><tr><th>Town</th><th>Prov.</th><th class="num">Archive</th><th class="num">Timeline</th><th>Status</th><th>Actions</th></tr></thead><tbody>' + d.rows.map(townRow).join("") + "</tbody></table></div>" : "") +
       pager + foot + '<p class="tt-msg" id="tta-msg" role="status"></p>';
   }
@@ -246,6 +252,36 @@
       }, 10000);
     })();
   }
+  function allNeedsSlugs() {
+    var out = [];
+    function page(off) {
+      return townsApi({ q: "", letter: "", needs: true, limit: PAGE, offset: off }).then(function (r) {
+        (r.rows || []).forEach(function (x) { if (x.status === "needs" && !tf.watch[x.slug]) out.push(x.slug); });
+        return (r.rows || []).length === PAGE && off + PAGE < r.total ? page(off + PAGE) : out;
+      });
+    }
+    return page(0);
+  }
+  function rebuildAll() {
+    if (bulkRun.on) return;
+    var n = tf.data ? tf.data.needs_all : 0;
+    if (!confirm("Rebuild the timeline for all " + plural(n, "town") + " that need it?\n\nOne town starts every few seconds, so this takes about " + Math.max(1, Math.ceil(n * BULK_GAP_MS / 60000)) + " minutes. Each rebuild is one AI run. Keep this page open until it finishes.")) return;
+    bulkRun = { on: true, stop: false, done: 0, total: n, failed: [] }; drawTowns();
+    allNeedsSlugs().then(function (slugs) {
+      bulkRun.total = slugs.length; drawTowns();
+      (function next(i) {
+        if (bulkRun.stop || i >= slugs.length) {
+          var stopped = bulkRun.stop, done = bulkRun.done, failed = bulkRun.failed.length;
+          bulkRun.on = false;
+          setTimeout(function () { loadTowns(true); }, 90000);
+          loadTowns(true).then(function () { msg((stopped ? "Stopped. " : "") + "Started " + plural(done, "rebuild") + (failed ? "; " + failed + " couldn't start (try those again)" : "") + ". Rebuilds finish in the background over the next few minutes; this list refreshes as they do.", !failed); });
+          return;
+        }
+        DB.rebuild(slugs[i]).then(function () { bulkRun.done++; }, function () { bulkRun.failed.push(slugs[i]); })
+          .then(function () { if (bulkRun.done % 10 === 0) loadTowns(true); else drawTowns(); setTimeout(function () { next(i + 1); }, BULK_GAP_MS); });
+      })(0);
+    }, function (e) { bulkRun.on = false; drawTowns(); msg("Couldn't load the list of towns: " + e.message); });
+  }
   A.towns = function () {
     if (!LIVE) return townsOrig();
     setTimeout(function () { drawTowns(); loadTowns(true); }, 0);
@@ -258,7 +294,8 @@
     var css = ".ttt-tools{display:flex;flex-wrap:wrap;align-items:flex-end;gap:16px}.ttt-tools .field{flex:1 1 260px;margin:0}" +
       ".ttt-letters{display:flex;flex-wrap:wrap;gap:4px}.ttt-letters button{min-width:38px;padding:6px 6px 4px;border:1px solid var(--rule,#ccc);border-radius:6px;background:#fff;font-weight:700;cursor:pointer;line-height:1.1}" +
       ".ttt-letters button small{display:block;font-weight:400;font-size:.7em;opacity:.7}.ttt-letters button[aria-pressed=true]{background:var(--denim,#2B5C80);color:#fff;border-color:var(--denim,#2B5C80)}" +
-      ".ttt-letters button[disabled]{opacity:.35;cursor:default}.pill.ttt-needs{background:#fbeee5;color:#B4512C}";
+      ".ttt-letters button[disabled]{opacity:.35;cursor:default}.pill.ttt-needs{background:#fbeee5;color:#B4512C}" +
+      ".ttt-bulk{border:2px solid var(--red,#B4512C);background:#fbeee5;padding:12px 16px;margin:0 0 12px;display:flex;flex-direction:column;gap:8px}.ttt-bulk progress{width:100%;max-width:420px}";
     var s = document.createElement("style"); s.textContent = css; document.head.appendChild(s);
   })();
   document.addEventListener("input", function (ev) {
@@ -274,6 +311,8 @@
     var a = b.getAttribute("data-ttt");
     if (a === "letter") { tf.letter = b.getAttribute("data-l") || ""; loadTowns(); }
     else if (a === "page") { tf.offset = Math.max(0, tf.offset + PAGE * (+b.dataset.d)); loadTowns(true); var t = document.getElementById("ttt-q"); if (t) t.scrollIntoView({ block: "start" }); }
+    else if (a === "bulk") rebuildAll();
+    else if (a === "bulk-stop") { bulkRun.stop = true; drawTowns(); }
     else if (a === "rebuild") {
       var slug = b.dataset.id; b.disabled = true; b.textContent = "Rebuilding…";
       DB.rebuild(slug).then(function () { watchTown(slug); drawTowns(); }, function (e) { b.disabled = false; b.textContent = "Rebuild timeline"; msg("That didn't work: " + e.message); });
