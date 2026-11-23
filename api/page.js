@@ -2,9 +2,9 @@
 // Also swaps the Donate page's "Send us a note" (which went to Corrections) for a real donation form.
 // town.js is left untouched; if anything here fails the page is served as before.
 const town = require('./town');
-const TAG = '<script src="/api/fam?v=2" defer></script>';
-const EXTRA_TAG = '<script src="/towntales-extra.js?v=9" defer></script>';
-const ADMIN_TAG = '<script src="/towntales-admin.js?v=1" defer></script>';
+const TAG = '<script src="/api/fam?v=3" defer></script>';
+const EXTRA_TAG = '<script src="/towntales-extra.js?v=11" defer></script>';
+const ADMIN_TAG = '<script src="/towntales-admin.js?v=2" defer></script>';
 
 // Exact-match swaps on the served page. A swap that no longer matches is skipped.
 const SWAPS = [

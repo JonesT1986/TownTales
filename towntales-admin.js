@@ -3,6 +3,8 @@
      and a setting to auto-approve link-reader facts that have a source (so only visitor uploads wait for review).
    - Problem reports tab: open reports with Resolve (stamps the resolved date), Reopen, Delete; "show resolved" toggle.
    - Direct links from the daily email: #admin/item-<id> and #admin/report-<id> open and highlight that entry.
+   - Towns tab (Nov 22 2026): "Needs rebuild" toggle with count, search box, A–Z letter bar, 100 towns per page,
+     status per town; a rebuilt town updates in place. Data comes from the api "towns" route (database-side filtering).
    It uses the app's internals through window.TTapp. If that is missing it does nothing. */
 (function () {
   "use strict";
@@ -160,6 +162,116 @@
     applyFocus("report-");
     return miss + head + '<div class="stack">' + list + "</div>";
   };
+
+  /* ---------- towns tab (Nov 22 2026): Needs-rebuild view, search, A–Z, paging ----------
+     Everything is filtered and counted in the database (api "towns" → public.admin_towns), one page
+     at a time, so towns past the first 1,000 are never dropped. Typing only redraws the list, not the
+     whole page, so the search box keeps its focus. */
+  var townsOrig = A.towns;
+  var PAGE = 100;
+  var tf = { q: "", letter: "", needs: false, offset: 0, data: null, err: "", seq: 0, timer: 0, watch: {} };
+  var LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ#".split("");
+
+  function whyNeeds(r) {
+    var w = [];
+    if (r.timeline_status === "error") w.push("last build failed");
+    else if (!r.timeline_built_at || r.timeline_status === "empty") w.push("timeline never built");
+    if (r.newer) w.push("items added since the last build");
+    if (r.uncovered) w.push(plural(r.uncovered, "dated item") + " not on the timeline");
+    if (r.stale) w.push("timeline points to " + plural(r.stale, "removed item"));
+    return w.join("; ");
+  }
+  function statusCell(r) {
+    if (r.status === "rebuilding" || tf.watch[r.slug]) return '<span class="pill st">Rebuilding…</span>';
+    if (r.status === "needs") return '<span class="pill ttt-needs" title="' + esc(whyNeeds(r)) + '">Needs rebuild</span><br><span class="small muted">' + esc(whyNeeds(r)) + "</span>";
+    return '<span class="pill doc">OK</span>';
+  }
+  function townRow(r) {
+    return '<tr id="ttt-' + esc(r.slug) + '"><td><b>' + esc(r.name) + "</b>" + (r.hidden ? ' <span class="small muted">(hidden)</span>' : "") +
+      '<br><a class="small" href="#t-' + esc(r.slug) + '">View</a></td><td>' + esc(r.prov) + '</td><td class="num">' + r.items + '</td><td class="num">' + r.rows +
+      "</td><td>" + statusCell(r) + '</td><td><div class="btns"><button class="btn sm alt" data-ttt="rebuild" data-id="' + esc(r.slug) + '"' + (tf.watch[r.slug] || r.status === "rebuilding" ? " disabled" : "") + ">" +
+      (tf.watch[r.slug] || r.status === "rebuilding" ? "Rebuilding…" : "Rebuild timeline") + "</button>" +
+      (r.hidden ? '<button class="btn sm alt" data-act="tshow" data-id="' + esc(r.slug) + '">Show</button>' : '<button class="btn sm alt" data-act="thide" data-id="' + esc(r.slug) + '">Hide</button>') + "</div></td></tr>";
+  }
+  function drawTowns() {
+    var box = document.getElementById("ttt-results"); if (!box) return;
+    var d = tf.data;
+    var badge = document.getElementById("ttt-needs-n"); if (badge && d) badge.textContent = "(" + d.needs + ")";
+    var bar = document.getElementById("ttt-letters");
+    if (bar && d) bar.innerHTML = '<button type="button" data-ttt="letter" data-l="" aria-pressed="' + (!tf.letter) + '">All</button>' + LETTERS.map(function (L) {
+      var n = (d.letters && d.letters[L]) || 0;
+      return '<button type="button" data-ttt="letter" data-l="' + L + '" aria-pressed="' + (tf.letter === L) + '"' + (n || tf.letter === L ? "" : " disabled") + ">" + L + "<small>" + n + "</small></button>";
+    }).join("");
+    if (tf.err) { box.innerHTML = '<div class="notice warn"><p>Couldn\'t load towns: ' + esc(tf.err) + ". Check the admin key above.</p></div>"; return; }
+    if (!d) { box.innerHTML = '<p class="muted">Loading…</p>'; return; }
+    var from = d.total ? d.offset + 1 : 0, to = Math.min(d.offset + d.rows.length, d.total);
+    var what = (tf.needs ? "towns needing a rebuild" : "towns") + (tf.letter ? ' starting with "' + tf.letter + '"' : "") + (tf.q ? ' matching "' + tf.q + '"' : "");
+    var pager = d.total > PAGE ? '<div class="btns"><button class="btn sm alt" data-ttt="page" data-d="-1"' + (d.offset ? "" : " disabled") + '>← Previous</button><button class="btn sm alt" data-ttt="page" data-d="1"' + (to < d.total ? "" : " disabled") + ">Next →</button></div>" : "";
+    var foot = d.stats_at ? '<p class="small muted">Rebuild check last refreshed ' + new Date(d.stats_at).toLocaleTimeString("en-CA", { hour: "numeric", minute: "2-digit" }) + " (every 5 minutes, and right after each rebuild). " + plural(d.needs_all, "town") + " need a rebuild in total.</p>" : "";
+    box.innerHTML = '<p class="small muted" role="status">' + (d.total ? "Showing " + from + "–" + to + " of " + d.total + " " + what + "." : "No " + what + ".") + "</p>" + pager +
+      (d.rows.length ? '<div class="tbl"><table><thead><tr><th>Town</th><th>Prov.</th><th class="num">Archive</th><th class="num">Timeline</th><th>Status</th><th>Actions</th></tr></thead><tbody>' + d.rows.map(townRow).join("") + "</tbody></table></div>" : "") +
+      pager + foot + '<p class="tt-msg" id="tta-msg" role="status"></p>';
+  }
+  function loadTowns(keepOffset) {
+    if (!keepOffset) tf.offset = 0;
+    var my = ++tf.seq;
+    return live.api("towns", { q: tf.q, letter: tf.letter, needs: tf.needs, limit: PAGE, offset: tf.offset }).then(function (r) {
+      if (my !== tf.seq) return;
+      if (!r.rows.length && tf.offset > 0 && r.total > 0) { tf.offset = Math.max(0, Math.floor((r.total - 1) / PAGE) * PAGE); return loadTowns(true); }
+      tf.err = ""; tf.data = r; drawTowns();
+    }, function (e) { if (my !== tf.seq) return; tf.err = e.message; tf.data = null; drawTowns(); });
+  }
+  // After a rebuild: check that town every 10 s (up to 4 min) and update its row once the build is done.
+  function watchTown(slug) {
+    var started = Date.now();
+    tf.watch[slug] = true;
+    (function poll() {
+      setTimeout(function () {
+        live.api("towns", { q: slug, limit: 20 }).then(function (r) {
+          var row = (r.rows || []).filter(function (x) { return x.slug === slug; })[0];
+          if (row && row.status === "rebuilding" && Date.now() - started < 240000) return poll();
+          delete tf.watch[slug];
+          // Redraws counts, badge and letters; a fixed town drops out of the Needs-rebuild view.
+          loadTowns(true).then(function () {
+            if (row) msg(row.name + ": " + (row.status === "needs" ? "rebuilt, but still flagged (" + whyNeeds(row) + ")." : row.status === "rebuilding" ? "still rebuilding. Click Rebuild again later if it stays stuck." : "timeline rebuilt."), row.status !== "needs");
+          });
+        }, function () { if (Date.now() - started < 240000) poll(); else { delete tf.watch[slug]; drawTowns(); } });
+      }, 10000);
+    })();
+  }
+  A.towns = function () {
+    if (!LIVE) return townsOrig();
+    setTimeout(function () { drawTowns(); loadTowns(true); }, 0);
+    return '<div class="ttt-tools"><div class="field"><label for="ttt-q">Search towns</label><input type="search" id="ttt-q" data-ttt="q" autocomplete="off" placeholder="Type part of a town name" value="' + esc(tf.q) + '"></div>' +
+      '<label class="tta-check ttt-needs-toggle"><input type="checkbox" data-ttt="needs"' + (tf.needs ? " checked" : "") + '> Needs rebuild <span id="ttt-needs-n">' + (tf.data ? "(" + tf.data.needs + ")" : "") + "</span></label></div>" +
+      '<div class="ttt-letters" id="ttt-letters" role="group" aria-label="First letter"></div>' +
+      '<div id="ttt-results"></div>';
+  };
+  (function () {
+    var css = ".ttt-tools{display:flex;flex-wrap:wrap;align-items:flex-end;gap:16px}.ttt-tools .field{flex:1 1 260px;margin:0}" +
+      ".ttt-letters{display:flex;flex-wrap:wrap;gap:4px}.ttt-letters button{min-width:38px;padding:6px 6px 4px;border:1px solid var(--rule,#ccc);border-radius:6px;background:#fff;font-weight:700;cursor:pointer;line-height:1.1}" +
+      ".ttt-letters button small{display:block;font-weight:400;font-size:.7em;opacity:.7}.ttt-letters button[aria-pressed=true]{background:var(--denim,#2B5C80);color:#fff;border-color:var(--denim,#2B5C80)}" +
+      ".ttt-letters button[disabled]{opacity:.35;cursor:default}.pill.ttt-needs{background:#fbeee5;color:#B4512C}";
+    var s = document.createElement("style"); s.textContent = css; document.head.appendChild(s);
+  })();
+  document.addEventListener("input", function (ev) {
+    var el = ev.target; if (!el || el.getAttribute("data-ttt") !== "q") return;
+    tf.q = el.value.trim(); clearTimeout(tf.timer); tf.timer = setTimeout(function () { loadTowns(); }, 250);
+  });
+  document.addEventListener("change", function (ev) {
+    var el = ev.target; if (!el || el.getAttribute("data-ttt") !== "needs") return;
+    tf.needs = el.checked; loadTowns();
+  });
+  document.addEventListener("click", function (ev) {
+    var b = ev.target.closest && ev.target.closest("button[data-ttt]"); if (!b) return;
+    var a = b.getAttribute("data-ttt");
+    if (a === "letter") { tf.letter = b.getAttribute("data-l") || ""; loadTowns(); }
+    else if (a === "page") { tf.offset = Math.max(0, tf.offset + PAGE * (+b.dataset.d)); loadTowns(true); var t = document.getElementById("ttt-q"); if (t) t.scrollIntoView({ block: "start" }); }
+    else if (a === "rebuild") {
+      var slug = b.dataset.id; b.disabled = true; b.textContent = "Rebuilding…";
+      DB.rebuild(slug).then(function () { watchTown(slug); drawTowns(); }, function (e) { b.disabled = false; b.textContent = "Rebuild timeline"; msg("That didn't work: " + e.message); });
+    }
+  });
 
   /* ---------- events (data-tta, so the app's own data-act handler never sees them) ---------- */
   document.addEventListener("change", function (ev) {
