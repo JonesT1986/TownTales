@@ -11,7 +11,7 @@ function honourCfg() {
   const link = String(process.env.HONOUR_PAYMENT_LINK || '').trim();
   return {
     link: /^https:\/\/buy\.stripe\.com\/[A-Za-z0-9_-]+$/.test(link) ? link : '',
-    price: String(process.env.HONOUR_PRICE || '$39').trim().slice(0, 20),
+    price: String(process.env.HONOUR_PRICE || '$29').trim().slice(0, 20),
   };
 }
 // Call a database function with the public key (returns one JSON value, not rows).
