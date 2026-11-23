@@ -18,6 +18,40 @@ const SAMPLE_COVER = { town: 'Wapella', image: 'https://prairie-towns.com/wapell
 const PHOTO_OK = process.env.VERCEL_ENV !== 'production' || process.env.COVER_PHOTO_OK === '1';
 if (!PHOTO_OK) SAMPLE_COVER.image = '';
 BOOKS['wapella-sk'].mainStreet = PHOTO_OK ? SAMPLE_COVER : null; // Wapella's own cover
+// Printed-book ordering via Stripe Payment Links, set in Vercel: BOOK_PAPERBACK_LINK, BOOK_HARDCOVER_LINK
+// (optional BOOK_PAPERBACK_PRICE / BOOK_HARDCOVER_PRICE, e.g. "$45", shown on the buttons). A link that isn't
+// a https://buy.stripe.com/... address is ignored. Each order carries client_reference_id = "book_<town slug>",
+// so the Stripe dashboard shows which town's book was bought. Only towns in BOOKS (book ready) get buttons.
+function printCfg() {
+  const link = (k) => { const v = String(process.env[k] || '').trim(); return /^https:\/\/buy\.stripe\.com\/[A-Za-z0-9_-]+$/.test(v) ? v : ''; };
+  const price = (k) => String(process.env[k] || '').trim().slice(0, 20);
+  return [
+    { key: 'paperback', name: 'Paperback', blurb: 'Soft cover. Lighter, and easy to pass around the family.', link: link('BOOK_PAPERBACK_LINK'), price: price('BOOK_PAPERBACK_PRICE') },
+    { key: 'hardcover', name: 'Hardcover', blurb: 'Hard cover. Made to last, for the shelf or as a gift.', link: link('BOOK_HARDCOVER_LINK'), price: price('BOOK_HARDCOVER_PRICE') },
+  ].filter((e) => e.link);
+}
+const orderUrl = (link, slug) => `${link}?client_reference_id=${encodeURIComponent(('book_' + slug).replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 200))}`;
+function orderSection(town) {
+  const eds = printCfg();
+  if (!eds.length) return '';
+  return `<section class="wrap stack" id="order"><h2>Order the printed book</h2>
+<p>Pick a cover. You'll pay on Stripe's secure page, add your shipping address there, and Stripe emails you a receipt.</p>
+<div class="bk-eds">${eds.map((e) => `<div class="rm-cem"><h3>${esc(e.name)}${e.price ? ` <span class="muted">${esc(e.price)}</span>` : ''}</h3><p>${esc(e.blurb)}</p>
+<p style="margin-top:10px"><a class="btn" href="${esc(orderUrl(e.link, town.slug))}" rel="noopener">Order the ${esc(e.name.toLowerCase())}${e.price ? ' · ' + esc(e.price) : ''}</a></p></div>`).join('')}</div>
+<p class="small muted">Each copy is printed after you order, with ${esc(town.name)}'s history as it stands that day. Shipping and any tax are added at checkout. Questions? Email <a href="mailto:towntalesinfo@gmail.com">towntalesinfo@gmail.com</a>.</p>
+</section>`;
+}
+function thanksPage(res) {
+  const main = `<section class="wrap stack" style="padding-top:28px">
+<p class="eyebrow">Your book order</p>
+<h1>Thank you</h1>
+<div class="rm-ok"><p>Your order went through, and Stripe has emailed you a receipt.</p>
+<p>We print each copy after it's ordered, then mail it to the address you gave. We'll email you when it ships.</p></div>
+<p>Questions or a change to your order? Email <a href="mailto:towntalesinfo@gmail.com">towntalesinfo@gmail.com</a>.</p>
+<p><a class="btn alt" href="/#towns">Back to TownTales</a></p>
+</section>`;
+  send(res, 200, page({ title: 'Thank you for your order | TownTales', desc: 'Thank you for ordering a TownTales book.', main, noindex: true }), 'private, no-store');
+}
 const NEEDS_MAIN_STREET = Object.keys(BOOKS).filter((k) => !(BOOKS[k].mainStreet && BOOKS[k].mainStreet.image));
 
 function cover(town, prov, ms) {
@@ -40,6 +74,7 @@ function cover(town, prov, ms) {
 
 module.exports = async (req, res) => {
   const url = new URL(req.url, 'http://localhost');
+  if (url.searchParams.get('thanks')) return thanksPage(res);
   const slug = String(url.searchParams.get('slug') || '').toLowerCase();
   const book = BOOKS[slug];
   try {
@@ -75,7 +110,7 @@ ${cover(town, prov, book.mainStreet)}
 <p class="lede">Everything on ${esc(town.name)}'s TownTales page, gathered into ${book.pages ? 'a ' + book.pages + '-page' : 'one'} book: the timeline, the people, the cemeteries and the teams. Every fact keeps its source.</p>
 <div class="btns">${book.sample
       ? `<a class="btn" href="${esc(book.sample)}" target="_blank" rel="noopener">Read the free sample (PDF)</a>`
-      : `<span class="btn alt" aria-disabled="true" style="opacity:.6;cursor:default">Free sample coming soon</span>`}<a class="btn alt" href="#request">Request the full book</a></div>
+      : `<span class="btn alt" aria-disabled="true" style="opacity:.6;cursor:default">Free sample coming soon</span>`}${printCfg().length ? `<a class="btn" href="#order">Order the printed book</a>` : `<a class="btn alt" href="#request">Request the full book</a>`}</div>
 <p class="small muted">The sample has the cover, the contents, the timeline at a glance and the first chapter. Free, nothing to sign up for.</p>
 </div></div>
 </section>
@@ -88,8 +123,9 @@ ${book.mainStreet && book.mainStreet.image ? '' : `<section class="wrap"><div cl
 ${timeline.length ? `<section class="wrap stack"><h2>${esc(town.name)} at a glance</h2><ol class="bk-glance">${timeline.map((t) => `<li><span class="bk-yr">${esc(t.label)}</span><span>${esc(t.title)}</span></li>`).join('')}</ol>
 <p class="small"><a href="/${esc(town.slug)}">See the full timeline with sources →</a></p></section>` : ''}
 
-<section class="wrap stack" id="request"><h2>Request the full book</h2>
-<p>Tell us which edition you'd like. There's nothing to pay now. We'll email you the price and let you know when your copy is ready to order.</p>
+${orderSection(town)}
+<section class="wrap stack" id="request"><h2>${printCfg().length ? 'Want the digital edition, or not ready to order?' : 'Request the full book'}</h2>
+<p>${printCfg().length ? "Leave your name and we'll email you about the digital edition, or when the book gets new pages. Nothing to pay." : "Tell us which edition you'd like. There's nothing to pay now. We'll email you the price and let you know when your copy is ready to order."}</p>
 <div class="bk-eds">
 <div class="rm-cem"><h3>Digital edition</h3><p>A PDF you can read on any screen or print at home.</p></div>
 <div class="rm-cem"><h3>Printed book</h3><p>A bound paperback, printed when you order it.</p></div>

@@ -86,6 +86,10 @@
       "destination": "/api/remembrance?thanks=1"
     },
     {
+      "source": "/books/thanks",
+      "destination": "/api/extra?kind=book&thanks=1"
+    },
+    {
       "source": "/:slug([a-z0-9-]+-(?:sk|mb|ab|bc|on|qc|nb|ns|pe|nl|yt|nt|nu))/sports",
       "destination": "/api/sports?slug=:slug"
     },
