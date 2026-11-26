@@ -620,7 +620,7 @@
         var pi = c.proposed_item, y = yearIn(c.date_label);
         var state = c.moderation === "approved" ? (c.item_id ? "On timeline" : "Approved · archive only") : c.moderation === "declined" ? "Rejected" : "Waiting";
         return '<div class="qitem" data-id="' + esc(c.id) + '"><div class="top"><h3>' + esc(c.headline || [c.paper_name, c.date_label].filter(Boolean).join(", ") || "Clipping") + '</h3><span class="pill new">' + esc(c.town) + '</span><span class="pill">Section: Archive (clipping)</span><span class="pill cl-state">' + esc(state) + "</span></div>" +
-          '<a href="' + esc(c.image_url) + '" target="_blank" rel="noopener"><img src="' + esc(c.image_url) + '" alt="" style="max-height:360px"></a>' +
+          '<a class="tta-zoom tta-doc" href="' + esc(c.image_url) + '" target="_blank" rel="noopener" data-tta-zoom="' + esc(c.image_url) + '" title="Click to see it full size"><img src="' + esc(c.image_url) + '" alt="Clipping image"><span class="tta-zoom-hint">🔍 Click to enlarge</span></a>' +
           '<div class="btns"><button class="btn sm alt" data-tt="cl-tx">Transcribe image</button></div><p class="cl-txnote small" role="status"></p>' +
           '<dl class="kv"><dt>From</dt><dd>' + esc(c.submitter_name || "Anonymous") + (c.submitter_email ? " · " + esc(c.submitter_email) : " · no email") + "</dd></dl>" +
           inp("Headline", "headline", c.headline) +
