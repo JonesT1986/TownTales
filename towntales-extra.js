@@ -423,7 +423,7 @@
   }
 
   /* ---------- 4: admin review queue ---------- */
-  function adminKey() { try { return sessionStorage.getItem("tt-admin") || ""; } catch (e) { return ""; } }
+  function adminKey() { try { return sessionStorage.getItem("tt-admin") || localStorage.getItem("tt-admin-saved") || ""; } catch (e) { return ""; } }
   function api(action, payload) {
     return fetch(SB + "/functions/v1/api/" + action, { method: "POST", headers: { "Content-Type": "application/json", "x-admin-key": adminKey() }, body: JSON.stringify(payload || {}) })
       .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || "Request failed"); return j; }); });

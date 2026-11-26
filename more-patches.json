@@ -28,5 +28,20 @@
   "note": "Nov 26: hand the train-line stops to towntales-more.js (station markers)",
   "find": "get S(){return S;},",
   "replace": "get S(){return S;},lineStops:()=>lineStops(),"
+ },
+ {
+  "note": "Nov 26: admin form: 'Login' button + 'Save password on this computer' checkbox",
+  "find": "value=\"${esc(sessionStorage.getItem(\"tt-admin\")||\"\")}\"><span class=\"hint\">Kept in this tab only.</span></div><button class=\"btn sm\" data-act=\"setkey\">Save key</button></div>",
+  "replace": "value=\"${esc(sessionStorage.getItem(\"tt-admin\")||(function(){try{return localStorage.getItem(\"tt-admin-saved\")||\"\"}catch(e){return \"\"}})()||\"\")}\" autocomplete=\"current-password\"><label class=\"hint\" style=\"display:flex;gap:8px;align-items:center;margin-top:8px\"><input type=\"checkbox\" id=\"adm-remember\"${(function(){try{return localStorage.getItem(\"tt-admin-saved\")||\"\"}catch(e){return \"\"}})()?\" checked\":\"\"}> Save password on this computer</label><span class=\"hint\">Only tick this on your own computer. Untick and press Login to forget it.</span></div><button class=\"btn sm\" data-act=\"setkey\">Login</button></div>"
+ },
+ {
+  "note": "Nov 26: Login stores the key for this tab, and on this computer when the box is ticked",
+  "find": "if(a===\"setkey\"){sessionStorage.setItem(\"tt-admin\",document.getElementById(\"adm-key\").value);",
+  "replace": "if(a===\"setkey\"){const _k=document.getElementById(\"adm-key\").value;sessionStorage.setItem(\"tt-admin\",_k);try{const _r=document.getElementById(\"adm-remember\");if(_r&&_r.checked)localStorage.setItem(\"tt-admin-saved\",_k);else localStorage.removeItem(\"tt-admin-saved\");}catch(e){}"
+ },
+ {
+  "note": "Nov 26: admin API calls use the saved key when this tab has none",
+  "find": "async api(action,payload){const key=sessionStorage.getItem(\"tt-admin\")||\"\";",
+  "replace": "async api(action,payload){const key=sessionStorage.getItem(\"tt-admin\")||(function(){try{return localStorage.getItem(\"tt-admin-saved\")||\"\"}catch(e){return \"\"}})()||\"\";"
  }
 ]
