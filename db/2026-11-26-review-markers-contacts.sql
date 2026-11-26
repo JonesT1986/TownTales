@@ -43,3 +43,8 @@ grant execute on function public.public_settings() to anon, authenticated;
 alter table public.clippings add column if not exists headline text;
 update public.clippings set headline = 'Bennett Construction Company Gets Contract for Skating and Curling Rink'
  where id = 'cda732b0-6f79-4411-85d8-edc6bf568410' and headline is null;
+
+-- 7. towns uses column-level grants: the public may read place_kind, but not set it when adding a town.
+grant select (place_kind) on public.towns to anon, authenticated;
+revoke insert (place_kind), update (place_kind) on public.towns from anon, authenticated;
+notify pgrst, 'reload schema';
