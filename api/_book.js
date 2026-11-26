@@ -268,6 +268,7 @@ function waitlist(res, town) {
 <p class="eyebrow">The ${esc(town.name)} Book</p>
 <h1>Want a book about ${esc(town.name)}?</h1>
 <p class="lede">We make a history book for each town from everything on its TownTales page. ${esc(town.name)}'s isn't ready yet. Add your name and we'll let you know when it is. The towns with the most requests get their books first.</p>
+<div class="btns"><a class="btn" href="#request">Put me on the list</a></div>
 </div></div></section>
 <section class="wrap stack" id="request"><h2>Put me on the list</h2>
 <form class="formbox" data-tt-bookform data-town="${esc(town.slug)}" data-waitlist="1" novalidate style="max-width:820px">
