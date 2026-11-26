@@ -38,6 +38,14 @@
       "destination": "/api/sitemap"
     },
     {
+      "source": "/sitemap-core.xml",
+      "destination": "/api/sitemap?part=core"
+    },
+    {
+      "source": "/sitemap-remembrance-:n([0-9]+).xml",
+      "destination": "/api/sitemap?part=rem&n=:n"
+    },
+    {
       "source": "/anniversary",
       "destination": "/api/extra?kind=anniversary"
     },
