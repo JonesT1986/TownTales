@@ -46,7 +46,17 @@ function printCfg() {
 const BLURB = { paperback: 'Soft cover. Lighter, and easy to pass around the family.', hardcover: 'Hard cover. Made to last, for the shelf or as a gift.' };
 // Editions to offer for one town. When Lulu + Stripe keys are set, the price follows the book's page count
 // (see _bookprice.js) and the button goes to our own checkout. Otherwise the old fixed Stripe Payment Links are used.
+// Digital edition (PDF): a Stripe Payment Link set in Vercel as BOOK_DIGITAL_LINK, price text BOOK_DIGITAL_PRICE ($19.99 if empty).
+// Nothing is printed or shipped, so it has no Lulu cost. The buyer is emailed the PDF by hand after paying.
+function digitalCfg(slug, book) {
+  const v = String(process.env.BOOK_DIGITAL_LINK || '').trim();
+  if (!/^https:\/\/buy\.stripe\.com\/[A-Za-z0-9_-]+$/.test(v) || !(book && book.digital !== false)) return [];
+  return [{ key: 'digital', name: 'Digital edition', blurb: 'The full book as a PDF, to read on any phone, tablet or computer. Emailed to you after you pay, usually within a day.', link: v, price: String(process.env.BOOK_DIGITAL_PRICE || '$19.99').trim().slice(0, 20), digital: true }];
+}
 async function editionsFor(slug, book) {
+  return (await printEditions(slug, book)).concat(digitalCfg(slug, book));
+}
+async function printEditions(slug, book) {
   const fixed = printCfg();
   if (!(bp.luluReady() && bp.stripeReady() && book && book.pages)) return fixed;
   const out = [];
@@ -62,26 +72,29 @@ async function editionsFor(slug, book) {
   }
   return out;
 }
-const orderUrl = (link, slug) => link.startsWith('/') ? link : `${link}?client_reference_id=${encodeURIComponent(('book_' + slug).replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 200))}`;
+const orderUrl = (link, slug, key) => link.startsWith('/') ? link : `${link}?client_reference_id=${encodeURIComponent(('book_' + slug + (key === 'digital' ? '_digital' : '')).replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 200))}`;
+const hasPrint = (eds) => eds.some((e) => !e.digital);
 function orderSection(town, eds) {
   if (!eds.length) return '';
-  return `<section class="wrap stack" id="order"><h2>Order the printed book</h2>
-<p>Pick a cover. You'll pay on Stripe's secure page, add your shipping address there, and Stripe emails you a receipt.${town.slug && BOOKS[town.slug] && BOOKS[town.slug].look ? ` Not sure yet? <a href="/${esc(town.slug)}/book/preview">Look inside the book first</a>.` : ''}</p>
+  const lulu = `<p class="small muted">Printed copies are made to order by <a href="https://www.lulu.com" rel="noopener">Lulu</a>, a print-on-demand publisher founded by Canadian Bob Young, and Canadian orders are normally printed at Lulu's print facility in Canada.</p>`;
+  return `<section class="wrap stack" id="order"><h2>Buy the book</h2>
+<p>Pick an edition. You'll pay on Stripe's secure page and Stripe emails you a receipt.${hasPrint(eds) ? ' For a printed copy you add your shipping address there.' : ''}${town.slug && BOOKS[town.slug] && BOOKS[town.slug].look ? ` Not sure yet? <a href="/${esc(town.slug)}/book/preview">Look inside the book first</a>.` : ''}</p>
 <div class="bk-eds">${eds.map((e) => `<div class="rm-cem"><h3>${esc(e.name)}${e.price ? ` <span class="muted">${esc(e.price)}</span>` : ''}</h3><p>${esc(e.blurb)}</p>
-<p style="margin-top:10px"><a class="btn" href="${esc(orderUrl(e.link, town.slug))}" rel="noopener">Order the ${esc(e.name.toLowerCase())}${e.price ? ' · ' + esc(e.price) : ''}</a></p></div>`).join('')}</div>
-<p class="small muted">Each copy is printed after you order, with ${esc(town.name)}'s history as it stands that day. Shipping anywhere in Canada is included in the price. Questions? Email <a href="mailto:towntalesinfo@gmail.com">towntalesinfo@gmail.com</a>.</p>
+<p style="margin-top:10px"><a class="btn" href="${esc(orderUrl(e.link, town.slug, e.key))}" rel="noopener">Buy the ${esc(e.name.toLowerCase())}${e.price ? ' · ' + esc(e.price) : ''}</a></p></div>`).join('')}</div>
+${hasPrint(eds) ? `<p><b>Allow 4 to 6 weeks for your printed copy to arrive.</b> Each copy is printed after you order, with ${esc(town.name)}'s history as it stands that day, and shipping anywhere in Canada is included in the price.</p>${lulu}` : ''}
+<p class="small muted">Questions? Email <a href="mailto:towntalesinfo@gmail.com">towntalesinfo@gmail.com</a>.</p>
 </section>`;
 }
 function lookPage(res, town, book, eds) {
   const L = book.look, prov = PROV[town.prov] || town.prov, base = `/book-preview/${town.slug}/`;
-  const buy = eds.length ? `<div class="btns">${eds.map((e) => `<a class="btn" href="${esc(orderUrl(e.link, town.slug))}" rel="noopener">Order the ${esc(e.name.toLowerCase())}${e.price ? ' · ' + esc(e.price) : ''}</a>`).join('')}</div>`
+  const buy = eds.length ? `<div class="btns">${eds.map((e) => `<a class="btn" href="${esc(orderUrl(e.link, town.slug, e.key))}" rel="noopener">Buy the ${esc(e.name.toLowerCase())}${e.price ? ' · ' + esc(e.price) : ''}</a>`).join('')}</div>`
     : `<div class="btns"><a class="btn" href="/${esc(town.slug)}/book#request">Request the book</a></div>`;
   const main = `<section class="wrap stack" style="padding-top:22px">
 <p class="crumbs"><a href="/">TownTales</a> › <a href="/${esc(town.slug)}">${esc(town.name)}</a> › <a href="/${esc(town.slug)}/book">The ${esc(town.name)} Book</a> › Look inside</p>
 <div class="bk-hero"><figure class="bk-fig"><img class="lk-cover" src="${base}cover.jpg" alt="Front cover of ${esc(L.title)}" width="936" height="1212"></figure>
 <div class="stack"><p class="eyebrow">Look inside</p><h1>${esc(L.title)}</h1>
 <p class="lede">Turn through real pages from the printed book: ${esc(L.format)}. Every fact is sourced, and the Roll of Remembrance names ${esc(town.name)}’s people one by one.</p>
-${buy}<p class="small muted">Printed when you order. Shipping anywhere in Canada is included.</p></div></div></section>
+${buy}<p class="small muted">Printed when you order. Allow 4 to 6 weeks for delivery. Shipping anywhere in Canada is included.</p></div></div></section>
 <section class="wrap stack"><h2>Sample pages</h2><p class="small muted">Tap a page to see it full size.</p>
 <div class="lk-grid">${L.pages.map(([f, cap], i) => `<figure class="lk-pg"><a href="${base}${f}.jpg" target="_blank" rel="noopener"><img src="${base}${f}.jpg" alt="Page: ${esc(cap)}" loading="${i < 3 ? 'eager' : 'lazy'}" width="935" height="1210"></a><figcaption>${esc(cap)}</figcaption></figure>`).join('')}</div></section>
 <section class="wrap stack" id="order"><h2>Get your copy</h2>${buy}<p><a href="/${esc(town.slug)}/book">More about the book</a></p></section>
@@ -92,12 +105,13 @@ ${buy}<p class="small muted">Printed when you order. Shipping anywhere in Canada
     canonical: `${SITE}/${town.slug}/book/preview`, main,
   }), 'public, s-maxage=600, stale-while-revalidate=86400');
 }
-function thanksPage(res) {
+function thanksPage(res, digital) {
   const main = `<section class="wrap stack" style="padding-top:28px">
 <p class="eyebrow">Your book order</p>
 <h1>Thank you</h1>
 <div class="rm-ok"><p>Your order went through, and Stripe has emailed you a receipt.</p>
-<p>We print each copy after it's ordered, then mail it to the address you gave. We'll email you when it ships.</p></div>
+${digital ? '<p>We will email your PDF to the address you paid with, usually within a day. If it has not arrived in 48 hours, check your spam folder, then write to us.</p>'
+  : '<p>We print each copy after it is ordered, then mail it to the address you gave. Please allow 4 to 6 weeks for it to arrive. We will email you when it ships.</p>'}</div>
 <p>Questions or a change to your order? Email <a href="mailto:towntalesinfo@gmail.com">towntalesinfo@gmail.com</a>.</p>
 <p><a class="btn alt" href="/#towns">Back to TownTales</a></p>
 </section>`;
@@ -144,7 +158,7 @@ async function checkout(res, url) {
 
 module.exports = async (req, res) => {
   const url = new URL(req.url, 'http://localhost');
-  if (url.searchParams.get('thanks')) return thanksPage(res);
+  if (url.searchParams.get('thanks')) return thanksPage(res, url.searchParams.get('e') === 'digital');
   if (url.searchParams.get('checkout')) return checkout(res, url);
   const slug = String(url.searchParams.get('slug') || '').toLowerCase();
   const book = BOOKS[slug];
@@ -187,7 +201,7 @@ ${cover(town, prov, book.mainStreet)}
 <p class="lede">Everything on ${esc(town.name)}'s TownTales page, gathered into ${book.pages ? 'a ' + book.pages + '-page' : 'one'} book: the timeline, the people, the cemeteries and the teams. Every fact keeps its source.</p>
 <div class="btns">${book.sample
       ? `<a class="btn" href="${esc(book.sample)}" target="_blank" rel="noopener">Read the free sample (PDF)</a>`
-      : `<span class="btn alt" aria-disabled="true" style="opacity:.6;cursor:default">Free sample coming soon</span>`}${book.look ? `<a class="btn alt" href="/${esc(town.slug)}/book/preview">Look inside</a>` : ''}${eds.length ? `<a class="btn" href="#order">Order the printed book</a>` : `<a class="btn alt" href="#request">Request the full book</a>`}</div>
+      : `<span class="btn alt" aria-disabled="true" style="opacity:.6;cursor:default">Free sample coming soon</span>`}${book.look ? `<a class="btn alt" href="/${esc(town.slug)}/book/preview">Look inside</a>` : ''}${eds.length ? `<a class="btn" href="#order">Buy the book</a>` : `<a class="btn alt" href="#request">Request the full book</a>`}</div>
 <p class="small muted">The sample has the cover, the contents, the timeline at a glance and the first chapter. Free, nothing to sign up for.</p>
 </div></div>
 </section>
