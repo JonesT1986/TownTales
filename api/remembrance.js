@@ -292,7 +292,7 @@ ${!h && cfg.link ? honourOffer(m, town, cfg) : ''}
   if (h && h.photos && h.photos[0]) person.image = h.photos[0].url;
   const html = page({
     title: `${plainName(m)}${d ? ' (' + d + ')' : ''} — ${cn ? cn + ', ' : ''}${town.name}, ${prov} | TownTales`,
-    desc, canonical: pageUrl, main,
+    desc, canonical: pageUrl, main, noindex: String(m.id).length > 150, // bad imported ids: keep out of Google
     ld: [{
       '@context': 'https://schema.org', '@type': 'WebPage', url: pageUrl, name: `In memory of ${plainName(m)}`, about: person,
       breadcrumb: { '@type': 'BreadcrumbList', itemListElement: [
