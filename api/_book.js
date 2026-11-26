@@ -2,6 +2,7 @@
 // Free sample + request form (saves to the existing book_interest table). No payments.
 // Everything shown comes from the live collection; nothing is hand-written about the town.
 const { SITE, PROV, PROV_SLUG, esc, q, page, send, notFound } = require('./_shell');
+const bp = require('./_bookprice');
 
 // Towns with a book file ready. sample = public URL of the free sample PDF (null until supplied).
 // mainStreet = the town's main street photo used as the cover: { image, credit } (credit = who took it / where it's from).
@@ -42,20 +43,37 @@ function printCfg() {
     { key: 'hardcover', name: 'Hardcover', blurb: 'Hard cover. Made to last, for the shelf or as a gift.', link: link('BOOK_HARDCOVER_LINK'), price: price('BOOK_HARDCOVER_PRICE') },
   ].filter((e) => e.link);
 }
-const orderUrl = (link, slug) => `${link}?client_reference_id=${encodeURIComponent(('book_' + slug).replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 200))}`;
-function orderSection(town) {
-  const eds = printCfg();
+const BLURB = { paperback: 'Soft cover. Lighter, and easy to pass around the family.', hardcover: 'Hard cover. Made to last, for the shelf or as a gift.' };
+// Editions to offer for one town. When Lulu + Stripe keys are set, the price follows the book's page count
+// (see _bookprice.js) and the button goes to our own checkout. Otherwise the old fixed Stripe Payment Links are used.
+async function editionsFor(slug, book) {
+  const fixed = printCfg();
+  if (!(bp.luluReady() && bp.stripeReady() && book && book.pages)) return fixed;
+  const out = [];
+  for (const key of ['paperback', 'hardcover']) {
+    try {
+      const qte = await bp.quote(key, book.pages);
+      out.push({ key, name: bp.EDITIONS[key].name, blurb: BLURB[key], link: `/books/checkout?town=${encodeURIComponent(slug)}&edition=${key}`, price: bp.fmt(qte.priceCents), internal: true });
+    } catch (e) {
+      console.error('book price', slug, key, String(e.message || e).slice(0, 300));
+      const f = fixed.find((x) => x.key === key);
+      if (f) out.push(f);
+    }
+  }
+  return out;
+}
+const orderUrl = (link, slug) => link.startsWith('/') ? link : `${link}?client_reference_id=${encodeURIComponent(('book_' + slug).replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 200))}`;
+function orderSection(town, eds) {
   if (!eds.length) return '';
   return `<section class="wrap stack" id="order"><h2>Order the printed book</h2>
 <p>Pick a cover. You'll pay on Stripe's secure page, add your shipping address there, and Stripe emails you a receipt.${town.slug && BOOKS[town.slug] && BOOKS[town.slug].look ? ` Not sure yet? <a href="/${esc(town.slug)}/book/preview">Look inside the book first</a>.` : ''}</p>
 <div class="bk-eds">${eds.map((e) => `<div class="rm-cem"><h3>${esc(e.name)}${e.price ? ` <span class="muted">${esc(e.price)}</span>` : ''}</h3><p>${esc(e.blurb)}</p>
 <p style="margin-top:10px"><a class="btn" href="${esc(orderUrl(e.link, town.slug))}" rel="noopener">Order the ${esc(e.name.toLowerCase())}${e.price ? ' · ' + esc(e.price) : ''}</a></p></div>`).join('')}</div>
-<p class="small muted">Each copy is printed after you order, with ${esc(town.name)}'s history as it stands that day. Shipping and any tax are added at checkout. Questions? Email <a href="mailto:towntalesinfo@gmail.com">towntalesinfo@gmail.com</a>.</p>
+<p class="small muted">Each copy is printed after you order, with ${esc(town.name)}'s history as it stands that day. Shipping anywhere in Canada is included in the price. Questions? Email <a href="mailto:towntalesinfo@gmail.com">towntalesinfo@gmail.com</a>.</p>
 </section>`;
 }
-function lookPage(res, town, book) {
+function lookPage(res, town, book, eds) {
   const L = book.look, prov = PROV[town.prov] || town.prov, base = `/book-preview/${town.slug}/`;
-  const eds = printCfg();
   const buy = eds.length ? `<div class="btns">${eds.map((e) => `<a class="btn" href="${esc(orderUrl(e.link, town.slug))}" rel="noopener">Order the ${esc(e.name.toLowerCase())}${e.price ? ' · ' + esc(e.price) : ''}</a>`).join('')}</div>`
     : `<div class="btns"><a class="btn" href="/${esc(town.slug)}/book#request">Request the book</a></div>`;
   const main = `<section class="wrap stack" style="padding-top:22px">
@@ -63,7 +81,7 @@ function lookPage(res, town, book) {
 <div class="bk-hero"><figure class="bk-fig"><img class="lk-cover" src="${base}cover.jpg" alt="Front cover of ${esc(L.title)}" width="936" height="1212"></figure>
 <div class="stack"><p class="eyebrow">Look inside</p><h1>${esc(L.title)}</h1>
 <p class="lede">Turn through real pages from the printed book: ${esc(L.format)}. Every fact is sourced, and the Roll of Remembrance names ${esc(town.name)}’s people one by one.</p>
-${buy}<p class="small muted">Printed when you order. Shipping and any tax are added at checkout.</p></div></div></section>
+${buy}<p class="small muted">Printed when you order. Shipping anywhere in Canada is included.</p></div></div></section>
 <section class="wrap stack"><h2>Sample pages</h2><p class="small muted">Tap a page to see it full size.</p>
 <div class="lk-grid">${L.pages.map(([f, cap], i) => `<figure class="lk-pg"><a href="${base}${f}.jpg" target="_blank" rel="noopener"><img src="${base}${f}.jpg" alt="Page: ${esc(cap)}" loading="${i < 3 ? 'eager' : 'lazy'}" width="935" height="1210"></a><figcaption>${esc(cap)}</figcaption></figure>`).join('')}</div></section>
 <section class="wrap stack" id="order"><h2>Get your copy</h2>${buy}<p><a href="/${esc(town.slug)}/book">More about the book</a></p></section>
@@ -105,22 +123,43 @@ function cover(town, prov, ms) {
 <figcaption class="small muted bk-note">When purchased, ${esc(town.name)}'s main street will be on the cover.</figcaption></figure>`;
 }
 
+// /books/checkout?town=<slug>&edition=paperback|hardcover  →  Stripe Checkout at the quoted price (free shipping in Canada).
+async function checkout(res, url) {
+  const slug = String(url.searchParams.get('town') || '').toLowerCase(), edition = String(url.searchParams.get('edition') || '');
+  const book = BOOKS[slug];
+  const back = (msg) => { res.statusCode = 303; res.setHeader('Location', `/${slug || ''}/book${msg ? '?order=unavailable' : ''}#order`); res.setHeader('Cache-Control', 'no-store'); return res.end(); };
+  if (!book || !bp.EDITIONS[edition] || !bp.luluReady() || !bp.stripeReady()) return back(true);
+  try {
+    const [town] = await q(`towns?slug=eq.${encodeURIComponent(slug)}&hidden=eq.false&select=slug,name`);
+    if (!town) return back(true);
+    const qte = await bp.quote(edition, book.pages);
+    const to = await bp.checkoutUrl({ town: slug, townName: town.name, edition, qte, site: SITE });
+    res.statusCode = 303; res.setHeader('Location', to); res.setHeader('Cache-Control', 'no-store'); res.setHeader('X-Robots-Tag', 'noindex');
+    return res.end();
+  } catch (e) {
+    console.error('book checkout', slug, edition, String(e.message || e).slice(0, 300));
+    return back(true);
+  }
+}
+
 module.exports = async (req, res) => {
   const url = new URL(req.url, 'http://localhost');
   if (url.searchParams.get('thanks')) return thanksPage(res);
+  if (url.searchParams.get('checkout')) return checkout(res, url);
   const slug = String(url.searchParams.get('slug') || '').toLowerCase();
   const book = BOOKS[slug];
   try {
     if (url.searchParams.get('look')) {
       const [t] = await q(`towns?slug=eq.${encodeURIComponent(slug)}&hidden=eq.false&select=slug,name,prov`);
       if (!t || !book || !book.look) return notFound(res, "There's no preview for this book yet.");
-      return lookPage(res, t, book);
+      return lookPage(res, t, book, await editionsFor(slug, book));
     }
     const s = encodeURIComponent(slug);
     const towns = await q(`towns?slug=eq.${s}&hidden=eq.false&select=slug,name,prov`);
     const town = towns[0];
     if (!town) return notFound(res, "We don't have a town at that address.");
     if (!book) return waitlist(res, town);
+    const eds = await editionsFor(slug, book);
     const [timeline, items, mems, cems, teams] = await Promise.all([
       q(`timeline?town=eq.${s}&select=year,label,title&order=year,sort`, { all: true }),
       q(`items?town=eq.${s}&status=eq.published&select=id`, { all: true }),
@@ -148,7 +187,7 @@ ${cover(town, prov, book.mainStreet)}
 <p class="lede">Everything on ${esc(town.name)}'s TownTales page, gathered into ${book.pages ? 'a ' + book.pages + '-page' : 'one'} book: the timeline, the people, the cemeteries and the teams. Every fact keeps its source.</p>
 <div class="btns">${book.sample
       ? `<a class="btn" href="${esc(book.sample)}" target="_blank" rel="noopener">Read the free sample (PDF)</a>`
-      : `<span class="btn alt" aria-disabled="true" style="opacity:.6;cursor:default">Free sample coming soon</span>`}${book.look ? `<a class="btn alt" href="/${esc(town.slug)}/book/preview">Look inside</a>` : ''}${printCfg().length ? `<a class="btn" href="#order">Order the printed book</a>` : `<a class="btn alt" href="#request">Request the full book</a>`}</div>
+      : `<span class="btn alt" aria-disabled="true" style="opacity:.6;cursor:default">Free sample coming soon</span>`}${book.look ? `<a class="btn alt" href="/${esc(town.slug)}/book/preview">Look inside</a>` : ''}${eds.length ? `<a class="btn" href="#order">Order the printed book</a>` : `<a class="btn alt" href="#request">Request the full book</a>`}</div>
 <p class="small muted">The sample has the cover, the contents, the timeline at a glance and the first chapter. Free, nothing to sign up for.</p>
 </div></div>
 </section>
@@ -161,9 +200,9 @@ ${book.mainStreet && book.mainStreet.image ? '' : `<section class="wrap"><div cl
 ${timeline.length ? `<section class="wrap stack"><h2>${esc(town.name)} at a glance</h2><ol class="bk-glance">${timeline.map((t) => `<li><span class="bk-yr">${esc(t.label)}</span><span>${esc(t.title)}</span></li>`).join('')}</ol>
 <p class="small"><a href="/${esc(town.slug)}">See the full timeline with sources →</a></p></section>` : ''}
 
-${orderSection(town)}
-<section class="wrap stack" id="request"><h2>${printCfg().length ? 'Want the digital edition, or not ready to order?' : 'Request the full book'}</h2>
-<p>${printCfg().length ? "Leave your name and we'll email you about the digital edition, or when the book gets new pages. Nothing to pay." : "Tell us which edition you'd like. There's nothing to pay now. We'll email you the price and let you know when your copy is ready to order."}</p>
+${orderSection(town, eds)}
+<section class="wrap stack" id="request"><h2>${eds.length ? 'Want the digital edition, or not ready to order?' : 'Request the full book'}</h2>
+<p>${eds.length ? "Leave your name and we'll email you about the digital edition, or when the book gets new pages. Nothing to pay." : "Tell us which edition you'd like. There's nothing to pay now. We'll email you the price and let you know when your copy is ready to order."}</p>
 <div class="bk-eds">
 <div class="rm-cem"><h3>Digital edition</h3><p>A PDF you can read on any screen or print at home.</p></div>
 <div class="rm-cem"><h3>Printed book</h3><p>A bound paperback, printed when you order it.</p></div>
