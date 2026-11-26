@@ -86,6 +86,8 @@ const mockFetch = async (url, opts = {}) => {
       honoured: tables.honour_pages.some((h) => h.memorial_id === m.id && h.status === 'published') } : { id: null };
     return new Response(JSON.stringify(out), { status: 200, headers: { 'content-type': 'application/json' } });
   }
+  if (table === 'book_request_counts') return new Response(JSON.stringify([{ town: 'whitewood-sk', n: 2 }, { town: 'radville-sk', n: 7 }, { town: 'moose-jaw-sk', n: 3 }]), { status: 200, headers: { 'content-type': 'application/json' } });
+  if (table === 'book_unsubscribe') { const t = JSON.parse(opts.body || '{}').tok; return new Response(JSON.stringify(t === '11111111-1111-1111-1111-111111111111'), { status: 200, headers: { 'content-type': 'application/json' } }); }
   let rows = tables[table];
   if (!rows) return new Response(JSON.stringify({ message: 'relation does not exist' }), { status: 404 });
   rows = filt(rows, u.searchParams);
@@ -102,6 +104,8 @@ town_stats.push({ slug: 'whitewood-sk', items: 1, entries: 2, timeline_status: '
 tables.items.push({ id: '568f3cdc-c042-4c15-a5b5-275cc5f7a05a', town: 'whitewood-sk', kind: 'document', title: 'First Agricultural Fair', body: 'The first Agricultural Fair was held in 1884 and the Presbyterian congregation was organized the same year.', year: 1884, date_label: '1884', image_url: '', source: 'Saskatchewan History', source_url: 'https://www.saskhistory.ca/whitewood-town-of/', contributor: 'TownTales research', origin: 'muse', status: 'published', created_at: '2026-10-01T00:00:00Z' });
 tables.timeline.push({ id: 'ww-1', town: 'whitewood-sk', year: 1884, label: '1884', title: 'First Agricultural Fair; Presbyterians organize', body: 'The first Agricultural Fair was held in 1884. The Presbyterian congregation was organized the same year.', cat: 'Churches', tier: 'documented', item_ids: ['568f3cdc-c042-4c15-a5b5-275cc5f7a05a'], cite: '', sort: 0 });
 tables.timeline.push({ id: 'ww-2', town: 'whitewood-sk', year: 1905, label: 'September 1, 1905', title: 'Saskatchewan becomes a province', body: 'Whitewood becomes part of the new province.', cat: 'Events', tier: 'documented', item_ids: ['568f3cdc-c042-4c15-a5b5-275cc5f7a05a'], cite: 'p. 27', sort: 1 });
+
+tables.town_books = [{ slug: 'whitewood-sk', pages: 60, title: 'Whitewood test book', ready_at: '2026-11-26T00:00:00Z' }];
 
 // Real McFadyen records from the live site, for the family report preview.
 try { const real = require('./data/mcfadyen.json'); tables.memorials.push(...real.memorials); tables.cemeteries.push(...real.cemeteries); } catch (e) {}

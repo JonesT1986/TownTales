@@ -174,6 +174,7 @@ module.exports = async (req, res) => {
           '<p><a href="/province">Browse towns by province</a></p></section>';
         const ms = MS.celebrating(towns, msYear);
         if (ms.length) main += '<style>' + MS.CSS + '</style>' + MS.section(ms, msYear, { provName: (c) => PROV[c] || c });
+        try { main += await require('./_book').booksSection(); } catch (e) { /* the books shelf is optional */ }
       } else {
         const town = towns.find((t) => t.slug === slug);
         if (town) {
