@@ -132,7 +132,7 @@
   }
 
   /* ---------- problem reports ---------- */
-  function hasKey() { try { return !!sessionStorage.getItem("tt-admin"); } catch (e) { return false; } }
+  function hasKey() { try { return !!(sessionStorage.getItem("tt-admin") || localStorage.getItem("tt-admin-saved")); } catch (e) { return false; } }
   function loadReports() {
     if (rf.loading) return; rf.loading = true; rf.err = "";
     live.api("reports", { show: rf.show }).then(function (r) { rf.loading = false; rf.data = r.reports || []; route(); },
@@ -178,7 +178,7 @@
   // Separate small edge function (supabase/functions/admin-towns), same admin key as the main api.
   var TOWNS_URL = "https://zpqwrzsgpwwjrlbnfynn.supabase.co/functions/v1/admin-towns";
   function townsApi(payload) {
-    var key = ""; try { key = sessionStorage.getItem("tt-admin") || ""; } catch (e) {}
+    var key = ""; try { key = sessionStorage.getItem("tt-admin") || localStorage.getItem("tt-admin-saved") || ""; } catch (e) {}
     return fetch(TOWNS_URL, { method: "POST", headers: { "Content-Type": "application/json", "x-admin-key": key }, body: JSON.stringify(payload) })
       .then(function (r) { return r.ok ? r.json() : r.text().then(function (t) { var m = t; try { m = JSON.parse(t).error || t; } catch (e) {} throw new Error(m); }); });
   }
