@@ -110,3 +110,17 @@ export async function contacts({ db, json }: Ctx, _body: any) {
   rows.sort((a, b) => a.town.localeCompare(b.town) || String(b.at ?? "").localeCompare(String(a.at ?? "")));
   return json({ contacts: rows });
 }
+
+// Added Nov 26 2026. The book waitlist: everyone who asked for a town's book, grouped by town (admin only).
+export async function waitlist({ db, json }: Ctx, _body: any) {
+  const { data, error } = await db.from("book_interest").select("id,town,name,email,copies,format,updates_ok,created_at").order("created_at", { ascending: false }).limit(5000);
+  if (error) return json({ error: error.message }, 500);
+  return json({ waitlist: data ?? [] });
+}
+export async function waitlistRemove({ db, json }: Ctx, body: any) {
+  const id = String(body?.id ?? "");
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return json({ error: "Bad id" }, 400);
+  const { error } = await db.from("book_interest").delete().eq("id", id);
+  if (error) return json({ error: error.message }, 500);
+  return json({ ok: true });
+}
