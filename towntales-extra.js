@@ -437,7 +437,7 @@
       '<div class="tt-qgroups">' +
       '<div class="tt-qg"><h3>Archive review</h3><p class="small muted">Newspaper clippings, photos, stories and documents. Clippings go here, never to Remembrance.</p><div class="btns"><button class="btn sm" data-tt="cl-load">Clippings waiting</button><button class="btn sm alt" data-tt="cl-all">All clippings (incl. approved)</button></div></div>' +
       '<div class="tt-qg"><h3>Remembrance review</h3><p class="small muted"><b>People only</b>: burials and family records. Something that isn\'t a person can be moved to the Archive in one click.</p><div class="btns"><button class="btn sm" data-tt="rm-load">People waiting</button><button class="btn sm alt" data-tt="hn-load">Honour Pages</button></div></div>' +
-      '<div class="tt-qg"><h3>Other</h3><p class="small muted">Whole-book uploads, and everyone who has sent something in.</p><div class="btns"><button class="btn sm" data-tt="bk-load">Book uploads</button><button class="btn sm alt" data-tt="ct-load">Contacts by town</button></div></div>' +
+      '<div class="tt-qg"><h3>Other</h3><p class="small muted">Whole-book uploads, and everyone who has sent something in.</p><div class="btns"><button class="btn sm" data-tt="bk-load">Book uploads</button><button class="btn sm alt" data-tt="ct-load">Contacts by town</button><button class="btn sm alt" data-tt="wl-load">Book waitlist</button></div></div>' +
       '</div><div id="tt-adm-out" class="stack"></div>';
     host.parentNode.insertBefore(sec, host.nextSibling);
     linksBlock(sec);
@@ -448,6 +448,9 @@
       if (a === "cl-load") return loadCl(out);
       if (a === "cl-all") return loadCl(out, true);
       if (a === "ct-load") return loadContacts(out);
+      if (a === "wl-load") return loadWaitlist(out);
+      if (a === "wl-copy") return wlCopy(b);
+      if (a === "wl-del") return wlDel(b, out);
       if (a === "cl-tx") return clipTx(b);
       if (a === "cl-tlform") return clipTlForm(b);
       if (a === "hn-load") return loadHn(out);
@@ -650,6 +653,35 @@
             "</tbody></table></div></details>";
         }).join("") : '<div class="empty">No contacts yet.</div>';
     }).catch(function (e) { out.innerHTML = '<div class="notice warn"><p>' + esc(e.message) + ". Check the admin key above.</p></div>"; });
+  }
+
+  /* ---------- Book waitlist: who asked for which town's book (table book_interest) ---------- */
+  function loadWaitlist(out) {
+    out.innerHTML = '<p class="muted">Loading…</p>';
+    api("waitlist").then(function (r) {
+      var rows = r.waitlist || [], by = {}, order = [];
+      rows.forEach(function (w) { var t = w.town || "(no town)"; if (!by[t]) { by[t] = []; order.push(t); } by[t].push(w); });
+      order.sort(function (x, y) { return by[y].length - by[x].length || x.localeCompare(y); });
+      out.innerHTML = order.length ? "<h3>Book waitlist: " + rows.length + " " + (rows.length === 1 ? "person" : "people") + " in " + order.length + (order.length === 1 ? " town" : " towns") + "</h3>" +
+        '<p class="small muted">People who asked for their town\'s book. You get an email alert when a town reaches 10. Private: never shown on the site.</p>' +
+        order.map(function (t) {
+          var list = by[t], copies = list.reduce(function (s, w) { return s + (Number(w.copies) || 1); }, 0), emails = list.map(function (w) { return w.email; }).filter(Boolean).join(", ");
+          return '<details class="qitem"' + (order.length === 1 ? " open" : "") + "><summary><b>" + esc(t) + "</b> · " + list.length + (list.length === 1 ? " person" : " people") + " · " + copies + (copies === 1 ? " copy" : " copies") + (list.length >= 10 ? ' <span class="pill ok">10+</span>' : " · " + (10 - list.length) + " to go") + "</summary>" +
+            '<div class="btns"><button class="btn sm alt" data-tt="wl-copy" data-emails="' + esc(emails) + '">Copy all emails</button></div>' +
+            '<div class="tt-ct"><table><thead><tr><th>Name</th><th>Email</th><th>Format</th><th>Copies</th><th>Date</th><th></th></tr></thead><tbody>' +
+            list.map(function (w) { return "<tr><td>" + esc(w.name || "—") + '</td><td><a href="mailto:' + esc(w.email) + '">' + esc(w.email) + "</a></td><td>" + esc(w.format || "") + "</td><td>" + esc(w.copies || 1) + "</td><td>" + esc(String(w.created_at || "").slice(0, 10)) + '</td><td><button class="btn sm alt" data-tt="wl-del" data-id="' + esc(w.id) + '">Remove</button></td></tr>'; }).join("") +
+            "</tbody></table></div></details>";
+        }).join("") : '<div class="empty">Nobody on the book waitlist yet.</div>';
+    }).catch(function (e) { out.innerHTML = '<div class="notice warn"><p>' + esc(e.message) + ". Check the admin key above.</p></div>"; });
+  }
+  function wlCopy(b) {
+    var t = b.getAttribute("data-emails") || "";
+    (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(function () { b.textContent = "Copied"; }, function () { window.prompt("Copy these emails:", t); });
+  }
+  function wlDel(b, out) {
+    if (!window.confirm("Remove this person from the waitlist? Use this for test entries.")) return;
+    b.disabled = true;
+    api("waitlist-remove", { id: b.getAttribute("data-id") }).then(function () { loadWaitlist(out); }, function (e) { b.disabled = false; window.alert(e.message); });
   }
 
   /* ---------- 6b: Honour Pages admin queue ---------- */

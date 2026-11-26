@@ -116,6 +116,13 @@
       var clip = src.map(function (i) { return CLIP_BY_ITEM[i.id]; }).filter(Boolean)[0];
       var rf = t.querySelector(".readfull a");
       if (clip && rf && !rf.getAttribute("data-clip")) { rf.textContent = "Read the full clipping →"; rf.setAttribute("data-clip", clip.id); }
+      // A clipping's picture lives on the clipping, so its item can look "text only": still offer the link (not on its own page).
+      var inner = t.querySelector(".inner"), selfPage = /^#?i-/.test(location.hash.replace(/^#/, ""));
+      if (clip && !rf && !selfPage && inner && !inner.querySelector(".readfull")) {
+        var p = document.createElement("p"); p.className = "readfull";
+        p.innerHTML = '<a href="/#i-' + esc(src.filter(function (i) { return CLIP_BY_ITEM[i.id]; })[0].id) + '" data-clip="' + esc(clip.id) + '">Read the full clipping →</a>';
+        var first = inner.querySelector("p"); if (first) first.insertAdjacentElement("afterend", p);
+      }
     });
     // Group by year within each decade section.
     var groups = {};
@@ -224,6 +231,8 @@
     ".tick .readfull a:hover{background:var(--denim,#2B5C80);color:#fff}" +
     ".tick .readfull{margin:4px 0 2px}";
 
+  // Clicking a link inside an open card must never fold the card or hit another click handler; the browser still follows the link.
+  document.addEventListener("click", function (e) { var a = e.target && e.target.closest && e.target.closest(".tick .inner a"); if (a) e.stopPropagation(); }, true);
   function boot() {
     try { var s = document.createElement("style"); s.textContent = CSS; document.head.appendChild(s); } catch (e) {}
     var ready = Promise.all([
@@ -239,7 +248,36 @@
     var v = document.getElementById("view");
     if (v && window.MutationObserver) new MutationObserver(soon).observe(v, { childList: true, subtree: true });
     window.addEventListener("hashchange", soon);
+    if (v && window.MutationObserver) new MutationObserver(wireUploadLink).observe(v, { childList: true, subtree: true });
     ready.then(soon, soon);
+  }
+
+  /* ---------- 5: After an admin uploads on the share form, link straight to where it landed ----------
+     Only when an admin key is saved in this browser. Finds the newest pending upload for that town and links
+     to its review card (#admin/item-<id>), next to the existing "See <town>'s archive" link. */
+  function adminKeyNow() { try { return sessionStorage.getItem("tt-admin") || localStorage.getItem("tt-admin-saved") || ""; } catch (e) { return ""; } }
+  function wireUploadLink() {
+    var done = document.getElementById("u-done");
+    if (!done || done.getAttribute("data-tt-link") || !done.querySelector(".notice.ok")) return;
+    var key = adminKeyNow(); if (!key) return;
+    var a = done.querySelector('a[href^="#t-"][href$="/archive"]'); if (!a) return;
+    done.setAttribute("data-tt-link", "1");
+    var slug = a.getAttribute("href").replace(/^#t-/, "").replace(/\/archive$/, ""), tries = 0;
+    function look() {
+      tries++;
+      fetch(SB + "/functions/v1/api/queue", { method: "POST", headers: { "Content-Type": "application/json", "x-admin-key": key, apikey: KEY }, body: "{}" })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (r) {
+          var rows = ((r && r.items) || []).filter(function (i) { return i.town === slug; });
+          rows.sort(function (x, y) { return String(y.created_at || "").localeCompare(String(x.created_at || "")); });
+          var it = rows[0];
+          if (!it) { if (tries < 3) setTimeout(look, 1500); return; }
+          var btns = done.querySelector(".btns"); if (!btns || btns.querySelector(".tt-adm-link")) return;
+          var l = document.createElement("a"); l.className = "btn alt tt-adm-link"; l.href = "#admin/item-" + it.id;
+          l.textContent = "Open it in admin to check it"; btns.appendChild(l);
+        }).catch(function () { if (tries < 3) setTimeout(look, 1500); });
+    }
+    look();
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot); else boot();
 })();

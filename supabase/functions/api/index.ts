@@ -4,14 +4,14 @@
 // Added Nov 19 2026: /reports /report-resolve /report-delete /moderate-bulk /settings (admin), /rebuild-due (public, flagged towns only) — see admin.ts
 // Added Nov 21 2026: /book-queue /book-moderate (admin, whole-book uploads — see books.ts)
 // Added Nov 21 2026: /stripe-webhook (public, Stripe-signed) /honour-queue /honour-moderate (admin) — see honour.ts
-// Added Nov 26 2026: /clip-transcribe /clip-decide /rem-move /contacts (admin); pinned timeline entries in rebuild
+// Added Nov 26 2026: /clip-transcribe /clip-decide /rem-move /contacts /waitlist /waitlist-remove (admin); pinned timeline entries in rebuild
 // Added Nov 2026: /rem-queue /rem-moderate /clip-queue /clip-moderate /clip-item (admin) — see remembrance.ts
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 import { remQueue, remModerate, clipQueue, clipModerate, clipItem, clipTranscribe, clipDecide, remMove } from "./remembrance.ts";
 import { linksStatus, readLink } from "./links.ts";
 import { stripeWebhook, honourQueue, honourModerate } from "./honour.ts";
 import { bookQueue, bookModerate } from "./books.ts";
-import { reports, reportResolve, reportDelete, moderateBulk, settings, rebuildDue, contacts } from "./admin.ts";
+import { reports, reportResolve, reportDelete, moderateBulk, settings, rebuildDue, contacts, waitlist, waitlistRemove } from "./admin.ts";
 
 const SB_URL = Deno.env.get("SUPABASE_URL")!;
 const db = createClient(SB_URL, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
@@ -91,6 +91,8 @@ Deno.serve(async (req) => {
   if (action === "clip-decide") return clipDecide(ctx, body);
   if (action === "rem-move") return remMove(ctx, body);
   if (action === "contacts") return contacts(ctx, body);
+  if (action === "waitlist") return waitlist(ctx, body);
+  if (action === "waitlist-remove") return waitlistRemove(ctx, body);
   if (action === "clip-moderate") return clipModerate(ctx, body);
   if (action === "clip-item") return clipItem(ctx, body);
   if (action === "links-status") return linksStatus(ctx, body);

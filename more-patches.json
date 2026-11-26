@@ -43,5 +43,15 @@
   "note": "Nov 26: admin API calls use the saved key when this tab has none",
   "find": "async api(action,payload){const key=sessionStorage.getItem(\"tt-admin\")||\"\";",
   "replace": "async api(action,payload){const key=sessionStorage.getItem(\"tt-admin\")||(function(){try{return localStorage.getItem(\"tt-admin-saved\")||\"\"}catch(e){return \"\"}})()||\"\";"
+ },
+ {
+  "note": "Nov 26: timeline cards link to the item at the root route (/#i-id), hide self-links, and only offer 'Read the full entry' when there is more than the summary",
+  "find": "function entryRow(e){const src=(e.items||[]).map(id=>S.items.find(i=>i.id===id)).filter(Boolean);\nreturn `<article class=\"tick\" data-year=\"${esc(e.year)}\" data-tl=\"${esc(e.id||\"\")}\" data-items=\"${esc((e.items||[]).join(\",\"))}\"><div class=\"stub\"><span>${esc(e.label)}</span><small>${esc(e.cat||\"\")}</small></div><details><summary><h3>${esc(e.title)}</h3><span class=\"btns\">${tierPill(e.tier)}<span class=\"more\">Read</span></span></summary><div class=\"inner\"><p>${esc(e.body)}</p>${src.length?`<p class=\"readfull\"><a href=\"#i-${esc(src[0].id)}\">Read the full ${src[0].kind===\"story\"?\"story\":\"entry\"} →</a></p>`:\"\"}${src.length?`<p class=\"from\">From the archive: ${src.map(i=>`<a href=\"#i-${esc(i.id)}\">${esc(i.title)}</a>`).join(\"; \")}${e.cite?`, ${esc(e.cite)}`:\"\"}</p>`:\"\"}</div></details></article>`;}",
+  "replace": "function entryRow(e,selfId){const all=(e.items||[]).map(id=>S.items.find(i=>i.id===id)).filter(Boolean);const src=all.filter(i=>i.id!==selfId);const nb=norm(e.body).length;const rich=src.filter(i=>i.image_url||i.source_url||(i.attachments&&i.attachments.length)||norm(i.body).length>nb);\nreturn `<article class=\"tick\" data-year=\"${esc(e.year)}\" data-tl=\"${esc(e.id||\"\")}\" data-items=\"${esc((e.items||[]).join(\",\"))}\"><div class=\"stub\"><span>${esc(e.label)}</span><small>${esc(e.cat||\"\")}</small></div><details><summary><h3>${esc(e.title)}</h3><span class=\"btns\">${tierPill(e.tier)}<span class=\"more\">Read</span></span></summary><div class=\"inner\"><p>${esc(e.body)}</p>${rich.length?`<p class=\"readfull\"><a href=\"/#i-${esc(rich[0].id)}\">Read the full ${rich[0].kind===\"story\"?\"story\":\"entry\"} →</a></p>`:\"\"}${src.length?`<p class=\"from\">From the archive: ${src.map(i=>`<a href=\"/#i-${esc(i.id)}\">${esc(i.title)}</a>`).join(\"; \")}${e.cite?`, ${esc(e.cite)}`:\"\"}</p>`:\"\"}</div></details></article>`;}"
+ },
+ {
+  "note": "Nov 26: the item page passes its own id so its timeline card has no self-link",
+  "find": "used.map(entryRow)",
+  "replace": "used.map(e=>entryRow(e,i.id))"
  }
 ]
