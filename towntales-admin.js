@@ -103,7 +103,7 @@
       var s = srcOf(i);
       return '<div class="qitem" id="tta-item-' + esc(i.id) + '"><div class="top"><label class="tta-check tta-pick"><input type="checkbox" data-tta="pick" data-id="' + esc(i.id) + '"' + (qf.sel.has(i.id) ? " checked" : "") + '><span class="sr">Select</span></label><h3>' + esc(i.title) + "</h3><span>" +
         '<span class="pill st">' + esc(KINDS[i.kind] || i.kind) + '</span> <span class="pill new">' + esc(townName(i.town)) + '</span> <span class="pill tta-src tta-' + s + '">' + SRC[s] + "</span></span></div>" +
-        (i.image_url ? '<img src="' + esc(i.image_url) + '" alt="">' : "") + "<p>" + esc(i.body) + "</p>" +
+        qimg(i) + "<p>" + esc(i.body) + "</p>" +
         '<dl class="kv"><dt>When</dt><dd>' + esc(i.date_label || "—") + "</dd><dt>Source</dt><dd>" + esc(i.source || "—") +
         (i.source_url ? ' · <a href="' + esc(i.source_url) + '" target="_blank" rel="noopener">open page</a>' : "") + "</dd><dt>From</dt><dd>" + esc(i.contributor || "Anonymous") + (i.contact_email ? " · " + esc(i.contact_email) : "") + "</dd></dl>" +
         '<div class="btns"><button class="btn sm" data-act="approve" data-id="' + esc(i.id) + '">Publish</button><button class="btn sm alt" data-act="decline" data-id="' + esc(i.id) + '">Decline</button></div></div>';
@@ -369,6 +369,56 @@
   });
   // A new admin key means everything reloads.
   document.addEventListener("click", function (ev) { if (ev.target.closest && ev.target.closest('[data-act="setkey"]')) { settings = null; settingsErr = false; rf.data = null; } }, true);
+
+  // Nov 26 2026: submission images open full size. Click = lightbox (fit to screen); click the big image to
+  // zoom to actual size and scroll around; "Open in new tab" for the original. Documents/scans show ~600px wide.
+  function qimg(i) {
+    if (!i.image_url) return "";
+    var u = esc(i.image_url);
+    if (/\.pdf(\?|$)/i.test(i.image_url)) return '<p><a class="btn sm alt" href="' + u + '" target="_blank" rel="noopener">Open the PDF ↗</a></p>';
+    var doc = i.kind === "document" || i.kind === "story";
+    return '<a class="tta-zoom' + (doc ? " tta-doc" : "") + '" href="' + u + '" target="_blank" rel="noopener" data-tta-zoom="' + u + '" title="Click to see it full size">' +
+      '<img src="' + u + '" alt="Submitted image: ' + esc(i.title || "") + '" loading="lazy"><span class="tta-zoom-hint">🔍 Click to enlarge</span></a>';
+  }
+  function zoomBox(url) {
+    var d = document.getElementById("tta-zoom-dlg");
+    if (!d) {
+      d = document.createElement("dialog"); d.id = "tta-zoom-dlg";
+      d.innerHTML = '<div class="tta-zbar"><span class="small">Click the image to zoom in or out. Esc closes.</span><span class="btns"><a class="btn sm alt" target="_blank" rel="noopener" data-z="open">Open in new tab ↗</a><button class="btn sm" data-z="close">Close ✕</button></span></div><div class="tta-zwrap"><img alt="Full-size submission"></div>';
+      d.addEventListener("click", function (e) {
+        var t = e.target;
+        if (t === d || (t.closest && t.closest("[data-z=close]"))) { d.close(); return; }
+        if (t.tagName === "IMG") d.classList.toggle("zoomed");
+      });
+      document.body.appendChild(d);
+    }
+    d.classList.remove("zoomed");
+    d.querySelector(".tta-zwrap img").src = url;
+    d.querySelector("[data-z=open]").href = url;
+    if (d.showModal) d.showModal(); else window.open(url, "_blank", "noopener");
+  }
+  document.addEventListener("click", function (e) {
+    var a = e.target.closest && e.target.closest("[data-tta-zoom]");
+    if (!a || e.ctrlKey || e.metaKey || e.shiftKey || e.button === 1) return; // ctrl/cmd-click still opens a new tab
+    e.preventDefault(); zoomBox(a.getAttribute("data-tta-zoom"));
+  });
+  (function () {
+    var st = document.createElement("style");
+    st.textContent =
+      ".tta-zoom{display:inline-block;position:relative;cursor:zoom-in;line-height:0;max-width:100%}" +
+      ".qitem .tta-zoom img{max-width:240px;width:auto;border:1px solid var(--rule)}" +
+      ".qitem .tta-zoom.tta-doc img{max-width:min(600px,100%);width:600px;height:auto}" +
+      ".tta-zoom-hint{position:absolute;left:6px;bottom:6px;background:rgba(30,41,48,.82);color:#fff;font-size:.8rem;line-height:1.2;padding:3px 7px;border-radius:2px}" +
+      ".tta-zoom:hover img,.tta-zoom:focus-visible img{outline:3px solid var(--denim,#2B5C80);outline-offset:2px}" +
+      "#tta-zoom-dlg{width:96vw;max-width:96vw;height:94vh;max-height:94vh;padding:0;border:3px solid var(--ink,#1E2930);background:#2a2f33}" +
+      "#tta-zoom-dlg::backdrop{background:rgba(20,24,27,.8)}" +
+      ".tta-zbar{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 12px;background:var(--paper,#FFFCF3)}" +
+      ".tta-zwrap{height:calc(100% - 56px);overflow:auto;display:flex;align-items:center;justify-content:center}" +
+      ".tta-zwrap img{max-width:100%;max-height:100%;cursor:zoom-in;background:#fff}" +
+      "#tta-zoom-dlg.zoomed .tta-zwrap{display:block}" +
+      "#tta-zoom-dlg.zoomed .tta-zwrap img{max-width:none;max-height:none;cursor:zoom-out}";
+    document.head.appendChild(st);
+  })();
 
   // The app may have drawn #admin before this file loaded: draw it again with the new queue.
   var h = (location.hash || "").slice(1);
