@@ -116,6 +116,13 @@
       var clip = src.map(function (i) { return CLIP_BY_ITEM[i.id]; }).filter(Boolean)[0];
       var rf = t.querySelector(".readfull a");
       if (clip && rf && !rf.getAttribute("data-clip")) { rf.textContent = "Read the full clipping →"; rf.setAttribute("data-clip", clip.id); }
+      // A clipping's picture lives on the clipping, so its item can look "text only": still offer the link (not on its own page).
+      var inner = t.querySelector(".inner"), selfPage = /^#?i-/.test(location.hash.replace(/^#/, ""));
+      if (clip && !rf && !selfPage && inner && !inner.querySelector(".readfull")) {
+        var p = document.createElement("p"); p.className = "readfull";
+        p.innerHTML = '<a href="/#i-' + esc(src.filter(function (i) { return CLIP_BY_ITEM[i.id]; })[0].id) + '" data-clip="' + esc(clip.id) + '">Read the full clipping →</a>';
+        var first = inner.querySelector("p"); if (first) first.insertAdjacentElement("afterend", p);
+      }
     });
     // Group by year within each decade section.
     var groups = {};
@@ -224,6 +231,8 @@
     ".tick .readfull a:hover{background:var(--denim,#2B5C80);color:#fff}" +
     ".tick .readfull{margin:4px 0 2px}";
 
+  // Clicking a link inside an open card must never fold the card or hit another click handler; the browser still follows the link.
+  document.addEventListener("click", function (e) { var a = e.target && e.target.closest && e.target.closest(".tick .inner a"); if (a) e.stopPropagation(); }, true);
   function boot() {
     try { var s = document.createElement("style"); s.textContent = CSS; document.head.appendChild(s); } catch (e) {}
     var ready = Promise.all([
