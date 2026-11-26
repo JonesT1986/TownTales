@@ -35,7 +35,7 @@ async function memorialRows(from, to) {
   for (let s = from; s < to; s += PAGE) {
     const e = Math.min(s + PAGE, to) - 1;
     jobs.push(fetch(`${SB}/rest/v1/memorials?status=eq.published&select=id,town&order=id`, { headers: headers({ Range: `${s}-${e}` }) })
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error('memorials ' + r.status)))));
+      .then((r) => (r.ok ? r.json() : r.status === 416 ? [] : Promise.reject(new Error('memorials ' + r.status)))));  // 416 = page is past the last row
   }
   return [].concat(...(await Promise.all(jobs)));
 }
