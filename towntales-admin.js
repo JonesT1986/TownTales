@@ -185,10 +185,14 @@
 
   function whyNeeds(r) {
     var w = [];
-    if (r.timeline_status === "error") w.push("last build failed");
+    if (r.timeline_status === "error") {
+      // Nov 27 2026: show the real reason (saved by the edge function), not just "failed"
+      w.push("last build failed" + (r.timeline_error ? ": " + r.timeline_error : " (no reason was recorded; click Rebuild to see a fresh one)") +
+        (r.timeline_tries >= 3 ? ". Failed " + r.timeline_tries + " times in a row, so the nightly job has stopped retrying this town" : ""));
+    }
     else if (!r.timeline_built_at || r.timeline_status === "empty") w.push("timeline never built");
     if (r.newer) w.push("items added since the last build");
-    if (r.uncovered) w.push(plural(r.uncovered, "dated item") + " not on the timeline");
+    if (r.uncovered) w.push(plural(r.uncovered, "dated archive item") + " missing from the timeline (" + r.items + " items in the archive, " + r.rows + " on the timeline)");
     if (r.stale) w.push("timeline points to " + plural(r.stale, "removed item"));
     return w.join("; ");
   }
