@@ -11,6 +11,7 @@ import { remQueue, remModerate, clipQueue, clipModerate, clipItem, clipTranscrib
 import { linksStatus, readLink } from "./links.ts";
 import { stripeWebhook, honourQueue, honourModerate } from "./honour.ts";
 import { bookQueue, bookModerate } from "./books.ts";
+import { buildEntries, type ArchiveItem, type ModelReply } from "./timeline.ts";
 import { reports, reportResolve, reportDelete, moderateBulk, settings, rebuildDue, contacts, waitlist, waitlistRemove } from "./admin.ts";
 
 const SB_URL = Deno.env.get("SUPABASE_URL")!;
@@ -441,6 +442,8 @@ async function runContact(t: any) {
 }
 
 // Debounced: a burst of uploads produces one rebuild. Runs after the response is sent.
+// (Changes made straight in the database are covered separately: a trigger on items marks the town as due and
+// the 5-minute sweep calls rebuild-due; a nightly sweep catches anything that slipped through.)
 function queueRebuild(town: string) {
   const job = (async () => {
     await db.from("towns").update({ timeline_status: "queued" }).eq("slug", town);
@@ -448,12 +451,21 @@ function queueRebuild(town: string) {
     const { data: t } = await db.from("towns").select("timeline_status").eq("slug", town).single();
     if (t?.timeline_status !== "queued") return;
     await rebuild(town);
-  })().catch(async (e) => {
-    console.error("rebuild failed", town, e);
-    await db.from("towns").update({ timeline_status: "error" }).eq("slug", town);
-  });
+  })().catch((e) => failBuild(town, e));
   // @ts-ignore EdgeRuntime is provided by Supabase
   if (typeof EdgeRuntime !== "undefined") EdgeRuntime.waitUntil(job);
+}
+
+// Record WHY a build failed so the admin row can show it (and the nightly sweep can stop retrying a town that keeps failing).
+async function failBuild(town: string, e: unknown) {
+  const msg = String((e as any)?.message ?? e).replace(/\s+/g, " ").slice(0, 300);
+  console.error("rebuild failed", town, msg);
+  const { data: t } = await db.from("towns").select("timeline_tries").eq("slug", town).maybeSingle();
+  const { error } = await db.from("towns").update({
+    timeline_status: "error", timeline_error: msg, timeline_error_at: new Date().toISOString(), timeline_tries: ((t as any)?.timeline_tries ?? 0) + 1,
+  }).eq("slug", town);
+  // If the new columns aren't there yet (migration not applied), still leave the town in "error" rather than stuck "building".
+  if (error) await db.from("towns").update({ timeline_status: "error" }).eq("slug", town);
 }
 
 const SYSTEM = `You write the public history timeline for one small town, using ONLY the archive items provided.
@@ -471,35 +483,57 @@ Rules:
 
 Reply with JSON only: {"entries":[{"year":1882,"label":"Fall 1882","title":"...","body":"...","cat":"Railway","tier":"documented","item_ids":["..."],"cite":""}]}`;
 
+// All published items for a town (the API returns at most 1000 rows per request, so page through them).
+async function allItems(town: string) {
+  const out: any[] = [];
+  for (let from = 0; from < 5000; from += 1000) {
+    const { data, error } = await db.from("items").select("id,kind,title,body,date_label,year,source,pin_timeline")
+      .eq("town", town).eq("status", "published").order("year", { nullsFirst: false }).order("created_at").order("id").range(from, from + 999);
+    if (error) throw error;
+    out.push(...(data ?? []));
+    if ((data ?? []).length < 1000) break;
+  }
+  return out;
+}
+
+// One AI call for one batch of archive items. Retries overloaded / rate-limited answers. `truncated` means the reply hit the token limit.
+async function askModel(town: { name?: string; prov?: string }, batch: ArchiveItem[]): Promise<ModelReply> {
+  for (let attempt = 0; ; attempt++) {
+    const r = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "x-api-key": Deno.env.get("ANTHROPIC_API_KEY")!, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+      body: JSON.stringify({
+        model: MODEL, max_tokens: 6000, system: SYSTEM,
+        messages: [{ role: "user", content: `Town: ${town.name}, ${town.prov}\n\nArchive items:\n${JSON.stringify(batch)}` }],
+      }),
+    });
+    if ((r.status === 429 || r.status >= 500) && attempt < 2) { await new Promise((x) => setTimeout(x, 3000 * (attempt + 1))); continue; }
+    if (!r.ok) throw new Error("Claude API " + r.status + ": " + (await r.text()).slice(0, 200));
+    const out = await r.json();
+    return { text: (out.content ?? []).map((c: any) => c.text ?? "").join(""), truncated: out.stop_reason === "max_tokens" };
+  }
+}
+
 async function rebuild(town: string) {
   await db.from("towns").update({ timeline_status: "building" }).eq("slug", town);
-  const [{ data: t }, { data: items, error }] = await Promise.all([
+  const [{ data: t }, items] = await Promise.all([
     db.from("towns").select("name,prov").eq("slug", town).single(),
-    db.from("items").select("id,kind,title,body,date_label,year,source,pin_timeline").eq("town", town).eq("status", "published").order("year", { nullsFirst: false }).limit(400),
+    allItems(town),
   ]);
-  if (error) throw error;
-  if (!items?.length) {
+  const clean = { timeline_error: null, timeline_error_at: null, timeline_tries: 0 };
+  if (!items.length) {
     await db.from("timeline").delete().eq("town", town);
-    await db.from("towns").update({ timeline_status: "empty", timeline_built_at: new Date().toISOString() }).eq("slug", town);
+    await db.from("towns").update({ timeline_status: "empty", timeline_built_at: new Date().toISOString(), timeline_skipped: [], ...clean }).eq("slug", town);
     return;
   }
-  const archive = items.map((i) => ({ id: i.id, kind: i.kind, title: i.title, date: i.date_label || i.year || "", source: i.source, text: String(i.body || "").slice(0, 6000) }));
-  const r = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: { "x-api-key": Deno.env.get("ANTHROPIC_API_KEY")!, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-    body: JSON.stringify({
-      model: MODEL, max_tokens: 16000, system: SYSTEM,
-      messages: [{ role: "user", content: `Town: ${t?.name}, ${t?.prov}\n\nArchive items:\n${JSON.stringify(archive)}` }],
-    }),
-  });
-  if (!r.ok) throw new Error("Claude API " + r.status + ": " + (await r.text()).slice(0, 500));
-  const out = await r.json();
-  const text = (out.content ?? []).map((c: any) => c.text ?? "").join("");
-  const parsed = JSON.parse(text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1));
+  const archive: ArchiveItem[] = items.map((i) => ({ id: i.id, kind: i.kind, title: i.title, date: i.date_label || i.year || "", source: i.source, text: String(i.body || "").slice(0, 6000) }));
+  // Small batches, a few at a time (see timeline.ts). Give up cleanly before the function's own time limit.
+  const { entries, stats } = await buildEntries(archive, (batch) => askModel(t ?? {}, batch), { deadlineAt: Date.now() + 120_000 });
+  console.log("timeline", town, JSON.stringify({ items: items.length, ...stats }));
 
   const valid = new Set(items.map((i) => i.id));
   const storyOnly = new Set(items.filter((i) => i.kind === "story").map((i) => i.id));
-  const rows = (parsed.entries ?? [])
+  const rows = entries
     .map((e: any) => ({ ...e, item_ids: (e.item_ids ?? []).filter((id: string) => valid.has(id)) }))
     .filter((e: any) => Number.isInteger(e.year) && e.title && e.body && e.item_ids.length)
     .map((e: any, n: number) => ({
@@ -510,14 +544,17 @@ async function rebuild(town: string) {
 
   // Reviewer-written entries (Approve + add to timeline) always stay, even if the AI left them out.
   const covered = new Set(rows.flatMap((e: any) => e.item_ids));
-  const { data: pinnedRows } = await db.from("items").select("id,kind,title,body,date_label,year,pin_timeline")
-    .eq("town", town).eq("status", "published").eq("pin_timeline", true).limit(500);
-  const pinned = [...items, ...(pinnedRows ?? []).filter((p: any) => !valid.has(p.id))];
-  for (const i of pinned.filter((x: any) => x.pin_timeline && !covered.has(x.id) && Number.isInteger(x.year))) {
+  for (const i of items.filter((x: any) => x.pin_timeline && !covered.has(x.id) && Number.isInteger(x.year))) {
     rows.push({ town, year: i.year, label: str(i.date_label || i.year, 60), title: str(i.title, 200), body: str(i.body, 2000),
       cat: "Events", cite: "", item_ids: [i.id], sort: rows.length, tier: i.kind === "story" ? "memory" : "documented" });
+    covered.add(i.id);
   }
+  // Never wipe a town's timeline because the AI answered with nothing usable.
+  if (!rows.length && items.some((i: any) => Number.isInteger(i.year))) throw new Error("the AI returned no timeline entries for " + items.length + " items");
   await db.from("timeline").delete().eq("town", town);
   if (rows.length) { const { error: e2 } = await db.from("timeline").insert(rows); if (e2) throw e2; }
-  await db.from("towns").update({ timeline_status: "ready", timeline_built_at: new Date().toISOString() }).eq("slug", town);
+  // Dated items the AI chose to leave out (duplicates, unusable dates...) are remembered, so the admin doesn't
+  // count them as "missing" forever and the nightly sweep doesn't rebuild the town again and again.
+  const skipped = items.filter((i: any) => Number.isInteger(i.year) && !covered.has(i.id)).map((i: any) => i.id);
+  await db.from("towns").update({ timeline_status: "ready", timeline_built_at: new Date().toISOString(), timeline_skipped: skipped, ...clean }).eq("slug", town);
 }
