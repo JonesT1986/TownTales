@@ -1,7 +1,7 @@
 // "Get the Wapella Book" page — /<town>/book, Wapella only for now.
 // Free sample + request form (saves to the existing book_interest table). No payments.
 // Everything shown comes from the live collection; nothing is hand-written about the town.
-const { SITE, PROV, PROV_SLUG, esc, q, page, send, notFound } = require('./_shell');
+const { SITE, SB, KEY, PROV, PROV_SLUG, esc, q, page, send, notFound } = require('./_shell');
 const bp = require('./_bookprice');
 
 // Towns with a book file ready. sample = public URL of the free sample PDF (null until supplied).
@@ -119,6 +119,70 @@ ${digital ? '<p>We will email your PDF to the address you paid with, usually wit
 }
 const NEEDS_MAIN_STREET = Object.keys(BOOKS).filter((k) => !(BOOKS[k].mainStreet && BOOKS[k].mainStreet.image));
 
+// Finished books that aren't hard-coded above: rows in town_books, added from the admin ("Mark book ready").
+async function dbBook(slug) {
+  if (!/^[a-z0-9-]{2,80}$/.test(slug || '')) return null;
+  try {
+    const [r] = await q(`town_books?slug=eq.${encodeURIComponent(slug)}&select=pages,title`);
+    return r ? { pages: r.pages, title: r.title || '', sample: null, mainStreet: null, look: null } : null;
+  } catch (e) { return null; }
+}
+// How many people asked for each town's book (counts only; the database function never returns names or emails).
+async function requestCounts() {
+  try {
+    const r = await fetch(`${SB}/rest/v1/rpc/book_request_counts`, { method: 'POST', headers: { apikey: KEY, Authorization: 'Bearer ' + KEY, 'Content-Type': 'application/json' }, body: '{}', signal: AbortSignal.timeout(4000) });
+    if (!r.ok) return {};
+    return Object.fromEntries((await r.json()).map((x) => [x.town, x.n]));
+  } catch (e) { return {}; }
+}
+// Towns with a finished book, for the front page: [{ slug, name, prov, pages, title }]
+async function finishedBooks() {
+  const out = [];
+  try {
+    const rows = await q('town_books?select=slug,pages,title&order=ready_at.desc');
+    const slugs = new Set(Object.keys(BOOKS).concat(rows.map((r) => r.slug)));
+    const towns = await q('towns?select=slug,name,prov&hidden=eq.false&slug=in.(' + [...slugs].map(encodeURIComponent).join(',') + ')');
+    for (const t of towns) { const b = BOOKS[t.slug] || rows.find((r) => r.slug === t.slug); if (b) out.push({ slug: t.slug, name: t.name, prov: t.prov, pages: b.pages, title: (b.look && b.look.title) || b.title || '' }); }
+  } catch (e) { /* none yet */ }
+  return out;
+}
+
+// /books/unsubscribe?t=<private token>  — the link at the bottom of the "your book is ready" email.
+async function unsubscribePage(res, token) {
+  let ok = false;
+  if (/^[0-9a-f-]{36}$/i.test(token || '')) {
+    try {
+      const r = await fetch(`${SB}/rest/v1/rpc/book_unsubscribe`, { method: 'POST', headers: { apikey: KEY, Authorization: 'Bearer ' + KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ tok: token }), signal: AbortSignal.timeout(5000) });
+      ok = r.ok && (await r.json()) === true;
+    } catch (e) { ok = false; }
+  }
+  const main = `<section class="wrap stack" style="padding-top:22px"><h1>${ok ? "You're unsubscribed" : "We couldn't find that sign-up"}</h1>
+<p class="lede">${ok ? "We won't email you about this book again." : "That link may be old or incomplete. If you still get emails from us that you don't want, write to towntalesinfo@gmail.com and we'll remove you."}</p>
+<p><a href="/">Back to TownTales</a></p></section>`;
+  send(res, 200, page({ title: 'Unsubscribe | TownTales', desc: 'Unsubscribe from TownTales book emails.', canonical: `${SITE}/books/unsubscribe`, main, noindex: true }), 'no-store');
+}
+
+// Front-page section: finished books on a shelf, plus "Coming next" (towns people are asking for). Empty string if there's nothing to show.
+async function booksSection() {
+  try {
+    const [done, counts] = await Promise.all([finishedBooks(), requestCounts()]);
+    const have = new Set(done.map((b) => b.slug));
+    const want = Object.entries(counts).filter(([slug, n]) => !have.has(slug) && n >= 3).sort((a, b) => b[1] - a[1]).slice(0, 6);
+    let wantTowns = [];
+    if (want.length) wantTowns = await q('towns?select=slug,name,prov&hidden=eq.false&slug=in.(' + want.map(([slug]) => encodeURIComponent(slug)).join(',') + ')');
+    wantTowns = wantTowns.filter((t) => counts[t.slug] >= 3);
+    if (!done.length && !wantTowns.length) return '';
+    const card = (b) => `<a class="bk-shelf-card" href="/${esc(b.slug)}/book"><div class="bk-cover"><div class="bk-cover-in"><p class="bk-kicker">A TownTales history</p><p class="bk-title">${esc(b.name)}</p><p class="bk-prov">${esc(PROV[b.prov] || b.prov)}</p></div></div><span class="bk-shelf-meta"><b>${esc(b.name)}</b><br><span class="small muted">${b.pages} pages · paperback, hardcover or digital</span></span><span class="btn sm">See the book</span></a>`;
+    const next = wantTowns.map((t) => `<li><a href="/${esc(t.slug)}/book#request">${esc(t.name)}</a>${counts[t.slug] >= 5 ? ` <span class="small muted">· ${counts[t.slug]} requests</span>` : ''}</li>`).join('');
+    return `<section class="wrap stack" id="books-shelf"><h2>${done.length ? 'Books you can buy now' : 'Town history books'}</h2>
+<p>Each book is built from a town's TownTales page: the timeline, the people, the cemeteries and the teams, with every source. Printed to order by <a href="https://www.lulu.com" rel="noopener">Lulu</a>, a print-on-demand publisher founded by Canadian Bob Young, with free shipping anywhere in Canada. Allow 4 to 6 weeks for a printed copy.</p>
+${done.length ? `<div class="bk-shelf">${done.map(card).join('')}</div>` : ''}
+${next ? `<h3>Coming next</h3><p class="small">People are asking for these. Don't see your town's book yet? Request it and we'll email you when it's ready.</p><ul class="bk-next">${next}</ul>` : ''}
+<style>.bk-shelf{display:flex;flex-wrap:wrap;gap:34px;align-items:flex-start}.bk-shelf-card{display:flex;flex-direction:column;gap:10px;align-items:flex-start;text-decoration:none;color:inherit;max-width:240px;padding:4px 14px 8px 4px}.bk-shelf-card .bk-cover{margin:0;width:170px}.bk-next{display:flex;flex-wrap:wrap;gap:8px 22px;list-style:none;padding:0;margin:0}</style>
+</section>`;
+  } catch (e) { return ''; }
+}
+
 function cover(town, prov, ms) {
   const own = !!(ms && ms.image);
   if (!own && SAMPLE_COVER.image) ms = SAMPLE_COVER;
@@ -140,7 +204,7 @@ function cover(town, prov, ms) {
 // /books/checkout?town=<slug>&edition=paperback|hardcover  →  Stripe Checkout at the quoted price (free shipping in Canada).
 async function checkout(res, url) {
   const slug = String(url.searchParams.get('town') || '').toLowerCase(), edition = String(url.searchParams.get('edition') || '');
-  const book = BOOKS[slug];
+  const book = BOOKS[slug] || await dbBook(slug);
   const back = (msg) => { res.statusCode = 303; res.setHeader('Location', `/${slug || ''}/book${msg ? '?order=unavailable' : ''}#order`); res.setHeader('Cache-Control', 'no-store'); return res.end(); };
   if (!book || !bp.EDITIONS[edition] || !bp.luluReady() || !bp.stripeReady()) return back(true);
   try {
@@ -160,8 +224,9 @@ module.exports = async (req, res) => {
   const url = new URL(req.url, 'http://localhost');
   if (url.searchParams.get('thanks')) return thanksPage(res, url.searchParams.get('e') === 'digital');
   if (url.searchParams.get('checkout')) return checkout(res, url);
+  if (url.searchParams.get('unsub')) return unsubscribePage(res, String(url.searchParams.get('t') || ''));
   const slug = String(url.searchParams.get('slug') || '').toLowerCase();
-  const book = BOOKS[slug];
+  const book = BOOKS[slug] || await dbBook(slug);
   try {
     if (url.searchParams.get('look')) {
       const [t] = await q(`towns?slug=eq.${encodeURIComponent(slug)}&hidden=eq.false&select=slug,name,prov`);
@@ -172,7 +237,7 @@ module.exports = async (req, res) => {
     const towns = await q(`towns?slug=eq.${s}&hidden=eq.false&select=slug,name,prov`);
     const town = towns[0];
     if (!town) return notFound(res, "We don't have a town at that address.");
-    if (!book) return waitlist(res, town);
+    if (!book) return waitlist(res, town, (await requestCounts())[town.slug] || 0);
     const eds = await editionsFor(slug, book);
     const [timeline, items, mems, cems, teams] = await Promise.all([
       q(`timeline?town=eq.${s}&select=year,label,title&order=year,sort`, { all: true }),
@@ -258,23 +323,30 @@ ${orderSection(town, eds)}
 };
 module.exports.BOOKS = BOOKS;
 module.exports.NEEDS_MAIN_STREET = NEEDS_MAIN_STREET;
+module.exports.finishedBooks = finishedBooks;
+module.exports.booksSection = booksSection;
+module.exports.requestCounts = requestCounts;
 
-// Towns without a book yet: a short waitlist. Requests show which towns to research next.
-function waitlist(res, town) {
+// Towns without a book yet: "Don't see your book yet?" request page. Requests show which towns to build next, and
+// everyone on the list gets an email with a link to the finished book when it is ready.
+function waitlist(res, town, asked) {
   const prov = PROV[town.prov] || town.prov;
+  const pageUrl = `${SITE}/${town.slug}/book`;
+  const share = encodeURIComponent(`Know someone from ${town.name}? A history book about ${town.name} is on the way if enough people ask: ${pageUrl}`);
   const main = `<section class="wrap stack" style="padding-top:22px">
 <p class="crumbs"><a href="/">TownTales</a> › <a href="/province/${esc(PROV_SLUG[town.prov] || '')}">${esc(prov)}</a> › <a href="/${esc(town.slug)}">${esc(town.name)}</a> › Book</p>
 <div class="bk-hero">${cover(town, prov)}<div class="stack">
 <p class="eyebrow">The ${esc(town.name)} Book</p>
-<h1>Want a book about ${esc(town.name)}?</h1>
-<p class="lede">We make a history book for each town from everything on its TownTales page. ${esc(town.name)}'s isn't ready yet. Add your name and we'll let you know when it is. The towns with the most requests get their books first.</p>
-<div class="btns"><a class="btn" href="#request">Put me on the list</a></div>
+<h1>Don't see ${esc(town.name)}'s book yet?</h1>
+<p class="lede">Request it. We build each town's history book from everything on its TownTales page, and the towns people ask for most come first. When ${esc(town.name)}'s book is finished we'll email you a link straight to it. You can look through it first, then decide if you want a copy. No pressure.</p>
+${asked >= 5 ? `<p class="small"><b>${asked} people</b> have asked for the ${esc(town.name)} book.</p>` : ''}
+<div class="btns"><a class="btn" href="#request">Request the ${esc(town.name)} book</a></div>
 </div></div></section>
-<section class="wrap stack" id="request"><h2>Put me on the list</h2>
-<form class="formbox" data-tt-bookform data-town="${esc(town.slug)}" data-waitlist="1" novalidate style="max-width:820px">
+<section class="wrap stack" id="request"><h2>Request the ${esc(town.name)} book</h2>
+<form class="formbox" data-tt-bookform data-town="${esc(town.slug)}" data-waitlist="1" data-share="${esc(share)}" novalidate style="max-width:820px">
 <div class="grid2">
 <div class="field"><label for="bk-name">Your name</label><input type="text" id="bk-name" name="name" required autocomplete="name"></div>
-<div class="field"><label for="bk-email">Your email</label><input type="email" id="bk-email" name="email" required autocomplete="email"><span class="hint">Only used to tell you about the book. Never shown.</span></div>
+<div class="field"><label for="bk-email">Your email</label><input type="email" id="bk-email" name="email" required autocomplete="email"><span class="hint">We'll email you once, when the book is ready. Never shown, never shared.</span></div>
 </div>
 <div class="grid2">
 <div class="field"><label for="bk-format">Which would you want?</label><select id="bk-format" name="format"><option value="digital">Digital edition</option><option value="print">Printed book</option><option value="both">Both</option><option value="unsure">Not sure yet</option></select></div>
@@ -282,10 +354,10 @@ function waitlist(res, town) {
 </div>
 <input type="hidden" name="updates" value="on">
 <p class="err" id="bk-err" role="alert"></p>
-<button class="btn" type="submit">Add me to the list</button>
+<button class="btn" type="submit">Request the book</button>
 </form>
 <div id="bk-done" role="status"></div>
-<p>The more ${esc(town.name)} has on its page, the fuller its book will be. <a href="/#upload">Share a photo, a story or a clipping</a> to help.</p>
+<p>The more ${esc(town.name)} has on its page, the fuller its book will be. Have a photo, a family story, or a history book on a shelf? <a href="/#upload">Share a photo, a story or a clipping</a> or <a href="/share-a-book">share a history book</a>.</p>
 </section>`;
   send(res, 200, page({
     title: `${town.name}, ${prov} history book | TownTales`,

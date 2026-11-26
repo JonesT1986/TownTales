@@ -108,18 +108,41 @@
       btn.disabled = true; btn.textContent = "Sending…";
       fetch(SB + "/rest/v1/book_interest", { method: "POST", headers: H({ "Content-Type": "application/json", Prefer: "return=minimal" }),
         body: JSON.stringify({ town: f.getAttribute("data-town"), name: v("name").slice(0, 120), email: v("email").slice(0, 200).toLowerCase(), format: v("format"), copies: parseInt(v("copies"), 10) || 1, updates_ok: f.elements.updates.type === "hidden" ? true : !!f.elements.updates.checked }) })
-        .then(function (r) { if (!r.ok) throw new Error("save"); f.hidden = true; $("#bk-done").innerHTML = f.getAttribute("data-waitlist") ? '<div class="rm-ok"><h3>You\'re on the list.</h3><p>Thank you. We\'ll email you when this town\'s book is ready.</p></div>' : '<div class="rm-ok"><h3>You\'re on the list.</h3><p>Thank you. We\'ll email you the price and let you know when your copy is ready to order.</p></div>'; })
+        .then(function (r) {
+          if (!r.ok) throw new Error("save");
+          f.hidden = true;
+          var share = f.getAttribute("data-share");
+          $("#bk-done").innerHTML = f.getAttribute("data-waitlist")
+            ? '<div class="rm-ok"><h3>You\'re on the list.</h3><p>Thank you. We\'ll email you at <b>' + esc(v("email")) + '</b> when this town\'s book is ready, with a link to look through it first.</p>' +
+              (share ? '<p>Know someone from here? The more people ask, the sooner the book gets built.</p><div class="btns"><a class="btn sm" href="https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(location.href.split("#")[0]) + '" rel="noopener" target="_blank">Share on Facebook</a><a class="btn sm alt" href="mailto:?subject=' + encodeURIComponent("A history book about " + (document.title.split(",")[0] || "our town")) + "&body=" + share + '">Email a friend</a></div>' : "") + "</div>"
+            : '<div class="rm-ok"><h3>You\'re on the list.</h3><p>Thank you. We\'ll email you the price and let you know when your copy is ready to order.</p></div>';
+        })
         .catch(function () { err.textContent = "Couldn't send that just now. Please try again in a minute."; btn.disabled = false; btn.textContent = "Request my copy"; });
     });
   }
   function bookBlock(t) {
-    var view = $("#view"); if (!view || !BOOK_TOWNS[t.slug] || $("#tt-book", view)) return;
+    var view = $("#view"); if (!view || $("#tt-book", view)) return;
     var anchor = $("#history", view); if (!anchor) return;
-    var tn = townName(), sec = document.createElement("section");
-    sec.className = "wrap"; sec.id = "tt-book";
-    sec.innerHTML = '<div class="grow" style="max-width:none"><p class="eyebrow">The ' + esc(tn) + ' Book</p><h2>Get the ' + esc(tn) + ' Book</h2><p>' + esc(tn) + "'s history in one book: the timeline, the people, the cemeteries and the teams, with every source. See a free sample first.</p>" +
-      '<div class="btns"><a class="btn" href="/' + esc(t.slug) + '/book/preview">Look inside the book</a><a class="btn alt" href="/' + esc(t.slug) + '/book#order">Order a copy</a></div></div>';
-    anchor.parentNode.insertBefore(sec, anchor);
+    var put = function (html) {
+      if ($("#tt-book", view)) return;
+      var sec = document.createElement("section"); sec.className = "wrap"; sec.id = "tt-book";
+      sec.innerHTML = '<div class="grow" style="max-width:none">' + html + "</div>";
+      anchor.parentNode.insertBefore(sec, anchor);
+    };
+    var tn = townName();
+    var ready = function () {
+      put('<p class="eyebrow">The ' + esc(tn) + ' Book</p><h2>Get the ' + esc(tn) + ' Book</h2><p>' + esc(tn) + "'s history in one book: the timeline, the people, the cemeteries and the teams, with every source. See what's inside first.</p>" +
+        '<div class="btns"><a class="btn" href="/' + esc(t.slug) + '/book">See the book</a><a class="btn alt" href="/' + esc(t.slug) + '/book#order">Buy a copy</a></div>');
+    };
+    var ask = function () {
+      put('<p class="eyebrow">The ' + esc(tn) + ' Book</p><h2>Don\'t see ' + esc(tn) + '\'s book yet?</h2><p>Request it. When it\'s finished we\'ll email you a link to look through it, and you decide if you want a copy.</p>' +
+        '<div class="btns"><a class="btn" href="/' + esc(t.slug) + '/book#request">Request the ' + esc(tn) + ' book</a></div>');
+    };
+    if (BOOK_TOWNS[t.slug]) return ready();
+    fetch(SB + "/rest/v1/town_books?slug=eq." + encodeURIComponent(t.slug) + "&select=slug", { headers: H() })
+      .then(function (r) { return r.ok ? r.json() : []; })
+      .then(function (rows) { rows && rows.length ? ready() : ask(); })
+      .catch(function () { ask(); });
   }
 
   /* ---------- copy-to-clipboard (contact page email) ---------- */
@@ -449,6 +472,10 @@
       if (a === "cl-all") return loadCl(out, true);
       if (a === "ct-load") return loadContacts(out);
       if (a === "wl-load") return loadWaitlist(out);
+      if (a === "bk-ready") return bkReady(b, out);
+      if (a === "bk-test") return bkTest(b, out);
+      if (a === "bk-send") return bkSend(b, out);
+      if (a === "bk-unready") return bkUnready(b, out);
       if (a === "wl-copy") return wlCopy(b);
       if (a === "wl-del") return wlDel(b, out);
       if (a === "cl-tx") return clipTx(b);
@@ -656,7 +683,58 @@
   }
 
   /* ---------- Book waitlist: who asked for which town's book (table book_interest) ---------- */
+  function bn(action, payload) {
+    var body = { action: action }; for (var k in payload) body[k] = payload[k];
+    return fetch(SB + "/functions/v1/book-notify", { method: "POST", headers: { "Content-Type": "application/json", "x-admin-key": adminKey() }, body: JSON.stringify(body) })
+      .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || "Request failed"); return j; }); });
+  }
+  function bkPanel(box, out) {
+    box.innerHTML = '<p class="muted">Loading books…</p>';
+    bn("list").then(function (r) {
+      var w = r.waiting || {}, books = r.books || [];
+      box.innerHTML = '<h3>Finished books and "it\'s ready" emails</h3>' +
+        (r.mail_ready ? "" : '<div class="notice warn"><p>Email sending is not switched on yet (no Resend key). You can still mark books ready; the emails send once the key is added.</p></div>') +
+        '<p class="small muted">When a book is finished, mark it ready below. Then send a test to yourself, then email everyone on that town\'s list. Each person is emailed once, with a link to the book page and an unsubscribe link.</p>' +
+        '<div class="formbox" style="max-width:820px"><div class="grid2"><div class="field"><label for="bk-slug">Town address (e.g. moosomin-sk)</label><input id="bk-slug" type="text"></div><div class="field"><label for="bk-pg">Pages in the printed book</label><input id="bk-pg" type="number" min="24" max="800"></div></div><button class="btn sm" data-tt="bk-ready">Mark book ready</button></div>' +
+        (books.length ? books.map(function (b) {
+          var x = w[b.slug] || { total: 0, toEmail: 0, emailed: 0 };
+          return '<div class="qitem" style="margin-top:10px"><p><b>' + esc(b.slug) + "</b> · " + esc(b.pages) + " pages · " + x.toEmail + " to email · " + x.emailed + " already emailed</p>" +
+            '<div class="btns"><button class="btn sm alt" data-tt="bk-test" data-slug="' + esc(b.slug) + '">Send a test to me</button>' +
+            (x.toEmail ? '<button class="btn sm" data-tt="bk-send" data-slug="' + esc(b.slug) + '" data-n="' + x.toEmail + '">Email ' + x.toEmail + (x.toEmail === 1 ? " person" : " people") + "</button>" : "") +
+            '<button class="btn sm alt" data-tt="bk-unready" data-slug="' + esc(b.slug) + '">Take off the shelf</button></div></div>';
+        }).join("") : '<p class="small muted">No finished books marked yet.</p>');
+    }).catch(function (e) { box.innerHTML = '<div class="notice warn"><p>' + esc(e.message) + ". Check the admin key above.</p></div>"; });
+  }
+  function bkReady(b, out) {
+    var slug = ($("#bk-slug") || {}).value, pg = ($("#bk-pg") || {}).value;
+    if (!slug || !pg) return window.alert("Enter the town address and the page count.");
+    b.disabled = true;
+    bn("ready", { slug: slug.trim(), pages: Number(pg) }).then(function () { loadWaitlist(out); }, function (e) { b.disabled = false; window.alert(e.message); });
+  }
+  function bkTest(b, out) {
+    var to = window.prompt("Send a sample email to which address?"); if (!to) return;
+    b.disabled = true;
+    bn("test", { slug: b.getAttribute("data-slug"), to: to }).then(function () { b.disabled = false; window.alert("Sent. Check that inbox (and spam)."); }, function (e) { b.disabled = false; window.alert(e.message); });
+  }
+  function bkSend(b, out) {
+    var n = b.getAttribute("data-n");
+    if (!window.confirm("Email " + n + " people that the book is ready? Each person only ever gets this once. This can't be undone.")) return;
+    b.disabled = true; b.textContent = "Sending…";
+    bn("send", { slug: b.getAttribute("data-slug") }).then(function (r) {
+      window.alert("Sent " + r.sent + "." + (r.failed && r.failed.length ? "\n\nFailed:\n" + r.failed.join("\n") : "") + (r.remaining ? "\n\n" + r.remaining + " left. Click the button again to send the next batch." : ""));
+      loadWaitlist(out);
+    }, function (e) { b.disabled = false; window.alert(e.message); loadWaitlist(out); });
+  }
+  function bkUnready(b, out) {
+    if (!window.confirm("Take this book off the shelf? The page goes back to a request page. Emails already sent stay sent.")) return;
+    bn("unready", { slug: b.getAttribute("data-slug") }).then(function () { loadWaitlist(out); }, function (e) { window.alert(e.message); });
+  }
   function loadWaitlist(out) {
+    out.innerHTML = '<div id="bk-ctl"></div><div id="bk-wl"></div>';
+    bkPanel($("#bk-ctl", out), out);
+    loadWaitlistRows($("#bk-wl", out));
+  }
+  function loadWaitlistRows(out) {
     out.innerHTML = '<p class="muted">Loading…</p>';
     api("waitlist").then(function (r) {
       var rows = r.waitlist || [], by = {}, order = [];
