@@ -4,16 +4,19 @@
 //   report-delete    → delete a report (test entries, spam)
 //   moderate-bulk    → publish or decline many review-queue items at once
 //   settings         → read or change admin settings (auto-approve link-reader facts)
+//   contacts         → (Nov 26) everyone who left an email with something they sent, grouped by town
 //   rebuild-due      → PUBLIC but harmless: rebuilds a town only if the database flagged it (auto-approved facts)
 // deno-lint-ignore-file no-explicit-any
 
 type Ctx = { db: any; json: (b: unknown, s?: number) => Response; queueRebuild: (town: string) => void };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const SETTINGS: Record<string, "bool"> = { auto_approve_link_reader: "bool" };
+const SETTINGS: Record<string, "bool" | "days" | "date"> = { auto_approve_link_reader: "bool", new_tag_days: "days", new_tag_since: "date" };
+const okSetting = (t: string, v: unknown) =>
+  t === "bool" ? typeof v === "boolean" : t === "days" ? Number.isInteger(v) && (v as number) >= 0 && (v as number) <= 365 : t === "date" ? typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) : false;
 
 export async function reports({ db, json }: Ctx, body: any) {
-  let q = db.from("reports").select("id,what,text,name,email,done,resolved_at,created_at").order("created_at", { ascending: false }).limit(300);
+  let q = db.from("reports").select("id,what,text,name,email,town,done,resolved_at,created_at").order("created_at", { ascending: false }).limit(300);
   if (body.show !== "all") q = q.eq("done", false);
   const { data, error } = await q;
   return error ? json({ error: error.message }, 500) : json({ reports: data });
@@ -53,7 +56,7 @@ export async function settings({ db, json }: Ctx, body: any) {
   const patch = body.set && typeof body.set === "object" ? body.set : null;
   if (patch) {
     for (const [k, v] of Object.entries(patch)) {
-      if (SETTINGS[k] !== "bool" || typeof v !== "boolean") return json({ error: "Unknown setting: " + k }, 400);
+      if (!SETTINGS[k] || !okSetting(SETTINGS[k], v)) return json({ error: "Unknown or bad setting: " + k }, 400);
       const { error } = await db.from("admin_settings").upsert({ k, v, updated_at: new Date().toISOString() });
       if (error) return json({ error: error.message }, 500);
     }
@@ -75,4 +78,35 @@ export async function rebuildDue({ db, json, queueRebuild }: Ctx, body: any) {
   if (!data) return json({ ok: true, skipped: "not due" });
   queueRebuild(slug);
   return json({ ok: true, status: "queued", slug });
+}
+
+// Everyone who sent something in with an email, grouped by town (admin only). Drawn from every submission table.
+export async function contacts({ db, json }: Ctx, _body: any) {
+  const rows: any[] = [];
+  const add = (town: unknown, name: unknown, email: unknown, what: string, at: unknown) => {
+    const e = String(email ?? "").trim().toLowerCase();
+    if (!e || !e.includes("@")) return;
+    rows.push({ town: String(town ?? "") || "(no town)", name: String(name ?? "").trim(), email: e, what, at: at ?? null });
+  };
+  const safe = async (p: Promise<any>) => { try { const r = await p; return r.data ?? []; } catch { return []; } };
+  const [clips, items, mems, books, interest, reps, towns, honour] = await Promise.all([
+    safe(db.from("clipping_contacts").select("submitter_email, clipping:clippings(town,submitter_name,paper_name,date_label,created_at)").limit(5000)),
+    safe(db.from("items").select("town,contributor,contact_email,kind,title,created_at").eq("origin", "community").not("contact_email", "is", null).limit(5000)),
+    safe(db.from("memorial_submissions").select("submitter_name,submitter_email,created_at, memorial:memorials(town,name)").limit(5000)),
+    safe(db.from("book_uploads").select("town,uploader_name,uploader_email,title,created_at").limit(5000)),
+    safe(db.from("book_interest").select("town,name,email,created_at").limit(5000)),
+    safe(db.from("reports").select("town,name,email,what,created_at").limit(5000)),
+    safe(db.from("towns").select("slug,added_by,added_email,created_at").not("added_email", "is", null).limit(5000)),
+    safe(db.from("honour_orders").select("purchaser_name,purchaser_email,created_at, page:honour_pages(town)").limit(5000)),
+  ]);
+  for (const r of clips) { const c = Array.isArray(r.clipping) ? r.clipping[0] : r.clipping; add(c?.town, c?.submitter_name, r.submitter_email, "Clipping: " + ([c?.paper_name, c?.date_label].filter(Boolean).join(", ") || "newspaper clipping"), c?.created_at); }
+  for (const r of items) add(r.town, r.contributor, r.contact_email, "Archive " + r.kind + ": " + String(r.title ?? "").slice(0, 80), r.created_at);
+  for (const r of mems) { const m = Array.isArray(r.memorial) ? r.memorial[0] : r.memorial; add(m?.town, r.submitter_name, r.submitter_email, "Remembrance: " + (m?.name ?? ""), r.created_at); }
+  for (const r of books) add(r.town, r.uploader_name, r.uploader_email, "Book upload: " + (r.title ?? ""), r.created_at);
+  for (const r of interest) add(r.town, r.name, r.email, "Book interest", r.created_at);
+  for (const r of reps) add(r.town, r.name, r.email, "Report: " + String(r.what ?? "").slice(0, 80), r.created_at);
+  for (const r of towns) add(r.slug, r.added_by, r.added_email, "Added the town", r.created_at);
+  for (const r of honour) { const h = Array.isArray(r.page) ? r.page[0] : r.page; add(h?.town, r.purchaser_name, r.purchaser_email, "Honour Page order", r.created_at); }
+  rows.sort((a, b) => a.town.localeCompare(b.town) || String(b.at ?? "").localeCompare(String(a.at ?? "")));
+  return json({ contacts: rows });
 }

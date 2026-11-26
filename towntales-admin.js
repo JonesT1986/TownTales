@@ -71,6 +71,7 @@
     var auto = settings && settings.auto_approve_link_reader === true;
     var set = LIVE ? '<div class="formbox tta-set"><label class="tta-check"><input type="checkbox" data-tta="auto"' + (auto ? " checked" : "") + (settings === null ? " disabled" : "") +
       '> Auto-approve link-reader facts that have a source</label><p class="hint">When this is on, facts the AI link reader finds (with a source page) are published straight away and the town\'s timeline rebuilds a few minutes later. Visitor uploads still wait here for you. It applies to new facts; use the buttons below for the ones already waiting.</p>' +
+      '<label class="tta-check" style="margin-top:10px">"New" tag shows for <input type="number" min="0" max="365" step="1" style="width:5em" data-tta="newdays" value="' + esc(settings && settings.new_tag_days != null ? settings.new_tag_days : 30) + '"' + (settings === null ? " disabled" : "") + '> days after something goes live</label><p class="hint">Timeline entries, archive items and clippings added on or after ' + esc((settings && settings.new_tag_since) || "2026-11-26") + ' carry a small "New" tag for this many days, then it drops off on its own. 0 turns the tag off.</p>' +
       (settingsErr ? '<p class="err">Couldn\'t load this setting.</p>' : "") + "</div>" : "";
 
     if (!all.length) return set + (focusMiss ? '<div class="notice info"><p>' + esc(focusMiss) + "</p></div>" : "") + '<div class="empty">Nothing waiting. Share something on the public site to see it here.</div>';
@@ -155,7 +156,7 @@
       return '<div class="qitem' + (r.done ? " tta-done" : "") + '" id="tta-report-' + esc(r.id) + '"><div class="top"><h3>' + esc(r.what || "(no subject)") + "</h3><span>" +
         (r.done ? '<span class="pill doc">Resolved ' + esc(res) + "</span>" : '<span class="pill new">Open</span>') + "</span></div>" +
         '<p class="tta-text">' + esc(r.text) + "</p>" +
-        '<dl class="kv"><dt>From</dt><dd>' + esc(r.name || "(no name)") + (r.email ? ' · <a href="mailto:' + esc(r.email) + '">' + esc(r.email) + "</a>" : "") + "</dd><dt>Sent</dt><dd>" + esc(when) + "</dd></dl>" +
+        '<dl class="kv">' + (r.town ? "<dt>Town</dt><dd>" + esc(r.town) + "</dd>" : "") + '<dt>From</dt><dd>' + esc(r.name || "(no name)") + (r.email ? ' · <a href="mailto:' + esc(r.email) + '">' + esc(r.email) + "</a>" : "") + "</dd><dt>Sent</dt><dd>" + esc(when) + "</dd></dl>" +
         '<div class="btns">' + (r.done ? '<button class="btn sm alt" data-tta="rep-reopen" data-id="' + esc(r.id) + '">Reopen</button>' : '<button class="btn sm" data-tta="rep-resolve" data-id="' + esc(r.id) + '">Resolve</button>') +
         '<button class="btn sm alt" data-tta="rep-delete" data-id="' + esc(r.id) + '">Delete</button></div></div>';
     }).join("") : '<div class="empty">' + (rf.show === "all" ? "No problem reports yet." : "No open problem reports.") + "</div>";
@@ -337,6 +338,14 @@
         settings = r.settings || {}; route();
         setTimeout(function () { msg(on ? "Auto-approve is on. New link-reader facts with a source will publish on their own." : "Auto-approve is off. Every new fact waits here.", true); }, 50);
       }, function (e) { el.checked = !on; el.disabled = false; alert("Couldn't save the setting: " + e.message); });
+    }
+    else if (a === "newdays") {
+      var d = parseInt(el.value, 10); if (!(d >= 0 && d <= 365)) { alert("Use a number of days from 0 to 365."); return; }
+      el.disabled = true;
+      live.api("settings", { set: { new_tag_days: d } }).then(function (r) {
+        settings = r.settings || {}; route();
+        setTimeout(function () { msg(d ? 'The "New" tag now shows for ' + d + " days." : 'The "New" tag is off.', true); }, 50);
+      }, function (e) { el.disabled = false; alert("Couldn't save the setting: " + e.message); });
     }
     else if (a === "rep-all") { rf.show = el.checked ? "all" : "open"; rf.data = null; route(); }
   });

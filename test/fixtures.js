@@ -105,4 +105,19 @@ tables.timeline.push({ id: 'ww-2', town: 'whitewood-sk', year: 1905, label: 'Sep
 
 // Real McFadyen records from the live site, for the family report preview.
 try { const real = require('./data/mcfadyen.json'); tables.memorials.push(...real.memorials); tables.cemeteries.push(...real.cemeteries); } catch (e) {}
+
+// Nov 26 2026: Radville (rink clipping linked to its timeline entry, 7 entries in 1929), a capital and a city.
+towns.push({ slug: 'radville-sk', name: 'Radville', prov: 'SK', hidden: false, place_kind: 'town' },
+  { slug: 'regina-sk', name: 'Regina', prov: 'SK', hidden: false, place_kind: 'capital' },
+  { slug: 'saskatoon-sk', name: 'Saskatoon', prov: 'SK', hidden: false, place_kind: 'city' });
+['radville-sk', 'regina-sk', 'saskatoon-sk'].forEach((slug) => town_stats.push({ slug, items: 2, entries: 8, timeline_status: 'ready', timeline_built_at: '2026-11-25T00:00:00Z' }));
+const RINK = 'e9eb5c22-9ad8-4152-908f-7a3791ff407c', FRESH = '11111111-2222-4333-8444-555555555555';
+const nowIso = new Date().toISOString();
+tables.items.push(
+  { id: RINK, town: 'radville-sk', kind: 'document', title: "Contract awarded for Radville's skating and curling rink", body: 'The Bennett Construction Company of Regina won the contract.', year: 1929, date_label: '4 October 1929', image_url: null, source: 'Regina Leader-Post', contributor: 'TownTales research', origin: 'muse', status: 'published', created_at: '2026-11-25T13:25:07Z' },
+  { id: FRESH, town: 'radville-sk', kind: 'story', title: 'Skating on the new rink', body: 'We skated there every winter.', year: 1929, date_label: '1929', image_url: null, source: 'Family memory', contributor: '', origin: 'community', status: 'published', created_at: nowIso });
+for (let n = 0; n < 7; n++) tables.timeline.push({ id: 'rv-' + n, town: 'radville-sk', year: 1929, label: n ? '1929' : '4 October 1929', title: n ? 'Radville 1929 event ' + n : 'Contract awarded for skating and curling rink', body: 'Body ' + n, cat: 'Sports', tier: 'documented', item_ids: [n === 0 ? RINK : n === 1 ? FRESH : RINK], sort: n });
+tables.timeline.push({ id: 'rv-30', town: 'radville-sk', year: 1930, label: '1930', title: 'Radville 1930 event', body: 'b', cat: 'Events', tier: 'documented', item_ids: [RINK], sort: 8 });
+clips.push({ id: 'cda732b0-6f79-4411-85d8-edc6bf568410', town: 'radville-sk', item_id: RINK, image_url: 'https://zpqwrzsgpwwjrlbnfynn.supabase.co/storage/v1/object/public/clippings/rink.jpg', paper_name: 'Regina Leader Post', date_label: 'October 1929', headline: 'Bennett Construction Company Gets Contract for Skating and Curling Rink', submitter_name: 'Tourism Radville', description: null, transcription: 'Bennett Construction Company Gets Contract for Skating and Curling Rink\n\n(Special Despatch)\n\nRADVILLE, Sask., Oct. 4.—Work on the skating rink will be started at once.', transcription_status: 'published', moderation: 'approved', created_at: '2026-11-24T18:06:55Z' },
+  { id: 'c-new', town: 'radville-sk', item_id: null, image_url: 'https://zpqwrzsgpwwjrlbnfynn.supabase.co/storage/v1/object/public/clippings/new.jpg', paper_name: 'Radville Star', date_label: 'May 1950', headline: null, submitter_name: null, description: null, transcription: 'NEW SCHOOL OPENS\nPupils moved in Monday.', transcription_status: 'transcribed', moderation: 'approved', created_at: nowIso });
 module.exports = { mockFetch, tables };

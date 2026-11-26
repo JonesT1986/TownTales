@@ -4,13 +4,14 @@
 // Added Nov 19 2026: /reports /report-resolve /report-delete /moderate-bulk /settings (admin), /rebuild-due (public, flagged towns only) — see admin.ts
 // Added Nov 21 2026: /book-queue /book-moderate (admin, whole-book uploads — see books.ts)
 // Added Nov 21 2026: /stripe-webhook (public, Stripe-signed) /honour-queue /honour-moderate (admin) — see honour.ts
+// Added Nov 26 2026: /clip-transcribe /clip-decide /rem-move /contacts (admin); pinned timeline entries in rebuild
 // Added Nov 2026: /rem-queue /rem-moderate /clip-queue /clip-moderate /clip-item (admin) — see remembrance.ts
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
-import { remQueue, remModerate, clipQueue, clipModerate, clipItem } from "./remembrance.ts";
+import { remQueue, remModerate, clipQueue, clipModerate, clipItem, clipTranscribe, clipDecide, remMove } from "./remembrance.ts";
 import { linksStatus, readLink } from "./links.ts";
 import { stripeWebhook, honourQueue, honourModerate } from "./honour.ts";
 import { bookQueue, bookModerate } from "./books.ts";
-import { reports, reportResolve, reportDelete, moderateBulk, settings, rebuildDue } from "./admin.ts";
+import { reports, reportResolve, reportDelete, moderateBulk, settings, rebuildDue, contacts } from "./admin.ts";
 
 const SB_URL = Deno.env.get("SUPABASE_URL")!;
 const db = createClient(SB_URL, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
@@ -85,7 +86,11 @@ Deno.serve(async (req) => {
   const ctx = { db, json, queueRebuild };
   if (action === "rem-queue") return remQueue(ctx);
   if (action === "rem-moderate") return remModerate(ctx, body);
-  if (action === "clip-queue") return clipQueue(ctx);
+  if (action === "clip-queue") return clipQueue(ctx, body);
+  if (action === "clip-transcribe") return clipTranscribe(ctx, body);
+  if (action === "clip-decide") return clipDecide(ctx, body);
+  if (action === "rem-move") return remMove(ctx, body);
+  if (action === "contacts") return contacts(ctx, body);
   if (action === "clip-moderate") return clipModerate(ctx, body);
   if (action === "clip-item") return clipItem(ctx, body);
   if (action === "links-status") return linksStatus(ctx, body);
@@ -468,7 +473,7 @@ async function rebuild(town: string) {
   await db.from("towns").update({ timeline_status: "building" }).eq("slug", town);
   const [{ data: t }, { data: items, error }] = await Promise.all([
     db.from("towns").select("name,prov").eq("slug", town).single(),
-    db.from("items").select("id,kind,title,body,date_label,year,source").eq("town", town).eq("status", "published").order("year", { nullsFirst: false }).limit(400),
+    db.from("items").select("id,kind,title,body,date_label,year,source,pin_timeline").eq("town", town).eq("status", "published").order("year", { nullsFirst: false }).limit(400),
   ]);
   if (error) throw error;
   if (!items?.length) {
@@ -501,6 +506,15 @@ async function rebuild(town: string) {
       tier: e.item_ids.every((id: string) => storyOnly.has(id)) ? "memory" : (e.tier === "memory" ? "memory" : "documented"),
     }));
 
+  // Reviewer-written entries (Approve + add to timeline) always stay, even if the AI left them out.
+  const covered = new Set(rows.flatMap((e: any) => e.item_ids));
+  const { data: pinnedRows } = await db.from("items").select("id,kind,title,body,date_label,year,pin_timeline")
+    .eq("town", town).eq("status", "published").eq("pin_timeline", true).limit(500);
+  const pinned = [...items, ...(pinnedRows ?? []).filter((p: any) => !valid.has(p.id))];
+  for (const i of pinned.filter((x: any) => x.pin_timeline && !covered.has(x.id) && Number.isInteger(x.year))) {
+    rows.push({ town, year: i.year, label: str(i.date_label || i.year, 60), title: str(i.title, 200), body: str(i.body, 2000),
+      cat: "Events", cite: "", item_ids: [i.id], sort: rows.length, tier: i.kind === "story" ? "memory" : "documented" });
+  }
   await db.from("timeline").delete().eq("town", town);
   if (rows.length) { const { error: e2 } = await db.from("timeline").insert(rows); if (e2) throw e2; }
   await db.from("towns").update({ timeline_status: "ready", timeline_built_at: new Date().toISOString() }).eq("slug", town);
