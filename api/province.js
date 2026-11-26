@@ -4,6 +4,7 @@
 // Overview and topics come from the `provinces` table (content supplied later). Anything without a source is not shown.
 const { SITE, PROV, PROV_SLUG, esc, q, page, send, notFound } = require('./_shell');
 const { regionIcon } = require('./_icons');
+const MK = require('./_markers');
 const MS = require('./_milestones');
 
 const TERR = new Set(['YT', 'NT', 'NU']);
@@ -40,7 +41,8 @@ async function indexPage(res) {
 async function provPage(res, code) {
   const s = encodeURIComponent(code);
   const [towns, rows] = await Promise.all([
-    q(`towns?hidden=eq.false&prov=eq.${s}&select=slug,name,est&order=name`, { all: true }),
+    q(`towns?hidden=eq.false&prov=eq.${s}&select=slug,name,est,place_kind&order=name`, { all: true })
+      .catch(() => q(`towns?hidden=eq.false&prov=eq.${s}&select=slug,name,est&order=name`, { all: true })),
     q(`provinces?code=eq.${s}&select=*`).catch(() => []),
   ]);
   const pv = rows[0] || {};
@@ -60,11 +62,12 @@ async function provPage(res, code) {
   const letters = Object.keys(byLetter).sort();
   const townsHtml = towns.length
     ? `${letters.length > 6 ? `<nav class="rm-az" aria-label="Jump to a letter">${letters.map((l) => `<a href="#t-${esc(l)}">${esc(l)}</a>`).join('')}</nav>` : ''}
+<style>${MK.CSS}</style>${MK.legend(towns.map((t) => t.place_kind))}
 <ul class="pv-towns">${towns.map((t, i) => {
       const l = (t.name.normalize('NFKD').charAt(0) || '#').toUpperCase();
       const first = i === 0 || (towns[i - 1].name.normalize('NFKD').charAt(0) || '#').toUpperCase() !== l;
       const ms = MS.milestone(t.est, year);
-      return `<li${first ? ` id="t-${esc(l)}"` : ''}><a href="/${esc(t.slug)}">${esc(t.name)}</a>${ms ? ' ' + MS.badge(ms, year) : ''}</li>`;
+      return `<li${first ? ` id="t-${esc(l)}"` : ''}>${MK.mark(t.place_kind)}<a href="/${esc(t.slug)}">${esc(t.name)}</a>${ms ? ' ' + MS.badge(ms, year) : ''}</li>`;
     }).join('')}</ul>`
     : `<div class="empty">No ${esc(name)} towns are on TownTales yet. Yours could be the first.</div>`;
 

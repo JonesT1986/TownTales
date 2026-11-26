@@ -1,0 +1,32 @@
+[
+ {
+  "note": "Nov 26: load place_kind (capital/city/town) with the towns list, for the place markers",
+  "find": "contact_status&order=name",
+  "replace": "contact_status,place_kind&order=name"
+ },
+ {
+  "note": "Nov 26: timeline cards carry their year, id and source items (5-per-year cap, New/community tags)",
+  "find": "return `<article class=\"tick\"><div class=\"stub\">",
+  "replace": "return `<article class=\"tick\" data-year=\"${esc(e.year)}\" data-tl=\"${esc(e.id||\"\")}\" data-items=\"${esc((e.items||[]).join(\",\"))}\"><div class=\"stub\">"
+ },
+ {
+  "note": "Nov 26: Remembrance is for people only; say so on the share form",
+  "find": "<p class=\"hint\">Have a website link you want to add? Choose <b>A website link</b> above, or paste it in the link box further down.</p></fieldset>",
+  "replace": "<p class=\"hint\">Have a website link you want to add? Choose <b>A website link</b> above, or paste it in the link box further down.</p><p class=\"hint up-person\"><b>Adding a person who has passed</b> (a burial or a family record)? That isn't shared here: open your town's page and use <b>Cemetery &amp; Remembrance</b>, which is for people only.</p></fieldset>"
+ },
+ {
+  "note": "Nov 26: problem reports record which town they are about",
+  "find": "<div class=\"field\"><label for=\"cr-what\">What is it about?</label>",
+  "replace": "<div class=\"field\"><label for=\"cr-town\">Which town is it about?</label><input type=\"text\" id=\"cr-town\" name=\"town\" value=\"${esc(prefill.town&&town(prefill.town)?town(prefill.town).name+\", \"+town(prefill.town).prov:\"\")}\" placeholder=\"e.g. Radville, SK\" autocomplete=\"off\"></div><div class=\"field\"><label for=\"cr-what\">What is it about?</label>"
+ },
+ {
+  "note": "Nov 26: store the report's town (as the town's slug when it matches a town)",
+  "find": "const row={what:val(f,\"what\"),text:val(f,\"text\"),name:val(f,\"name\"),email:val(f,\"email\")};",
+  "replace": "const tq=val(f,\"town\"),tn=norm(tq),tm=tq?S.towns.find(x=>x.slug===tq||norm(x.name)===tn||norm(x.name+\" \"+x.prov)===tn||norm(x.name+\", \"+x.prov)===tn):null;const row={what:val(f,\"what\"),text:val(f,\"text\"),name:val(f,\"name\"),email:val(f,\"email\"),town:tm?tm.slug:(tq||null)};"
+ },
+ {
+  "note": "Nov 26: hand the train-line stops to towntales-more.js (station markers)",
+  "find": "get S(){return S;},",
+  "replace": "get S(){return S;},lineStops:()=>lineStops(),"
+ }
+]

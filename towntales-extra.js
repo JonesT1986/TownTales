@@ -264,24 +264,58 @@
       ? '<p class="cl-warn"><span class="rm-pill rm-ai">AI transcription — not yet verified.</span></p>'
       : '<p class="small"><span class="rm-pill rm-ver">Checked by a volunteer</span></p>';
   }
-  function clipCard(c) {
-    var title = [c.paper_name, c.date_label].filter(Boolean).join(", ") || "Newspaper clipping";
-    return '<article class="cl-item"><div class="cl-img"><a href="' + esc(c.image_url) + '" target="_blank" rel="noopener"><img src="' + esc(c.image_url) + '" alt="Scan of ' + esc(title) + '" loading="lazy"></a></div>' +
-      '<div class="cl-txt"><h3>' + esc(title) + "</h3>" + (c.description ? "<p>" + esc(c.description) + "</p>" : "") + clipLabel(c) +
-      (c.transcription ? '<div class="cl-trans" tabindex="0" aria-label="Transcription">' + esc(c.transcription) + "</div>" : "") +
-      '<p class="rm-src"><b>Source:</b> ' + esc(c.paper_name || "Newspaper clipping") + (c.date_label ? ", " + esc(c.date_label) : ", date unknown") + (c.submitter_name ? " · Shared by " + esc(c.submitter_name) : "") + "</p></div></article>";
+  // Nov 26 2026: compact cards in a grid; click opens the full clipping (image + transcription + source).
+  function clipHead(c) {
+    if (c.headline) return c.headline;
+    var first = String(c.transcription || "").split(/\n/).map(function (x) { return x.trim(); }).filter(Boolean)[0] || "";
+    return first && first.length <= 140 ? first : (c.description ? String(c.description).slice(0, 120) : "Newspaper clipping");
   }
+  function clipSrc(c) {
+    return '<p class="rm-src"><b>Source:</b> ' + esc(c.paper_name || "Newspaper clipping") + (c.date_label ? ", " + esc(c.date_label) : ", date unknown") + (c.submitter_name ? " · Shared by " + esc(c.submitter_name) : "") + "</p>";
+  }
+  function clipCard(c) {
+    var paper = [c.paper_name, c.date_label].filter(Boolean).join(", ") || "Newspaper clipping";
+    return '<button type="button" class="cl-card" id="clip-' + esc(c.id) + '" data-clip="' + esc(c.id) + '" data-created="' + esc(c.created_at || "") + '" data-shared="' + (c.submitter_name ? "1" : "") + '">' +
+      '<span class="cl-thumb"><img src="' + esc(c.image_url) + '" alt="" loading="lazy"></span>' +
+      '<span class="cl-meta">' + esc(paper) + "</span><b class=\"cl-title\">" + esc(clipHead(c)) + "</b>" +
+      '<span class="cl-by">' + (c.submitter_name ? "Shared by " + esc(c.submitter_name) : "Shared by a community member") + "</span></button>";
+  }
+  function clipFull(c) {
+    var paper = [c.paper_name, c.date_label].filter(Boolean).join(", ") || "Newspaper clipping";
+    return '<p class="eyebrow">' + esc(paper) + "</p><h2>" + esc(clipHead(c)) + "</h2>" +
+      '<a class="cl-big" href="' + esc(c.image_url) + '" target="_blank" rel="noopener"><img src="' + esc(c.image_url) + '" alt="Scan of ' + esc(paper) + '"></a>' +
+      (c.description ? "<p>" + esc(c.description) + "</p>" : "") + clipLabel(c) +
+      (c.transcription ? '<div class="cl-trans" tabindex="0" aria-label="Transcription">' + esc(c.transcription) + "</div>" : "") + clipSrc(c);
+  }
+  var CLIPS = {};
+  function openClip(id) {
+    var c = CLIPS[id]; if (!c) return;
+    var d = $("#tt-cl-dlg");
+    if (!d) {
+      d = document.createElement("dialog"); d.id = "tt-cl-dlg"; d.className = "cl-dlg";
+      d.innerHTML = '<form method="dialog" class="cl-x"><button class="btn sm alt" aria-label="Close">Close ✕</button></form><div class="cl-dlg-body"></div>';
+      d.addEventListener("click", function (e) { if (e.target === d) d.close(); });
+      document.body.appendChild(d);
+    }
+    $(".cl-dlg-body", d).innerHTML = clipFull(c);
+    if (d.showModal) d.showModal(); else d.setAttribute("open", "");
+  }
+  window.ttClip = { full: clipFull, label: clipLabel, open: openClip, cache: CLIPS };
   function clipBlock(t) {
     var view = $("#view"); if (!view || $("#tt-cl", view)) return;
     var anchor = $("#history", view); if (!anchor) return;
     var sec = document.createElement("section");
     sec.className = "wrap stack"; sec.id = "tt-cl";
     var tn = townName();
-    sec.innerHTML = '<p class="eyebrow">Newspaper clippings</p><h2>Clippings from ' + esc(tn) + '</h2><div id="tt-cl-list" class="cl-list"><p class="muted">Loading…</p></div>' + clipForm(t.slug, tn);
+    sec.innerHTML = '<p class="eyebrow">Newspaper clippings</p><h2>Clippings from ' + esc(tn) + '</h2><div id="tt-cl-list" class="cl-grid"><p class="muted">Loading…</p></div>' + clipForm(t.slug, tn);
     anchor.parentNode.insertBefore(sec, anchor.nextSibling);
-    get("clippings?town=eq." + encodeURIComponent(t.slug) + "&select=id,image_url,paper_name,date_label,submitter_name,description,transcription,transcription_status&order=created_at.desc").then(function (rows) {
+    sec.addEventListener("click", function (e) { var b = e.target.closest && e.target.closest("[data-clip]"); if (b) openClip(b.getAttribute("data-clip")); });
+    get("clippings?town=eq." + encodeURIComponent(t.slug) + "&select=id,image_url,paper_name,date_label,headline,submitter_name,description,transcription,transcription_status,created_at&order=created_at.desc").then(function (rows) {
       var l = $("#tt-cl-list", sec); if (!l) return;
+      rows.forEach(function (c) { CLIPS[c.id] = c; });
       l.innerHTML = rows.length ? rows.map(clipCard).join("") : '<div class="empty">No clippings for ' + esc(tn) + " yet. Have one in a scrapbook or a drawer? A phone photo is all it takes.</div>";
+      var m = /[?&]clip=([0-9a-f-]{36})/.exec(location.search) || /clip-([0-9a-f-]{36})/.exec(location.hash);
+      if (m && CLIPS[m[1]]) openClip(m[1]);
     }).catch(function () { var l = $("#tt-cl-list", sec); if (l) l.innerHTML = ""; });
     wireClipForm(sec, t.slug);
   }
@@ -294,7 +328,7 @@
       '<div class="field"><label for="cl-date">Date <span class="hint">(if you know it)</span></label><input type="text" id="cl-date" name="date" placeholder="e.g. June 1952"></div></div>' +
       '<div class="field"><label for="cl-desc">Who\'s in it, what it shows <span class="hint">(optional)</span></label><textarea id="cl-desc" name="desc"></textarea></div>' +
       '<div class="grid2"><div class="field"><label for="cl-name">Your name <span class="hint">(optional)</span></label><input type="text" id="cl-name" name="name"><span class="hint">Shown as "Shared by".</span></div>' +
-      '<div class="field"><label for="cl-email">Your email <span class="hint">(optional)</span></label><input type="email" id="cl-email" name="email"><span class="hint">Never shown. Only if we have a question.</span></div></div>' +
+      '<div class="field"><label for="cl-email">Your email</label><input type="email" id="cl-email" name="email" required><span class="hint">Never shown. So we can thank you, or ask a question about the clipping.</span></div></div>' +
       '<p class="err" id="cl-err" role="alert"></p><button class="btn" type="submit">Send the clipping</button></form><div id="cl-done" role="status"></div></details>';
   }
   // Shrink big phone photos before upload (also drops location data). Falls back to the original file.
@@ -324,7 +358,7 @@
       if (!file) return (err.textContent = "Please choose a photo of the clipping.");
       if (!/^image\//.test(file.type)) return (err.textContent = "Please choose a photo (JPG or PNG).");
       if (file.size > 30 * 1024 * 1024) return (err.textContent = "That photo is very large. Please choose a smaller one.");
-      if (v("email") && !okEmail(v("email"))) return (err.textContent = "That email address doesn't look right.");
+      if (!okEmail(v("email"))) return (err.textContent = v("email") ? "That email address doesn't look right." : "Please add your email. It's never shown.");
       btn.disabled = true; btn.textContent = "Sending… please wait";
       shrink(file).then(function (blob) {
         if (blob.size > 15 * 1024 * 1024) throw Object.assign(new Error("That photo is too large (15 MB maximum)."), { user: 1 });
@@ -399,8 +433,12 @@
     var host = $("section", view); if (!host) return;
     var sec = document.createElement("section");
     sec.className = "wrap stack"; sec.id = "tt-adm";
-    sec.innerHTML = '<h2>Remembrance and clippings</h2><p class="muted">Family submissions and newspaper clippings waiting for a look. Nothing here is public until you publish it.</p>' +
-      '<div class="btns"><button class="btn sm" data-tt="rm-load">Load remembrance queue</button><button class="btn sm" data-tt="cl-load">Load clippings queue</button><button class="btn sm" data-tt="hn-load">Load Honour Pages</button><button class="btn sm" data-tt="bk-load">Load book uploads</button></div><div id="tt-adm-out" class="stack"></div>';
+    sec.innerHTML = '<h2>Review queues</h2><p class="muted">Nothing here is public until you approve it. Each queue is its own section.</p>' +
+      '<div class="tt-qgroups">' +
+      '<div class="tt-qg"><h3>Archive review</h3><p class="small muted">Newspaper clippings, photos, stories and documents. Clippings go here, never to Remembrance.</p><div class="btns"><button class="btn sm" data-tt="cl-load">Clippings waiting</button><button class="btn sm alt" data-tt="cl-all">All clippings (incl. approved)</button></div></div>' +
+      '<div class="tt-qg"><h3>Remembrance review</h3><p class="small muted"><b>People only</b>: burials and family records. Something that isn\'t a person can be moved to the Archive in one click.</p><div class="btns"><button class="btn sm" data-tt="rm-load">People waiting</button><button class="btn sm alt" data-tt="hn-load">Honour Pages</button></div></div>' +
+      '<div class="tt-qg"><h3>Other</h3><p class="small muted">Whole-book uploads, and everyone who has sent something in.</p><div class="btns"><button class="btn sm" data-tt="bk-load">Book uploads</button><button class="btn sm alt" data-tt="ct-load">Contacts by town</button></div></div>' +
+      '</div><div id="tt-adm-out" class="stack"></div>';
     host.parentNode.insertBefore(sec, host.nextSibling);
     linksBlock(sec);
     sec.addEventListener("click", function (e) {
@@ -408,6 +446,10 @@
       var a = b.getAttribute("data-tt"), out = $("#tt-adm-out", sec);
       if (a === "rm-load") return loadRm(out);
       if (a === "cl-load") return loadCl(out);
+      if (a === "cl-all") return loadCl(out, true);
+      if (a === "ct-load") return loadContacts(out);
+      if (a === "cl-tx") return clipTx(b);
+      if (a === "cl-tlform") return clipTlForm(b);
       if (a === "hn-load") return loadHn(out);
       if (a === "bk-load") return loadBk(out);
       if (a === "bk-all") { e.preventDefault(); return loadBk(out, true); }
@@ -423,6 +465,17 @@
       if (a === "rm-pub" || a === "rm-ver") p = api("rem-moderate", { id: id, status: "published", tier: a === "rm-ver" ? "documented" : "community", patch: fields }).then(function () { card.remove(); });
       else if (a === "rm-dec") p = api("rem-moderate", { id: id, status: "declined" }).then(function () { card.remove(); });
       else if (a === "cl-save") p = api("clip-moderate", { id: id, patch: fields }).then(function (r) { done("Saved. Now: " + r.clipping.moderation + " / " + r.clipping.transcription_status); });
+      else if (a === "cl-approve") p = api("clip-decide", { id: id, decision: "approve", patch: clipFields(card) }).then(function () { done("Approved. It's in the archive (not on the timeline)."); setClipState(card, "Approved · archive only"); });
+      else if (a === "cl-reject") p = api("clip-decide", { id: id, decision: "reject" }).then(function () { done("Rejected. It won't appear on the site."); setClipState(card, "Rejected"); });
+      else if (a === "cl-tlgo") {
+        var tf = {}; $$("[data-tl]", card).forEach(function (el) { tf[el.getAttribute("data-tl")] = el.value; });
+        p = api("clip-decide", { id: id, decision: "timeline", patch: clipFields(card), timeline: tf }).then(function () {
+          done("Approved and added to the timeline. The town's timeline is rebuilding."); setClipState(card, "On timeline");
+          var tb = $("[data-tt=cl-tlform]", card); if (tb) { tb.outerHTML = '<span class="pill ok">On timeline</span>'; }
+          var fm = $(".cl-tlbox", card); if (fm) fm.remove();
+        });
+      }
+      else if (a === "rm-move") p = api("rem-move", { id: id }).then(function () { card.innerHTML = '<p class="tt-msg ok">Moved to the Archive review queue (it isn\'t a person). Find it in the main review queue above.</p>'; });
       else if (a === "cl-item-yes" || a === "cl-item-no") p = api("clip-item", { id: id, decision: a === "cl-item-yes" ? "approve" : "decline" }).then(function (r) { done(r.item_id ? "Added to the archive. The timeline will rebuild." : "Suggested entry declined."); });
       if (p) p.catch(fail).then(function () { b.disabled = false; });
     });
@@ -498,32 +551,104 @@
   function loadRm(out) {
     out.innerHTML = '<p class="muted">Loading…</p>';
     api("rem-queue").then(function (r) {
-      out.innerHTML = r.memorials.length ? "<h3>Remembrance: " + r.memorials.length + " waiting</h3>" + r.memorials.map(function (m) {
+      out.innerHTML = r.memorials.length ? "<h3>Remembrance (people only): " + r.memorials.length + " waiting</h3>" + r.memorials.map(function (m) {
         var s = m.submission || {};
-        return '<div class="qitem" data-id="' + esc(m.id) + '"><div class="top"><h3>' + esc(m.name) + '</h3><span class="pill new">' + esc(m.town) + "</span></div>" +
+        return '<div class="qitem" data-id="' + esc(m.id) + '"><div class="top"><h3>' + esc(m.name) + '</h3><span class="pill new">' + esc(m.town) + '</span><span class="pill">Section: Remembrance</span></div>' +
           '<dl class="kv"><dt>From</dt><dd>' + esc(s.submitter_name || "?") + (s.relationship ? " (" + esc(s.relationship) + ")" : "") + " · " + esc(s.submitter_email || "") + "</dd><dt>How they know</dt><dd>" + esc(s.attestation || "") + "</dd><dt>Cemetery</dt><dd>" + esc(m.cemetery_name || "Not sure") + "</dd></dl>" +
           '<div class="grid2">' + inp("Name", "name", m.name) + inp("Maiden name", "maiden_name", m.maiden_name) + inp("Born", "birth_date_label", m.birth_date_label) + inp("Birth place", "birth_place", m.birth_place) + inp("Died", "death_date_label", m.death_date_label) + inp("Death place", "death_place", m.death_place) + "</div>" +
           inp("Note", "note", m.note, 1) + inp("Source (shown publicly)", "source", m.source) + inp("Source link (optional)", "source_url", m.source_url) +
-          '<div class="btns"><button class="btn sm" data-tt="rm-pub">Publish as Community Memory</button><button class="btn sm alt" data-tt="rm-ver">Publish as Verified</button><button class="btn sm alt" data-tt="rm-dec">Decline</button></div><p class="tt-msg" role="status"></p></div>';
+          '<div class="btns"><button class="btn sm" data-tt="rm-pub">Publish as Community Memory</button><button class="btn sm alt" data-tt="rm-ver">Publish as Verified</button><button class="btn sm alt" data-tt="rm-dec">Decline</button><button class="btn sm alt" data-tt="rm-move" title="For a clipping, photo, story or document sent through the person form">Not a person: move to Archive</button></div><p class="tt-msg" role="status"></p></div>';
       }).join("") : '<div class="empty">No remembrance entries waiting.</div>';
     }).catch(function (e) { out.innerHTML = '<div class="notice warn"><p>' + esc(e.message) + ". Check the admin key above.</p></div>"; });
   }
   function sel(f, v, opts) { return '<select data-f="' + f + '">' + opts.map(function (o) { return '<option value="' + o + '"' + (o === v ? " selected" : "") + ">" + o + "</option>"; }).join("") + "</select>"; }
-  function loadCl(out) {
+  // Nov 26 2026: Transcribe image (separate from Save), and Approve / Approve + add to timeline / Reject.
+  function yearIn(v) { var m = String(v || "").match(/\b(1[6-9]\d\d|20\d\d)\b/); return m ? m[1] : ""; }
+  function clipFields(card) { var f = {}; $$("[data-f]", card).forEach(function (el) { f[el.getAttribute("data-f")] = el.value; }); return f; }
+  function setClipState(card, t) { var x = $(".cl-state", card); if (x) x.textContent = t; }
+  function clipTx(b) {
+    var card = b.closest("[data-id]"), note = $(".cl-txnote", card);
+    b.disabled = true; var lbl = b.textContent; b.textContent = "Reading the image… (about 20 seconds)";
+    note.textContent = ""; note.className = "cl-txnote small";
+    api("clip-transcribe", { id: card.getAttribute("data-id") }).then(function (r) {
+      if (!r.ok) { note.textContent = r.note || "Couldn't read this image."; note.className = "cl-txnote small err"; return; }
+      var put = function (f, v, onlyEmpty) { var el = $('[data-f="' + f + '"]', card); if (el && v && (!onlyEmpty || !el.value.trim())) el.value = v; };
+      put("transcription", r.transcription, false);
+      put("headline", r.headline, true); put("paper_name", r.paper, true); put("date_label", r.date, true);
+      note.innerHTML = "<b>Draft filled in — unverified.</b> Check the words against the image, fix anything, then press Save or Approve. Unreadable words are marked [illegible].";
+      note.className = "cl-txnote small ok"; tlGate(card);
+    }).catch(function (e) { note.textContent = "Couldn't read this image (" + e.message + ")."; note.className = "cl-txnote small err"; })
+      .then(function () { b.disabled = false; b.textContent = lbl; });
+  }
+  function tlGate(card) {
+    var b = $("[data-tt=cl-tlform]", card); if (!b) return;
+    var d = $('[data-f="date_label"]', card), y = yearIn(d && d.value), n = $(".cl-tlneed", card);
+    b.disabled = !y; if (n) n.hidden = !!y;
+  }
+  function summaryOf(c, f) {
+    if (f.description && f.description.trim()) return f.description.trim().slice(0, 400);
+    var t = String(f.transcription || "").replace(/\s+/g, " ").trim(), head = (f.headline || "").trim();
+    if (head && t.indexOf(head) === 0) t = t.slice(head.length).trim();
+    t = t.replace(/^\(?special despatch\)?\s*/i, "");
+    // Up to two sentences, without cutting at abbreviations like "Sask." or "Oct."
+    var ABBR = /(?:^|\s)(?:sask|man|alta|ont|que|jan|feb|mar|apr|aug|sept?|oct|nov|dec|mr|mrs|dr|st|co|ltd|no|rev|hon|lt|capt|gen)\.$/i;
+    var out = "", count = 0, re = /[.!?]+["')\]]*(?=\s|$)/g, m, from = 0;
+    while ((m = re.exec(t)) && count < 2) {
+      var end = m.index + m[0].length, chunk = t.slice(0, end);
+      if (ABBR.test(chunk.replace(/["')\]]+$/, ""))) continue;
+      out = chunk; count++; from = end;
+    }
+    out = (out || t).trim();
+    return out.length > 400 ? out.slice(0, 397).replace(/\s+\S*$/, "") + "…" : out;
+  }
+  function clipTlForm(b) {
+    var card = b.closest("[data-id]"); if ($(".cl-tlbox", card)) return;
+    var f = clipFields(card), y = yearIn(f.date_label);
+    var box = document.createElement("div"); box.className = "notice info cl-tlbox";
+    box.innerHTML = "<b>Add to the timeline</b><p class=\"small\">Check each field. The full transcription stays on the clipping; this is the short finished-history version.</p>" +
+      '<div class="grid2"><div class="field"><label>Year (required)</label><input type="text" inputmode="numeric" data-tl="year" value="' + esc(y) + '"></div><div class="field"><label>Date as shown</label><input type="text" data-tl="date_label" value="' + esc(f.date_label || y) + '"></div></div>' +
+      '<div class="field"><label>Title</label><input type="text" data-tl="title" value="' + esc(f.headline || "") + '"></div>' +
+      '<div class="field"><label>Short summary</label><textarea data-tl="body" rows="3">' + esc(summaryOf(null, f)) + "</textarea></div>" +
+      '<div class="field"><label>Source</label><input type="text" data-tl="source" value="' + esc([f.paper_name, f.date_label].filter(Boolean).join(", ")) + '"></div>' +
+      '<div class="btns"><button class="btn sm" data-tt="cl-tlgo">Approve and add to timeline</button></div>';
+    b.parentNode.parentNode.insertBefore(box, b.parentNode.nextSibling);
+  }
+  function loadCl(out, all) {
     out.innerHTML = '<p class="muted">Loading…</p>';
-    api("clip-queue").then(function (r) {
-      out.innerHTML = r.clippings.length ? "<h3>Clippings: " + r.clippings.length + " in progress</h3>" + r.clippings.map(function (c) {
-        var pi = c.proposed_item;
-        return '<div class="qitem" data-id="' + esc(c.id) + '"><div class="top"><h3>' + esc([c.paper_name, c.date_label].filter(Boolean).join(", ") || "Clipping") + '</h3><span class="pill new">' + esc(c.town) + "</span></div>" +
+    api("clip-queue", all ? { all: true } : {}).then(function (r) {
+      out.innerHTML = r.clippings.length ? "<h3>Archive review · clippings: " + r.clippings.length + (all ? " (including approved)" : " waiting") + "</h3>" + r.clippings.map(function (c) {
+        var pi = c.proposed_item, y = yearIn(c.date_label);
+        var state = c.moderation === "approved" ? (c.item_id ? "On timeline" : "Approved · archive only") : c.moderation === "declined" ? "Rejected" : "Waiting";
+        return '<div class="qitem" data-id="' + esc(c.id) + '"><div class="top"><h3>' + esc(c.headline || [c.paper_name, c.date_label].filter(Boolean).join(", ") || "Clipping") + '</h3><span class="pill new">' + esc(c.town) + '</span><span class="pill">Section: Archive (clipping)</span><span class="pill cl-state">' + esc(state) + "</span></div>" +
           '<a href="' + esc(c.image_url) + '" target="_blank" rel="noopener"><img src="' + esc(c.image_url) + '" alt="" style="max-height:360px"></a>' +
-          '<dl class="kv"><dt>From</dt><dd>' + esc(c.submitter_name || "Anonymous") + (c.submitter_email ? " · " + esc(c.submitter_email) : "") + "</dd></dl>" +
-          '<div class="grid2">' + inp("Newspaper", "paper_name", c.paper_name) + inp("Date", "date_label", c.date_label) + "</div>" + inp("Description", "description", c.description, 1) + inp("Transcription", "transcription", c.transcription, 2) +
-          '<div class="grid2"><div class="field"><label>Clipping</label>' + sel("moderation", c.moderation, ["pending", "approved", "declined"]) + '</div><div class="field"><label>Transcription stage</label>' + sel("transcription_status", c.transcription_status, ["uploaded", "transcribed", "checked", "published"]) + "</div></div>" +
-          '<p class="small muted">The public sees a clipping once it is <b>approved</b> and at least <b>transcribed</b>. "Transcribed" shows the label "AI transcription — not yet verified."</p>' +
-          '<div class="btns"><button class="btn sm" data-tt="cl-save">Save</button></div>' +
-          (pi ? '<div class="notice info"><b>Suggested timeline entry (' + esc(c.proposed_item_status) + ")</b><p><b>" + esc(pi.title || "") + "</b> " + esc(pi.date_label || pi.year || "") + "</p><p>" + esc(pi.body || "") + '</p><p class="small">Source: ' + esc(pi.source || "") + '</p><div class="btns"><button class="btn sm" data-tt="cl-item-yes">Add to archive</button><button class="btn sm alt" data-tt="cl-item-no">Decline</button></div></div>' : "") +
+          '<div class="btns"><button class="btn sm alt" data-tt="cl-tx">Transcribe image</button></div><p class="cl-txnote small" role="status"></p>' +
+          '<dl class="kv"><dt>From</dt><dd>' + esc(c.submitter_name || "Anonymous") + (c.submitter_email ? " · " + esc(c.submitter_email) : " · no email") + "</dd></dl>" +
+          inp("Headline", "headline", c.headline) +
+          '<div class="grid2">' + inp("Newspaper", "paper_name", c.paper_name) + inp("Date", "date_label", c.date_label) + "</div>" + inp("Description", "description", c.description, 1) + inp("Transcription (verbatim)", "transcription", c.transcription, 2) +
+          '<p class="small muted">A transcription from <b>Transcribe image</b> is a draft. The public sees it as "AI transcription — not yet verified" until you approve the clipping.</p>' +
+          '<div class="btns"><button class="btn sm alt" data-tt="cl-save">Save</button></div>' +
+          '<div class="btns cl-decide"><button class="btn sm" data-tt="cl-approve">Approve</button>' +
+          (c.item_id ? '<span class="pill ok">On timeline</span>' : '<button class="btn sm" data-tt="cl-tlform"' + (y ? "" : " disabled") + '>Approve + add to timeline</button><span class="small muted cl-tlneed"' + (y ? " hidden" : "") + ">needs a year first (type it in the Date field)</span>") +
+          '<button class="btn sm alt" data-tt="cl-reject">Reject</button></div>' +
+          (pi && c.proposed_item_status === "pending" ? '<div class="notice info"><b>Suggested entry (' + esc(c.proposed_item_status) + ")</b><p><b>" + esc(pi.title || "") + "</b> " + esc(pi.date_label || pi.year || "") + "</p><p>" + esc(pi.body || "") + '</p><p class="small">Source: ' + esc(pi.source || "") + '</p><div class="btns"><button class="btn sm" data-tt="cl-item-yes">Add to archive</button><button class="btn sm alt" data-tt="cl-item-no">Decline</button></div></div>' : "") +
           '<p class="tt-msg" role="status"></p></div>';
-      }).join("") : '<div class="empty">No clippings in progress.</div>';
+      }).join("") : '<div class="empty">No clippings ' + (all ? "yet." : "waiting.") + "</div>";
+      $$('[data-f="date_label"]', out).forEach(function (el) { el.addEventListener("input", function () { tlGate(el.closest("[data-id]")); }); });
+    }).catch(function (e) { out.innerHTML = '<div class="notice warn"><p>' + esc(e.message) + ". Check the admin key above.</p></div>"; });
+  }
+  function loadContacts(out) {
+    out.innerHTML = '<p class="muted">Loading…</p>';
+    api("contacts").then(function (r) {
+      var by = {}, order = [];
+      (r.contacts || []).forEach(function (c) { if (!by[c.town]) { by[c.town] = []; order.push(c.town); } by[c.town].push(c); });
+      out.innerHTML = order.length ? "<h3>Contacts by town: " + (r.contacts.length) + " in " + order.length + " towns</h3>" +
+        '<p class="small muted">Everyone who left an email with something they sent in. Private: never shown on the site.</p>' +
+        order.map(function (t) {
+          return '<details class="qitem"><summary><b>' + esc(t) + "</b> · " + by[t].length + "</summary>" +
+            '<div class="tt-ct"><table><thead><tr><th>Name</th><th>Email</th><th>What they sent</th><th>Date</th></tr></thead><tbody>' +
+            by[t].map(function (c) { return "<tr><td>" + esc(c.name || "—") + '</td><td><a href="mailto:' + esc(c.email) + '">' + esc(c.email) + "</a></td><td>" + esc(c.what) + "</td><td>" + esc(String(c.at || "").slice(0, 10)) + "</td></tr>"; }).join("") +
+            "</tbody></table></div></details>";
+        }).join("") : '<div class="empty">No contacts yet.</div>';
     }).catch(function (e) { out.innerHTML = '<div class="notice warn"><p>' + esc(e.message) + ". Check the admin key above.</p></div>"; });
   }
 

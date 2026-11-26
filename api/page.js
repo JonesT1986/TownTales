@@ -3,9 +3,10 @@
 // town.js is left untouched; if anything here fails the page is served as before.
 const town = require('./town');
 const TAG = '<script src="/api/fam?v=2" defer></script>';
-const EXTRA_TAG = '<script src="/towntales-extra.js?v=13" defer></script>';
-const ADMIN_TAG = '<script src="/towntales-admin.js?v=5" defer></script>';
+const EXTRA_TAG = '<script src="/towntales-extra.js?v=14" defer></script>';
+const ADMIN_TAG = '<script src="/towntales-admin.js?v=6" defer></script>';
 const MS_TAG = '<script src="/towntales-milestones.js?v=1" defer></script>';
+const MORE_TAG = '<script src="/towntales-more.js?v=1" defer></script>';
 
 // Exact-match swaps on the served page. A swap that no longer matches is skipped.
 const SWAPS = [
@@ -55,6 +56,8 @@ module.exports = async (req, res) => {
         if (!body.includes('/towntales-admin.js')) body = body.replace('</body>', ADMIN_TAG + '\n</body>');
         // Milestone birthdays: banner + gold on the town page, badges on town lists, homepage list (towntales-milestones.js).
         if (!body.includes('/towntales-milestones.js')) body = body.replace('</body>', MS_TAG + '\n</body>');
+        // Nov 26 2026: place markers, timeline 5-per-year, New/community tags, clipping links (towntales-more.js).
+        if (!body.includes('/towntales-more.js')) body = body.replace('</body>', MORE_TAG + '\n</body>');
         if (res.getHeader && res.getHeader('Content-Length')) res.removeHeader('Content-Length');
       }
     } catch (e) { /* serve unchanged */ }

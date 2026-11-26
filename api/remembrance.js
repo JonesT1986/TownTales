@@ -91,6 +91,7 @@ function memForm(town, cems) {
   return `<section class="wrap stack rm-add" id="add">
 <h2>Add someone from your family</h2>
 <p>Know someone who rests in or near ${esc(town.name)} but isn't listed? Add them here. A volunteer checks every entry before it appears, and it's shown as <b>Community Memory</b> with you named as the source.</p>
+<div class="notice info rm-people-only"><b>Remembrance is for people only.</b><p>This form is for a person: a burial or a family record. Have a newspaper clipping, an old photo, a story or a document instead? <a href="/${esc(town.slug)}/archive#clip">Share it in the ${esc(town.name)} archive</a>.</p></div>
 <form class="formbox" data-tt-memform data-town="${esc(town.slug)}"${honourCfg().link ? ' data-honour="1"' : ''} novalidate>
 <div class="grid2">
 <div class="field"><label for="mf-name">Their full name</label><input type="text" id="mf-name" name="name" required autocomplete="off"></div>
