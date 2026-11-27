@@ -115,12 +115,16 @@ export async function contacts({ db, json }: Ctx, _body: any) {
 export async function waitlist({ db, json }: Ctx, _body: any) {
   const { data, error } = await db.from("book_interest").select("id,town,name,email,copies,format,updates_ok,created_at").order("created_at", { ascending: false }).limit(5000);
   if (error) return json({ error: error.message }, 500);
-  return json({ waitlist: data ?? [] });
+  // Nov 27 2026: RM book requests, listed as "rm/<slug>" so they group on their own. Table missing: none.
+  const rm = await db.from("rm_book_interest").select("id,rm,name,email,copies,format,updates_ok,created_at").order("created_at", { ascending: false }).limit(5000);
+  const rmRows = (rm.error ? [] : rm.data ?? []).map((r: any) => ({ ...r, town: "rm/" + r.rm, rm: undefined }));
+  return json({ waitlist: [...(data ?? []), ...rmRows] });
 }
 export async function waitlistRemove({ db, json }: Ctx, body: any) {
   const id = String(body?.id ?? "");
   if (!/^[0-9a-f-]{36}$/i.test(id)) return json({ error: "Bad id" }, 400);
-  const { error } = await db.from("book_interest").delete().eq("id", id);
+  const { error, count } = await db.from("book_interest").delete({ count: "exact" }).eq("id", id);
   if (error) return json({ error: error.message }, 500);
+  if (!count) { const r = await db.from("rm_book_interest").delete().eq("id", id); if (r.error && !/does not exist/i.test(r.error.message)) return json({ error: r.error.message }, 500); }
   return json({ ok: true });
 }

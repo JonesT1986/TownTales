@@ -1,0 +1,14 @@
+[
+  {
+    "find": "Not there? <a href=\"#addtown\">Add your town</a> first.</span></div></div>",
+    "replace": "Not there? <a href=\"#addtown\">Add your town</a> first.</span></div><label class=\"check\" style=\"margin-top:10px\"><input type=\"checkbox\" name=\"rmwide\"> <span><b>This is about the whole RM or district</b>, not just this town (a country school, a threshing crew, an RM history book…). It will also show on the RM's page.</span></label></div>"
+  },
+  {
+    "find": "origin:\"community\",status:\"pending\",created_at:now()};",
+    "replace": "origin:\"community\",status:\"pending\",created_at:now()};if(f.elements.rmwide&&f.elements.rmwide.checked)it.scope=\"rm\";"
+  },
+  {
+    "find": "contact_email:it.contact_email};",
+    "replace": "contact_email:it.contact_email};if(it.scope===\"rm\")row.scope=\"rm\";"
+  }
+]

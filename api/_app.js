@@ -13,6 +13,8 @@ try { patches = patches.concat(require('../icon-patches.json')); } catch (e) { /
 try { patches = patches.concat(require('../fix-patches.json')); } catch (e) { /* optional */ }
 // Nov 26 2026: place_kind for markers, timeline card data (5-per-year cap, tags), people-only note, report town.
 try { patches = patches.concat(require('../more-patches.json')); } catch (e) { /* optional */ }
+// Nov 27 2026: "This is about the whole RM or district" tick box on the share form (items.scope = 'rm').
+try { patches = patches.concat(require('../rm-patches.json')); } catch (e) { /* optional */ }
 
 const GA_ID = 'G-C4E2QYM9XW';
 const GA_TAG = `<!-- Google tag (gtag.js) -->

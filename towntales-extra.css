@@ -294,3 +294,18 @@ input[type=search]:focus{border-color:var(--ink)}
 #mp-prev img{max-width:220px;max-height:220px;display:block;margin-top:8px;border:1px solid var(--rule)}
 .mp-q{display:grid;grid-template-columns:160px 1fr;gap:14px;align-items:start;border-bottom:1px solid var(--rule);padding:12px 0}
 .mp-q img{width:160px;height:auto;border:1px solid var(--rule)}
+
+/* Rural municipality pages (Nov 27 2026). Prefix mun- (rm- is taken by Remembrance). */
+.mun-az a{padding:0 10px}
+.mun-list a{font-size:1.08rem}
+.mun-facts{max-width:520px}
+.mun-group{margin-top:8px}
+.mun-link{margin:-4px 0 6px}
+.mun-link a{font-weight:700}
+.mun-tl details{border-bottom:1px solid var(--rule);padding:10px 0}
+.mun-tl summary{cursor:pointer;font-size:1.12rem;min-height:44px;display:flex;align-items:center;gap:10px}
+.mun-tl ol{list-style:none;padding:0;margin:6px 0 0}
+.mun-tl li{padding:7px 0;line-height:1.45}
+.mun-yr{display:inline-block;min-width:7.5em;font-weight:700;color:var(--muted,#555)}
+.mun-tl li a{font-weight:600}
+.mun-town{font-size:.9rem;background:var(--sunk);border:1px solid var(--rule);border-radius:3px;padding:1px 7px;margin-left:4px;white-space:nowrap}

@@ -139,3 +139,51 @@ tables.timeline.push({ id: 'rv-30', town: 'radville-sk', year: 1930, label: '193
 clips.push({ id: 'cda732b0-6f79-4411-85d8-edc6bf568410', town: 'radville-sk', item_id: RINK, image_url: 'https://zpqwrzsgpwwjrlbnfynn.supabase.co/storage/v1/object/public/clippings/rink.jpg', paper_name: 'Regina Leader Post', date_label: 'October 1929', headline: 'Bennett Construction Company Gets Contract for Skating and Curling Rink', submitter_name: 'Tourism Radville', description: null, transcription: 'Bennett Construction Company Gets Contract for Skating and Curling Rink\n\n(Special Despatch)\n\nRADVILLE, Sask., Oct. 4.—Work on the skating rink will be started at once.', transcription_status: 'published', moderation: 'approved', created_at: '2026-11-24T18:06:55Z' },
   { id: 'c-new', town: 'radville-sk', item_id: null, image_url: 'https://zpqwrzsgpwwjrlbnfynn.supabase.co/storage/v1/object/public/clippings/new.jpg', paper_name: 'Radville Star', date_label: 'May 1950', headline: null, submitter_name: null, description: null, transcription: 'NEW SCHOOL OPENS\nPupils moved in Monday.', transcription_status: 'transcribed', moderation: 'approved', created_at: nowIso });
 module.exports = { mockFetch, tables };
+
+// Nov 27 2026: Rural municipalities. Wapella + Whitewood in the RM of Martin No. 122; Moose Jaw's RM has no towns linked.
+tables.rms = [
+  { slug: 'martin-122-sk', name: 'Martin', number: 122, prov: 'SK', kind_label: 'Rural Municipality', full_name: null, office_town: 'wapella-sk', est: '1913', est_label: 'January 13, 1913', intro: 'Formed in 1913 from Local Improvement District 3-A2.\n\nNamed for an early settler.', intro_source: 'Test RM history book (1980)', intro_source_url: 'https://example.org/rm122', hidden: false },
+  { slug: 'moose-jaw-161-sk', name: 'Moose Jaw', number: 161, prov: 'SK', kind_label: 'Rural Municipality', hidden: false },
+  { slug: 'rockwood-mb', name: 'Rockwood', number: null, prov: 'MB', kind_label: 'Rural Municipality', hidden: false },
+  { slug: 'hidden-1-sk', name: 'Hidden', number: 1, prov: 'SK', hidden: true },
+];
+towns.find((t) => t.slug === 'wapella-sk').rm = 'martin-122-sk';
+towns.find((t) => t.slug === 'whitewood-sk').rm = 'martin-122-sk';
+tables.rm_places = [
+  { id: 'p1', rm: 'martin-122-sk', kind: 'school', name: 'Earlswood School District No. 1204', years_label: '1905–1960', location_desc: '10 km north of Wapella', note: 'One-room school. <b>x</b>', tier: 'documented', source: 'SK school district list', source_url: 'https://example.org/sd', status: 'published', sort: 0 },
+  { id: 'p2', rm: 'martin-122-sk', kind: 'ghost_town', name: 'Hirsch Colony', years_label: '1886–1910s', tier: 'community', source: 'Family memory', status: 'published', sort: 0 },
+  { id: 'p3', rm: 'martin-122-sk', kind: 'cemetery', name: 'Buck Lake Cemetery', location_desc: 'SE of town', tier: 'documented', source: 'SGS index', status: 'published', sort: 0 },
+  { id: 'p4', rm: 'martin-122-sk', kind: 'hamlet', name: 'Hidden place', tier: 'documented', source: 'x', status: 'hidden', sort: 0 },
+];
+tables.items.push({ id: 'rmw1', town: 'wapella-sk', kind: 'story', title: 'Threshing crews across the RM', body: 'Every fall the crews moved farm to farm.', year: 1925, date_label: '1920s', source: 'Family memory', status: 'published', scope: 'rm' });
+// extra operators the RM pages use: in.(…), not.is.null, is.null, and the towns→rms embed
+const _filt = filt;
+filt = function (rows, params) {
+  const rest = [];
+  for (const [k, v] of params) {
+    let m;
+    if ((m = /^in\.\((.*)\)$/.exec(v))) { const vals = m[1].split(',').map((x) => decodeURIComponent(x.replace(/^"|"$/g, ''))); rows = rows.filter((r) => vals.includes(String(r[k]))); }
+    else if (v === 'not.is.null') rows = rows.filter((r) => r[k] != null);
+    else if (v === 'is.null') rows = rows.filter((r) => r[k] == null);
+    else rest.push([k, v]);
+  }
+  rows = _filt(rows, rest);
+  return rows;
+};
+{
+  const base = module.exports.mockFetch;
+  module.exports.mockFetch = async (url, opts) => {
+    const u = new URL(url);
+    const table = u.pathname.split('/').pop();
+    const sel = u.searchParams.get('select') || '';
+    if (table === 'towns' && /^rm:rms\(/.test(sel)) { // embed: towns?slug=eq.x&select=rm:rms(...)
+      const t = towns.find((x) => 'eq.' + x.slug === u.searchParams.get('slug'));
+      const r = t && t.rm && tables.rms.find((x) => x.slug === t.rm && !x.hidden);
+      return new Response(JSON.stringify(t ? [{ rm: r || null }] : []), { status: 200, headers: { 'content-type': 'application/json' } });
+    }
+    const res = await base(url, opts);
+    if (table !== 'rm_places' || res.status !== 200) return res;
+    const rows = (await res.json()).filter((r) => r.status === 'published');
+    return new Response(JSON.stringify(rows), { status: 200, headers: { 'content-type': 'application/json' } });
+  };
+}

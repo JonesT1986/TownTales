@@ -73,6 +73,11 @@ module.exports = async (req, res) => {
       ]);
       for (const t of new Set(teams.concat(athletes).map((x) => x.town))) if (towns[t]) urls.push(`${S}/${t}/sports`);
     } catch (e) { /* teams table unavailable: skip */ }
+    // Rural municipality pages (Nov 27 2026). Table missing or empty: skip.
+    try {
+      const rms = await q('rms?hidden=eq.false&select=slug', { all: true, timeout: 8000 });
+      if (rms.length) { urls.push(S + '/rm'); for (const r of rms) urls.push(`${S}/rm/${r.slug}`); }
+    } catch (e) { /* skip */ }
     return send(res, urlset(urls));
   }
 
