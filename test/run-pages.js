@@ -26,6 +26,7 @@ function call(handler, reqUrl) {
     ['rem-bad-town', rem, '/api/remembrance?slug=atlantis-sk'],
     ['hn-honoured', rem, '/api/remembrance?slug=wapella-sk&id=wap-0001'],
     ['hn-certificate', rem, '/api/remembrance?slug=wapella-sk&id=wap-0001&certificate=1'],
+    ['mp-has-photo', rem, '/api/remembrance?slug=wapella-sk&id=wap-0003'],
     ['hn-offer', rem, '/api/remembrance?slug=wapella-sk&id=wap-0002'],
     ['hn-form', rem, '/api/remembrance?slug=wapella-sk&id=wap-0002&honour=1'],
     ['hn-form-pending', rem, '/api/remembrance?slug=wapella-sk&id=m-pend1&honour=1'],

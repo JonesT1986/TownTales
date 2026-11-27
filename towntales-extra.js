@@ -445,6 +445,64 @@
     });
   }
 
+
+  /* ---------- free Remembrance photo (one per person, reviewed first) ---------- */
+  function wireMemPhoto(f) {
+    if (f.getAttribute("data-wired")) return; f.setAttribute("data-wired", "1");
+    var fi = f.elements.file, prev = $("#mp-prev", f);
+    fi.addEventListener("change", function () { var x = fi.files[0]; prev.innerHTML = x && /^image\//.test(x.type) ? '<img alt="" src="' + URL.createObjectURL(x) + '">' : ""; });
+    f.addEventListener("submit", function (ev) {
+      ev.preventDefault();
+      var v = function (n) { var el = f.elements[n]; return el ? String(el.value || "").trim() : ""; };
+      var err = $("#mp-err", f), btn = f.querySelector('button[type="submit"]'), mem = f.getAttribute("data-mem"), file = fi.files[0];
+      err.textContent = "";
+      if (!file || !/^image\/(jpeg|png|webp)$/.test(file.type)) return (err.textContent = "Please choose a JPG, PNG or WebP photo.");
+      if (!v("name")) return (err.textContent = "Please enter your name.");
+      if (!okEmail(v("email"))) return (err.textContent = "Please enter a working email address. It's never shown.");
+      if (!f.elements.ok.checked) return (err.textContent = "Please tick the box to confirm you can share this photo.");
+      btn.disabled = true; btn.textContent = "Uploading…";
+      shrink(file).then(function (blob) {
+        if (blob.size > 15 * 1024 * 1024) throw Object.assign(new Error("That photo is too large (15 MB maximum)."), { user: 1 });
+        var ext = blob.type === "image/png" ? "png" : blob.type === "image/webp" ? "webp" : "jpg";
+        var path = "photo/" + mem + "/" + Date.now() + "-" + Math.random().toString(36).slice(2, 8) + "." + ext;
+        return fetch(SB + "/storage/v1/object/honour/" + path, { method: "POST", headers: H({ "Content-Type": blob.type || "image/jpeg" }), body: blob })
+          .then(function (r) { if (!r.ok) throw new Error("upload"); return SB + "/storage/v1/object/public/honour/" + path; });
+      }).then(function (url) {
+        return rpc("submit_memorial_photo", { p_memorial_id: mem, p_url: url, p_caption: v("caption"), p_kind: v("kind"), p_shared_by: v("name"), p_relation: v("rel"), p_email: v("email") });
+      }).then(function (r) {
+        if (!r || !r.ok) throw Object.assign(new Error((r && r.error) || "Couldn't save that."), { user: 1 });
+        f.hidden = true;
+        $("#mp-done").innerHTML = '<div class="rm-ok"><h3>Thank you.</h3><p>We got your photo. We look at every photo before it goes up, usually within a few days.</p></div>';
+      }).catch(function (e) { err.textContent = e && e.user ? e.message : "Couldn't send that just now. Please try again in a minute."; btn.disabled = false; btn.textContent = "Send the photo"; });
+    });
+  }
+
+  /* ---------- admin: free Remembrance photos waiting for review ---------- */
+  function ph(action, payload) {
+    var body = { action: action }; for (var k in payload) body[k] = payload[k];
+    return fetch(SB + "/functions/v1/photos", { method: "POST", headers: { "Content-Type": "application/json", "x-admin-key": adminKey() }, body: JSON.stringify(body) })
+      .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || "Request failed"); return j; }); });
+  }
+  function loadMemPhotos(out) {
+    out.innerHTML = '<p class="muted">Loading…</p>';
+    ph("queue").then(function (r) {
+      var rows = r.photos || [];
+      if (!rows.length) { out.innerHTML = '<div class="empty">No photos waiting.</div>'; return; }
+      out.innerHTML = "<h3>Remembrance photos waiting (" + rows.length + ")</h3><p class=\"small muted\">One free photo per person. Approve shows it on their page with \"Photo shared by\".</p>" + rows.map(function (x) {
+        var m = x.memorial || {};
+        return '<div class="mp-q" data-id="' + esc(x.id) + '"><a href="' + esc(x.url) + '" target="_blank" rel="noopener"><img alt="" src="' + esc(x.url) + '"></a><div class="stack" style="gap:6px">' +
+          '<p><a href="/' + esc(x.town) + '/remembrance/' + encodeURIComponent(x.memorial_id) + '" target="_blank" rel="noopener"><b>' + esc(m.name || x.memorial_id) + "</b></a> " + esc([m.birth_date_label, m.death_date_label].filter(Boolean).join(" – ")) + " · " + esc(x.kind) + "</p>" +
+          (x.caption ? "<p>" + esc(x.caption) + "</p>" : "") +
+          '<p class="small">From <b>' + esc(x.shared_by) + "</b>" + (x.relation ? " (" + esc(x.relation) + ")" : "") + ' · <a href="mailto:' + esc(x.email) + '">' + esc(x.email) + "</a> · " + esc(String(x.created_at).slice(0, 10)) + "</p>" +
+          '<div class="btns"><button class="btn sm" data-tt="mp-ok" data-id="' + esc(x.id) + '">Approve</button><button class="btn sm alt" data-tt="mp-no" data-id="' + esc(x.id) + '">Reject</button></div></div></div>';
+      }).join("");
+    }).catch(function (e) { out.innerHTML = '<div class="notice warn"><p>' + esc(e.message) + ". Check the admin key above.</p></div>"; });
+  }
+  function memPhotoDecide(b, out, ok) {
+    b.disabled = true;
+    ph("decide", { id: b.getAttribute("data-id"), ok: ok }).then(function () { loadMemPhotos(out); }, function (e) { b.disabled = false; window.alert(e.message); });
+  }
+
   /* ---------- 4: admin review queue ---------- */
   function adminKey() { try { return sessionStorage.getItem("tt-admin") || localStorage.getItem("tt-admin-saved") || ""; } catch (e) { return ""; } }
   function api(action, payload) {
@@ -459,7 +517,7 @@
     sec.innerHTML = '<h2>Review queues</h2><p class="muted">Nothing here is public until you approve it. Each queue is its own section.</p>' +
       '<div class="tt-qgroups">' +
       '<div class="tt-qg"><h3>Archive review</h3><p class="small muted">Newspaper clippings, photos, stories and documents. Clippings go here, never to Remembrance.</p><div class="btns"><button class="btn sm" data-tt="cl-load">Clippings waiting</button><button class="btn sm alt" data-tt="cl-all">All clippings (incl. approved)</button></div></div>' +
-      '<div class="tt-qg"><h3>Remembrance review</h3><p class="small muted"><b>People only</b>: burials and family records. Something that isn\'t a person can be moved to the Archive in one click.</p><div class="btns"><button class="btn sm" data-tt="rm-load">People waiting</button><button class="btn sm alt" data-tt="hn-load">Honour Pages</button></div></div>' +
+      '<div class="tt-qg"><h3>Remembrance review</h3><p class="small muted"><b>People only</b>: burials and family records. Something that isn\'t a person can be moved to the Archive in one click.</p><div class="btns"><button class="btn sm" data-tt="rm-load">People waiting</button><button class="btn sm alt" data-tt="hn-load">Honour Pages</button><button class="btn sm alt" data-tt="mp-load">Photos waiting</button></div></div>' +
       '<div class="tt-qg"><h3>Other</h3><p class="small muted">Whole-book uploads, and everyone who has sent something in.</p><div class="btns"><button class="btn sm" data-tt="bk-load">Book uploads</button><button class="btn sm alt" data-tt="ct-load">Contacts by town</button><button class="btn sm alt" data-tt="wl-load">Book waitlist</button></div></div>' +
       '</div><div id="tt-adm-out" class="stack"></div>';
     host.parentNode.insertBefore(sec, host.nextSibling);
@@ -472,6 +530,9 @@
       if (a === "cl-all") return loadCl(out, true);
       if (a === "ct-load") return loadContacts(out);
       if (a === "wl-load") return loadWaitlist(out);
+      if (a === "mp-load") return loadMemPhotos(out);
+      if (a === "mp-ok") return memPhotoDecide(b, out, true);
+      if (a === "mp-no") return memPhotoDecide(b, out, false);
       if (a === "bk-ready") return bkReady(b, out);
       if (a === "bk-changes") return bkChanges(b);
       if (a === "bk-revise") return bkRevise(b, out);
@@ -1055,6 +1116,7 @@
     try { wireIndexFilter(); } catch (e) {}
     $$("[data-tt-memform]").forEach(function (f) { try { wireMemForm(f); } catch (e) {} });
     $$("[data-tt-contact]").forEach(function (f) { try { wireContact(f); } catch (e) {} });
+    $$("[data-tt-memphoto]").forEach(function (f) { try { wireMemPhoto(f); } catch (e) {} });
     $$("[data-tt-bookform]").forEach(function (f) { try { wireBookForm(f); } catch (e) {} });
     $$("[data-tt-honourform]").forEach(function (f) { try { wireHonourForm(f); } catch (e) {} });
     $$("[data-tt-bookupload]").forEach(function (f) { try { wireBookUpload(f); } catch (e) {} });

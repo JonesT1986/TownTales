@@ -241,11 +241,32 @@ function honourOffer(m, town, cfg) {
 </aside>`;
 }
 
+// One free photo per person (portrait or headstone), reviewed before it shows. Honour Pages add up to 6 more.
+function freePhoto(m, town, ph, cfg) {
+  const fn = esc(String(plainName(m)).split(/\s+/)[0] || 'them');
+  if (ph) return `<figure class="rm-photo"><img src="${esc(ph.url)}" alt="${ph.kind === 'headstone' ? 'Headstone of ' : 'Photo of '}${esc(plainName(m))}" loading="lazy">
+<figcaption>${ph.caption ? esc(ph.caption) + '<br>' : ''}<span class="small muted">Photo shared by ${esc(ph.shared_by)}${ph.relation ? ', ' + esc(ph.relation) : ''}</span>${cfg.link ? `<br><a class="small" href="/${esc(town.slug)}/remembrance/${encodeURIComponent(m.id)}/honour">Add more photos and their story with an Honour Page</a>` : ''}</figcaption></figure>`;
+  return `<details class="rm-addphoto"><summary><span class="btn sm alt">Add a photo of ${fn}</span> <span class="small muted">Free. A portrait or their headstone.</span></summary>
+<form class="formbox stack" data-tt-memphoto data-mem="${esc(m.id)}" novalidate style="max-width:640px;margin-top:10px">
+<div class="field"><label for="mp-file">Photo <span class="hint">(JPG, PNG or WebP)</span></label><input type="file" id="mp-file" name="file" accept="image/jpeg,image/png,image/webp" required><div id="mp-prev"></div></div>
+<div class="grid2"><div class="field"><label for="mp-kind">What is it?</label><select id="mp-kind" name="kind"><option value="portrait">A photo of ${fn}</option><option value="headstone">Their headstone</option><option value="other">Something else</option></select></div>
+<div class="field"><label for="mp-cap">Caption <span class="hint">(optional)</span></label><input type="text" id="mp-cap" name="caption" maxlength="200" placeholder="e.g. On the farm, about 1940"></div></div>
+<div class="grid2"><div class="field"><label for="mp-name">Your name</label><input type="text" id="mp-name" name="name" required autocomplete="name"><span class="hint">Shown as "Photo shared by".</span></div>
+<div class="field"><label for="mp-rel">How are you related? <span class="hint">(optional)</span></label><input type="text" id="mp-rel" name="rel" maxlength="80" placeholder="e.g. granddaughter"></div></div>
+<div class="field"><label for="mp-email">Your email</label><input type="email" id="mp-email" name="email" required autocomplete="email"><span class="hint">Only so we can reach you about the photo. Never shown.</span></div>
+<label class="hn-check"><input type="checkbox" name="ok" required> I have the right to share this photo.</label>
+<p class="err" id="mp-err" role="alert"></p><button class="btn" type="submit">Send the photo</button>
+<p class="small muted">We look at every photo before it goes up, usually within a few days. Each person can have one free photo.${cfg.link ? ` For more photos and their life story, <a href="/${esc(town.slug)}/remembrance/${encodeURIComponent(m.id)}/honour">give ${fn} an Honour Page</a>.` : ''}</p>
+</form><div id="mp-done" role="status"></div></details>`;
+}
+
 async function memorialPage(req, res, town, id, url) {
+  let freePhotoRow = null;
   const [rows, hrows] = await Promise.all([
     q(`memorials?id=eq.${encodeURIComponent(id)}&town=eq.${encodeURIComponent(town.slug)}&status=eq.published&select=*`),
     q(`honour_pages?memorial_id=eq.${encodeURIComponent(id)}&status=eq.published&select=story,photos,placed_by,published_at&limit=1`).catch(() => []),
-  ]);
+    q(`memorial_photos?memorial_id=eq.${encodeURIComponent(id)}&status=eq.published&select=url,caption,kind,shared_by,relation&limit=1`).catch(() => []),
+  ]).then(([a, b, c]) => { freePhotoRow = c[0] || null; return [a, b]; });
   const m = rows[0];
   if (!m) return notFound(res, 'This remembrance record may be waiting for review, or the link may be mistyped.');
   const h = hrows[0] || null;
@@ -269,6 +290,7 @@ ${crumbs(town, `<a href="/${esc(town.slug)}/remembrance">Cemetery &amp; Remembra
 <h1 class="rm-title">${fullName(m)}</h1>
 ${d ? `<p class="rm-dates">${esc(d)}</p>` : ''}
 ${h ? honourSection(m, h, town) : ''}
+${!h ? freePhoto(m, town, freePhotoRow, cfg) : ''}
 <div class="rm-card">
 ${facts.length ? `<dl class="kv rm-facts">${facts.join('')}</dl>` : '<p class="muted">No dates or places have been recorded yet.</p>'}
 ${m.note ? `<p class="rm-note">${esc(m.note)}</p>` : ''}
@@ -291,6 +313,7 @@ ${!h && cfg.link ? honourOffer(m, town, cfg) : ''}
   if (m.birth_place) person.birthPlace = { '@type': 'Place', name: m.birth_place };
   if (m.death_place) person.deathPlace = { '@type': 'Place', name: m.death_place };
   if (h && h.photos && h.photos[0]) person.image = h.photos[0].url;
+  else if (freePhotoRow) person.image = freePhotoRow.url;
   const html = page({
     title: `${plainName(m)}${d ? ' (' + d + ')' : ''} — ${cn ? cn + ', ' : ''}${town.name}, ${prov} | TownTales`,
     desc, canonical: pageUrl, main, noindex: String(m.id).length > 150, // bad imported ids: keep out of Google
