@@ -107,6 +107,8 @@ tables.timeline.push({ id: 'ww-2', town: 'whitewood-sk', year: 1905, label: 'Sep
 
 tables.town_books = [{ slug: 'whitewood-sk', pages: 60, title: 'Whitewood test book', ready_at: '2026-11-26T00:00:00Z', revision: 2, revised_at: '2026-11-30T12:00:00Z' }];
 
+try { const mo = require('./data/moosomin.json'); towns.push(mo.town); tables.timeline.push(...mo.timeline); tables.items.push(...mo.items); tables.memorials.push(...mo.memorials); } catch (e) {}
+
 // Real McFadyen records from the live site, for the family report preview.
 try { const real = require('./data/mcfadyen.json'); tables.memorials.push(...real.memorials); tables.cemeteries.push(...real.cemeteries); } catch (e) {}
 
