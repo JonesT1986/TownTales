@@ -118,6 +118,10 @@
       "destination": "/api/extra?kind=book&slug=:slug&look=1"
     },
     {
+      "source": "/:slug([a-z0-9-]+-(?:sk|mb|ab|bc|on|qc|nb|ns|pe|nl|yt|nt|nu))/book/sample",
+      "destination": "/api/extra?kind=book&slug=:slug&sample=1"
+    },
+    {
       "source": "/:slug([a-z0-9-]+-(?:sk|mb|ab|bc|on|qc|nb|ns|pe|nl|yt|nt|nu))/book",
       "destination": "/api/extra?kind=book&slug=:slug"
     },

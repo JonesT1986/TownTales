@@ -33,6 +33,8 @@ function call(handler, reqUrl) {
     ['hn-form-wrongtown', rem, '/api/remembrance?slug=moose-jaw-sk&id=wap-0002&honour=1'],
     ['hn-thanks', rem, '/api/remembrance?thanks=1'],
     ['books-index', require('../api/_book'), '/api/extra?kind=book&index=1'],
+    ['book-sample', require('../api/_book'), '/api/extra?kind=book&slug=wapella-sk&sample=1'],
+    ['book-sample-new', require('../api/_book'), '/api/extra?kind=book&slug=radville-sk&sample=1'],
     ['book-request', require('../api/_book'), '/api/extra?kind=book&slug=radville-sk'],
     ['book-request-few', require('../api/_book'), '/api/extra?kind=book&slug=moose-jaw-sk'],
     ['book-db-ready', require('../api/_book'), '/api/extra?kind=book&slug=whitewood-sk'],
