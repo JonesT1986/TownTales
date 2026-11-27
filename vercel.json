@@ -94,6 +94,10 @@
       "destination": "/api/remembrance?thanks=1"
     },
     {
+      "source": "/donate/thanks",
+      "destination": "/api/remembrance?donatethanks=1"
+    },
+    {
       "source": "/books/checkout",
       "destination": "/api/extra?kind=book&checkout=1"
     },

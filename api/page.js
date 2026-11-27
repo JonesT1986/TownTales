@@ -8,13 +8,33 @@ const ADMIN_TAG = '<script src="/towntales-admin.js?v=7" defer></script>';
 const MS_TAG = '<script src="/towntales-milestones.js?v=1" defer></script>';
 const MORE_TAG = '<script src="/towntales-more.js?v=3" defer></script>';
 
+// Donate buttons switch on when DONATE_LINK_ONCE and/or DONATE_LINK_MONTHLY (Stripe Payment Links) are set in Vercel.
+// With neither set, the Donate page keeps its "tell us how you'd like to help" form exactly as before.
+function donateLinks() {
+  const ok = (v) => { v = String(v || '').trim(); return /^https:\/\/buy\.stripe\.com\/[A-Za-z0-9_-]+$/.test(v) ? v : ''; };
+  return { once: ok(process.env.DONATE_LINK_ONCE), monthly: ok(process.env.DONATE_LINK_MONTHLY) };
+}
+// Built without backticks or dollar-brace: this text lands inside a template literal in app.html.
+function donateNotice() {
+  const { once, monthly } = donateLinks();
+  if (!once && !monthly) {
+    return '<div class="notice info" style="max-width:780px"><b>Online card payments are coming soon.</b><p>Until then, tell us how you\'d like to help below and we\'ll email you the details for sending your donation.</p></div>';
+  }
+  const btns = (once ? '<a class="btn" href="' + once + '" rel="noopener">Give once</a>' : '') +
+    (monthly ? '<a class="btn' + (once ? ' alt' : '') + '" href="' + monthly + '" rel="noopener">Give monthly</a>' : '');
+  return '<div class="notice info" style="max-width:780px"><b>Every gift helps keep this going.</b>' +
+    '<p>You choose the amount, and pay securely through Stripe. Stripe emails you a receipt. TownTales is not a registered charity, so donations are not tax-deductible.</p></div>' +
+    '<div style="display:flex;flex-wrap:wrap;gap:12px;max-width:780px;margin:16px 0">' + btns + '</div>' +
+    '<p style="max-width:780px"><b>Prefer another way, or want to sponsor a town?</b> Tell us below and we\'ll email you the details.</p>';
+}
+
 // Exact-match swaps on the served page. A swap that no longer matches is skipped.
 const SWAPS = [
   {
     // Donate page: replace the "coming soon / send us a note" box with a donation form.
     find: '<div class="notice info" style="max-width:780px"><b>Online donations are coming soon.</b><p>Want to help before then? <a href="#corrections" data-act="donatemsg">Send us a note</a> and we\'ll get in touch.</p></div>',
-    replace:
-      '<div class="notice info" style="max-width:780px"><b>Online card payments are coming soon.</b><p>Until then, tell us how you\'d like to help below and we\'ll email you the details for sending your donation.</p></div>' +
+    replace: () =>
+      donateNotice() +
       '<form class="formbox" data-form="donation" novalidate>' +
       '<div class="grid2"><div class="field"><label for="dn-kind">How would you like to help?</label><select id="dn-kind" name="kind">' +
       '<option>One-time donation</option><option>Monthly support</option><option>Sponsor a town</option><option>Something else</option></select></div>' +
@@ -45,7 +65,7 @@ module.exports = async (req, res) => {
       if (typeof body === 'string' && body.includes('</body>')) {
         for (const s of SWAPS) {
           try {
-            if (body.split(s.find).length === 2) body = body.split(s.find).join(s.replace);
+            if (body.split(s.find).length === 2) body = body.split(s.find).join(typeof s.replace === 'function' ? s.replace() : s.replace);
             else console.error('swap skipped:', s.find.slice(0, 60));
           } catch (e) { /* skip this swap */ }
         }
