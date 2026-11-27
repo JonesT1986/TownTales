@@ -165,6 +165,7 @@ async function booksIndex(res) {
   const main = `<section class="wrap stack" style="padding-top:22px"><p class="crumbs"><a href="/">TownTales</a> › Books</p>
 <p class="eyebrow">TownTales books</p><h1>Town history books</h1>
 <p class="lede">Each book is built from a town's TownTales page: the timeline, the people, the cemeteries and the teams, with every source. Printed to order by <a href="https://www.lulu.com" rel="noopener">Lulu</a>, a print-on-demand publisher founded by Canadian Bob Young, with free shipping anywhere in Canada. Allow 4 to 6 weeks for a printed copy.</p>
+<p><b>The more history is added to a town's page, the better its book will be.</b> Every photo, story, clipping and name shared on TownTales goes into that town's next revision. <a href="/#upload">Share something about your town</a>.</p>
 <p class="small muted">A book's revision number goes up each time it is updated with new history from its town's page. The number under each book tells you which version you'd get.</p>
 <h2>${done.length ? 'Books you can buy now' : 'No books are finished yet'}</h2>
 ${done.length ? `<div class="bk-shelf">${done.map(shelfCard).join('')}</div>` : '<p>The first books are being finished. Request your town\'s below and we\'ll email you the day it is ready.</p>'}
@@ -174,6 +175,45 @@ ${done.length ? `<div class="bk-shelf">${done.map(shelfCard).join('')}</div>` : 
 ${next ? `<h3>Towns people are asking for</h3><ul class="bk-next">${next}</ul>` : ''}
 ${SHELF_CSS}</section>`;
   send(res, 200, page({ title: 'Town history books | TownTales', desc: 'Printed and digital history books for small prairie towns, built from each town\'s TownTales page. Free shipping in Canada.', canonical: `${SITE}/books`, main }), 'public, s-maxage=600, stale-while-revalidate=86400');
+}
+
+// /<town>/book/sample — sample pages built from the town's live TownTales data, for any town (no finished book needed).
+const surnameOf = (name) => { const n = String(name || '').trim(); if (n.includes(',')) return n.split(',')[0].toLowerCase(); const w = n.split(/\s+/).filter(Boolean); while (w.length > 1 && /^(jr|sr|ii|iii|iv|mrs|mr|dr)\.?$/i.test(w[w.length - 1])) w.pop(); return (w[w.length - 1] || '').toLowerCase(); };
+const SAMPLE_CSS = '<style>.sp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr));gap:26px;align-items:start}.sp-page{aspect-ratio:8.5/11;background:#fffdf7;border:1px solid #cfc6b0;box-shadow:0 6px 16px rgba(30,41,48,.2);padding:9% 9% 8%;overflow:hidden;font-family:Georgia,"Times New Roman",serif;color:#1E2930;font-size:clamp(.62rem,1.6vw,.82rem);line-height:1.4;position:relative}.sp-page h3{font-family:var(--display);text-transform:uppercase;font-size:1.5em;margin:0 0 .6em;line-height:1.05}.sp-page ul{list-style:none;margin:0;padding:0}.sp-page li{margin:0 0 .45em}.sp-page .sp-y{display:inline-block;min-width:3.6em;font-weight:700;color:#B4512C}.sp-page .sp-n{position:absolute;left:0;right:0;bottom:3%;text-align:center;font-size:.8em;color:#7a6f5a}.sp-cols{columns:2;column-gap:1.4em}.sp-cols li{break-inside:avoid}.sp-title{display:flex;flex-direction:column;justify-content:center;text-align:center;height:100%}.sp-title .k{letter-spacing:.14em;text-transform:uppercase;font-size:.8em;color:#B4512C}.sp-title .t{font-family:var(--display);font-size:2.6em;text-transform:uppercase;line-height:1;margin:.3em 0}.sp-note{max-width:820px}</style>';
+async function samplePage(res, town) {
+  const s = encodeURIComponent(town.slug), prov = PROV[town.prov] || town.prov;
+  const [timeline, items, people, cems, teams] = await Promise.all([
+    q(`timeline?town=eq.${s}&select=year,label,title&order=year,sort`, { all: true }).catch(() => []),
+    q(`items?town=eq.${s}&status=eq.published&select=id`, { all: true }).catch(() => []),
+    q(`memorials?town=eq.${s}&status=eq.published&select=name,birth_date_label,death_date_label`, { all: true }).catch(() => []),
+    q(`cemeteries?town=eq.${s}&select=id`).catch(() => []),
+    q(`teams?town=eq.${s}&select=id`).catch(() => []),
+  ]);
+  const n = (x) => Number(x).toLocaleString('en-CA');
+  const roll = people.filter((m) => m.name).slice().sort((a, b) => surnameOf(a.name).localeCompare(surnameOf(b.name)) || String(a.name).localeCompare(String(b.name))).slice(0, 26);
+  const glance = timeline.length <= 12 ? timeline : timeline.filter((_, i) => i % Math.ceil(timeline.length / 12) === 0).slice(0, 12);
+  const contents = [
+    timeline.length && `<li><b>${esc(town.name)} at a glance</b>: ${n(timeline.length)} dated events</li>`,
+    people.length && `<li><b>Roll of Remembrance</b>: ${n(people.length)} people${cems.length ? ` in ${cems.length === 1 ? 'one cemetery' : cems.length + ' cemeteries'}` : ''}</li>`,
+    items.length && `<li><b>From the archive</b>: ${n(items.length)} documents, stories and records</li>`,
+    teams.length && `<li><b>Sports</b>: ${n(teams.length)} ${teams.length === 1 ? 'team' : 'teams'}</li>`,
+  ].filter(Boolean).join('');
+  const hasBook = !!(BOOKS[town.slug] || (await dbBook(town.slug)));
+  const pg = (inner, num) => `<div class="sp-page">${inner}<span class="sp-n">${num}</span></div>`;
+  const pages = [
+    pg(`<div class="sp-title"><span class="k">A TownTales history</span><span class="t">${esc(town.name)}</span><span>${esc(prov)}</span><p style="margin-top:1.4em;font-style:italic">Every fact sourced. Every name remembered.</p></div>`, ''),
+    pg(`<h3>Contents</h3>${contents ? `<ul>${contents}</ul>` : '<p>This town\'s page is just getting started.</p>'}`, 'ii'),
+    glance.length ? pg(`<h3>${esc(town.name)} at a glance</h3><ul>${glance.map((t) => `<li><span class="sp-y">${esc(t.year || t.label || '')}</span> ${esc(String(t.title || '').slice(0, 110))}</li>`).join('')}</ul>`, '1') : '',
+    roll.length ? pg(`<h3>Roll of Remembrance</h3><ul class="sp-cols">${roll.map((m) => `<li>${esc(m.name)}${m.birth_date_label || m.death_date_label ? `<br><span style="color:#7a6f5a">${esc([m.birth_date_label, m.death_date_label].filter(Boolean).join(' – '))}</span>` : ''}</li>`).join('')}</ul>`, '2') : '',
+    pg(`<h3>What the finished book adds</h3><ul><li>Written chapters on how ${esc(town.name)} began and grew</li><li>Photographs, with credits</li><li>Sources for every fact</li><li>Everything added to ${esc(town.name)}'s page by then</li></ul>`, '3'),
+  ].filter(Boolean).join('');
+  const main = `<section class="wrap stack" style="padding-top:22px"><p class="crumbs"><a href="/">TownTales</a> › <a href="/${esc(town.slug)}">${esc(town.name)}</a> › <a href="/${esc(town.slug)}/book">Book</a> › Sample</p>
+<p class="eyebrow">Sample</p><h1>A sample of the ${esc(town.name)} book</h1>
+<p class="lede sp-note">These pages are built straight from ${esc(town.name)}'s TownTales page: the dated events, the people remembered, and what's in the archive. The finished book adds written chapters and photographs.</p>
+<p class="sp-note"><b>The more history is added to ${esc(town.name)}'s page, the fuller its book will be.</b> <a href="/#upload">Share a photo, a story or a clipping</a>.</p>
+<div class="btns">${hasBook ? `<a class="btn" href="/${esc(town.slug)}/book">See the book</a>` : `<a class="btn" href="/${esc(town.slug)}/book#request">Request the ${esc(town.name)} book</a>`}<a class="btn alt" href="/${esc(town.slug)}">Back to ${esc(town.name)}</a></div></section>
+<section class="wrap stack"><div class="sp-grid">${pages}</div>${SAMPLE_CSS}</section>`;
+  send(res, 200, page({ title: `${town.name}, ${prov}: sample of the history book | TownTales`, desc: `Sample pages for the ${town.name} history book, built from its TownTales page.`, canonical: `${SITE}/${town.slug}/book/sample`, main, noindex: true }), 'public, s-maxage=1800, stale-while-revalidate=86400');
 }
 
 // /books/unsubscribe?t=<private token>  — the link at the bottom of the "your book is ready" email.
@@ -203,7 +243,7 @@ async function booksSection() {
     if (!done.length && !wantTowns.length) return '';
     const next = wantTowns.map((t) => `<li><a href="/${esc(t.slug)}/book#request">${esc(t.name)}</a>${counts[t.slug] >= 5 ? ` <span class="small muted">· ${counts[t.slug]} requests</span>` : ''}</li>`).join('');
     return `<section class="wrap stack" id="books-shelf"><h2>${done.length ? 'Books you can buy now' : 'Town history books'}</h2>
-<p>Each book is built from a town's TownTales page: the timeline, the people, the cemeteries and the teams, with every source. Printed to order by <a href="https://www.lulu.com" rel="noopener">Lulu</a>, a print-on-demand publisher founded by Canadian Bob Young, with free shipping anywhere in Canada. Allow 4 to 6 weeks for a printed copy.</p>
+<p>Each book is built from a town's TownTales page: the timeline, the people, the cemeteries and the teams, with every source. Printed to order by <a href="https://www.lulu.com" rel="noopener">Lulu</a>, a print-on-demand publisher founded by Canadian Bob Young, with free shipping anywhere in Canada. Allow 4 to 6 weeks for a printed copy. <b>The more history is added to a town's page, the better its book will be.</b></p>
 ${done.length ? `<div class="bk-shelf">${done.map(shelfCard).join('')}</div><p><a href="/books">See all books</a></p>` : ''}
 ${next ? `<h3>Coming next</h3><p class="small">People are asking for these. Don't see your town's book yet? Request it and we'll email you when it's ready.</p><ul class="bk-next">${next}</ul>` : ''}
 ${SHELF_CSS}
@@ -257,6 +297,11 @@ module.exports = async (req, res) => {
   const slug = String(url.searchParams.get('slug') || '').toLowerCase();
   const book = BOOKS[slug] || await dbBook(slug);
   try {
+    if (url.searchParams.get('sample')) {
+      const [t] = await q(`towns?slug=eq.${encodeURIComponent(slug)}&hidden=eq.false&select=slug,name,prov`);
+      if (!t) return notFound(res, "We don't have a town at that address.");
+      return samplePage(res, t);
+    }
     if (url.searchParams.get('look')) {
       const [t] = await q(`towns?slug=eq.${encodeURIComponent(slug)}&hidden=eq.false&select=slug,name,prov`);
       if (!t || !book || !book.look) return notFound(res, "There's no preview for this book yet.");
@@ -269,7 +314,8 @@ module.exports = async (req, res) => {
     if (!book) return waitlist(res, town, (await requestCounts())[town.slug] || 0);
     const eds = await editionsFor(slug, book);
     const revRow = (await q(`town_books?slug=eq.${s}&select=revision,revised_at`).catch(() => []))[0];
-    const revLine = `<p class="small muted">${esc(revText({ revision: revRow && revRow.revision, revised_at: revRow && revRow.revised_at }))}. <a href="/books">See all TownTales books</a></p>`;
+    const revLine = `<p class="small muted">${esc(revText({ revision: revRow && revRow.revision, revised_at: revRow && revRow.revised_at }))}. <a href="/books">See all TownTales books</a></p>
+<p class="small">This book is built from ${esc(town.name)}'s TownTales page, so the more history is added there, the better it gets. <a href="/#upload">Share a photo, a story or a clipping</a>.</p>`;
     const [timeline, items, mems, cems, teams] = await Promise.all([
       q(`timeline?town=eq.${s}&select=year,label,title&order=year,sort`, { all: true }),
       q(`items?town=eq.${s}&status=eq.published&select=id`, { all: true }),
@@ -298,8 +344,8 @@ ${revLine}
 <p class="lede">Everything on ${esc(town.name)}'s TownTales page, gathered into ${book.pages ? 'a ' + book.pages + '-page' : 'one'} book: the timeline, the people, the cemeteries and the teams. Every fact keeps its source.</p>
 <div class="btns">${book.sample
       ? `<a class="btn" href="${esc(book.sample)}" target="_blank" rel="noopener">Read the free sample (PDF)</a>`
-      : `<span class="btn alt" aria-disabled="true" style="opacity:.6;cursor:default">Free sample coming soon</span>`}${book.look ? `<a class="btn alt" href="/${esc(town.slug)}/book/preview">Look inside</a>` : ''}${eds.length ? `<a class="btn" href="#order">Buy the book</a>` : `<a class="btn alt" href="#request">Request the full book</a>`}</div>
-<p class="small muted">The sample has the cover, the contents, the timeline at a glance and the first chapter. Free, nothing to sign up for.</p>
+      : `<a class="btn alt" href="/${esc(town.slug)}/book/sample">See a sample</a>`}${book.look ? `<a class="btn alt" href="/${esc(town.slug)}/book/preview">Look inside</a>` : ''}${eds.length ? `<a class="btn" href="#order">Buy the book</a>` : `<a class="btn alt" href="#request">Request the full book</a>`}</div>
+<p class="small muted">${book.sample ? 'The sample has the cover, the contents, the timeline at a glance and the first chapter. Free, nothing to sign up for.' : `The sample is built from ${esc(town.name)}'s TownTales page: the contents, the timeline at a glance and a page of the Roll of Remembrance. The finished book adds written chapters and photographs.`}</p>
 </div></div>
 </section>
 
@@ -372,7 +418,7 @@ function waitlist(res, town, asked) {
 <h1>Don't see ${esc(town.name)}'s book yet?</h1>
 <p class="lede">Request it. We build each town's history book from everything on its TownTales page, and the towns people ask for most come first. When ${esc(town.name)}'s book is finished we'll email you a link straight to it. You can look through it first, then decide if you want a copy. No pressure.</p>
 ${asked >= 5 ? `<p class="small"><b>${asked} people</b> have asked for the ${esc(town.name)} book.</p>` : ''}
-<div class="btns"><a class="btn" href="#request">Request the ${esc(town.name)} book</a></div>
+<div class="btns"><a class="btn" href="#request">Request the ${esc(town.name)} book</a><a class="btn alt" href="/${esc(town.slug)}/book/sample">See a sample</a></div>
 </div></div></section>
 <section class="wrap stack" id="request"><h2>Request the ${esc(town.name)} book</h2>
 <form class="formbox" data-tt-bookform data-town="${esc(town.slug)}" data-waitlist="1" data-share="${esc(share)}" novalidate style="max-width:820px">
