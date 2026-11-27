@@ -179,7 +179,7 @@ ${SHELF_CSS}</section>`;
 
 // /<town>/book/sample — sample pages built from the town's live TownTales data, for any town (no finished book needed).
 const surnameOf = (name) => { const n = String(name || '').trim(); if (n.includes(',')) return n.split(',')[0].toLowerCase(); const w = n.split(/\s+/).filter(Boolean); while (w.length > 1 && /^(jr|sr|ii|iii|iv|mrs|mr|dr)\.?$/i.test(w[w.length - 1])) w.pop(); return (w[w.length - 1] || '').toLowerCase(); };
-const SAMPLE_CSS = '<style>.sp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr));gap:26px;align-items:start}.sp-page{aspect-ratio:8.5/11;background:#fffdf7;border:1px solid #cfc6b0;box-shadow:0 6px 16px rgba(30,41,48,.2);padding:9% 9% 8%;overflow:hidden;font-family:Georgia,"Times New Roman",serif;color:#1E2930;font-size:clamp(.62rem,1.6vw,.82rem);line-height:1.4;position:relative}.sp-page h3{font-family:var(--display);text-transform:uppercase;font-size:1.5em;margin:0 0 .6em;line-height:1.05}.sp-page ul{list-style:none;margin:0;padding:0}.sp-page li{margin:0 0 .45em}.sp-page .sp-y{display:inline-block;min-width:3.6em;font-weight:700;color:#B4512C}.sp-page .sp-n{position:absolute;left:0;right:0;bottom:3%;text-align:center;font-size:.8em;color:#7a6f5a}.sp-cols{columns:2;column-gap:1.4em}.sp-cols li{break-inside:avoid}.sp-title{display:flex;flex-direction:column;justify-content:center;text-align:center;height:100%}.sp-title .k{letter-spacing:.14em;text-transform:uppercase;font-size:.8em;color:#B4512C}.sp-title .t{font-family:var(--display);font-size:2.6em;text-transform:uppercase;line-height:1;margin:.3em 0}.sp-note{max-width:820px}</style>';
+const SAMPLE_CSS = '<style>.sp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr));gap:26px;align-items:start}.sp-page{aspect-ratio:8.5/11;background:#fffdf7;border:1px solid #cfc6b0;box-shadow:0 6px 16px rgba(30,41,48,.2);padding:9% 9% 8%;overflow:hidden;font-family:Georgia,"Times New Roman",serif;color:#1E2930;font-size:clamp(.62rem,1.6vw,.82rem);line-height:1.4;position:relative}.sp-page h3{font-family:var(--display);text-transform:uppercase;font-size:1.5em;margin:0 0 .6em;line-height:1.05}.sp-page ul{list-style:none;margin:0;padding:0}.sp-page li{margin:0 0 .45em}.sp-page .sp-y{display:inline-block;min-width:3.6em;font-weight:700;color:#B4512C}.sp-page .sp-n{position:absolute;left:0;right:0;bottom:3%;text-align:center;font-size:.8em;color:#7a6f5a}.sp-cols{columns:2;column-gap:1.4em}.sp-cols li{break-inside:avoid}.sp-page::after{content:"SAMPLE";position:absolute;top:3%;right:5%;font:700 .7em/1 var(--hand,monospace);letter-spacing:.14em;color:#B4512C;border:1px solid #B4512C;padding:.2em .45em;opacity:.8}.sp-title{display:flex;flex-direction:column;justify-content:center;text-align:center;height:100%}.sp-title .k{letter-spacing:.14em;text-transform:uppercase;font-size:.8em;color:#B4512C}.sp-title .t{font-family:var(--display);font-size:2.6em;text-transform:uppercase;line-height:1;margin:.3em 0}.sp-note{max-width:820px}</style>';
 async function samplePage(res, town) {
   const s = encodeURIComponent(town.slug), prov = PROV[town.prov] || town.prov;
   const [timeline, items, people, cems, teams] = await Promise.all([
@@ -191,9 +191,9 @@ async function samplePage(res, town) {
   ]);
   const n = (x) => Number(x).toLocaleString('en-CA');
   const roll = people.filter((m) => m.name).slice().sort((a, b) => surnameOf(a.name).localeCompare(surnameOf(b.name)) || String(a.name).localeCompare(String(b.name))).slice(0, 26);
-  const glance = timeline.length <= 12 ? timeline : timeline.filter((_, i) => i % Math.ceil(timeline.length / 12) === 0).slice(0, 12);
   const contents = [
-    timeline.length && `<li><b>${esc(town.name)} at a glance</b>: ${n(timeline.length)} dated events</li>`,
+    `<li><b>Written chapters</b>: how ${esc(town.name)} began and grew</li>`,
+    timeline.length && `<li><b>The timeline</b>: ${n(timeline.length)} dated events</li>`,
     people.length && `<li><b>Roll of Remembrance</b>: ${n(people.length)} people${cems.length ? ` in ${cems.length === 1 ? 'one cemetery' : cems.length + ' cemeteries'}` : ''}</li>`,
     items.length && `<li><b>From the archive</b>: ${n(items.length)} documents, stories and records</li>`,
     teams.length && `<li><b>Sports</b>: ${n(teams.length)} ${teams.length === 1 ? 'team' : 'teams'}</li>`,
@@ -203,13 +203,12 @@ async function samplePage(res, town) {
   const pages = [
     pg(`<div class="sp-title"><span class="k">A TownTales history</span><span class="t">${esc(town.name)}</span><span>${esc(prov)}</span><p style="margin-top:1.4em;font-style:italic">Every fact sourced. Every name remembered.</p></div>`, ''),
     pg(`<h3>Contents</h3>${contents ? `<ul>${contents}</ul>` : '<p>This town\'s page is just getting started.</p>'}`, 'ii'),
-    glance.length ? pg(`<h3>${esc(town.name)} at a glance</h3><ul>${glance.map((t) => `<li><span class="sp-y">${esc(t.year || t.label || '')}</span> ${esc(String(t.title || '').slice(0, 110))}</li>`).join('')}</ul>`, '1') : '',
-    roll.length ? pg(`<h3>Roll of Remembrance</h3><ul class="sp-cols">${roll.map((m) => `<li>${esc(m.name)}${m.birth_date_label || m.death_date_label ? `<br><span style="color:#7a6f5a">${esc([m.birth_date_label, m.death_date_label].filter(Boolean).join(' – '))}</span>` : ''}</li>`).join('')}</ul>`, '2') : '',
-    pg(`<h3>What the finished book adds</h3><ul><li>Written chapters on how ${esc(town.name)} began and grew</li><li>Photographs, with credits</li><li>Sources for every fact</li><li>Everything added to ${esc(town.name)}'s page by then</li></ul>`, '3'),
+    roll.length ? pg(`<h3>Roll of Remembrance</h3><ul class="sp-cols">${roll.map((m) => `<li>${esc(m.name)}${m.birth_date_label || m.death_date_label ? `<br><span style="color:#7a6f5a">${esc([m.birth_date_label, m.death_date_label].filter(Boolean).join(' – '))}</span>` : ''}</li>`).join('')}</ul>`, '1') : '',
+    pg(`<h3>What's in the full book</h3><ul><li>Written chapters on how ${esc(town.name)} began and grew</li>${timeline.length ? `<li>A timeline of ${n(timeline.length)} dated events</li>` : ''}${people.length ? `<li>The Roll of Remembrance, all ${n(people.length)} names</li>` : ''}<li>Photographs, with credits</li><li>Sources for every fact</li><li>Everything added to ${esc(town.name)}'s page by then</li></ul><p style="margin-top:1em;font-style:italic">This sample shows only the cover, the contents and one page of the Roll. It is not the book.</p>`, '2'),
   ].filter(Boolean).join('');
   const main = `<section class="wrap stack" style="padding-top:22px"><p class="crumbs"><a href="/">TownTales</a> › <a href="/${esc(town.slug)}">${esc(town.name)}</a> › <a href="/${esc(town.slug)}/book">Book</a> › Sample</p>
 <p class="eyebrow">Sample</p><h1>A sample of the ${esc(town.name)} book</h1>
-<p class="lede sp-note">These pages are built straight from ${esc(town.name)}'s TownTales page: the dated events, the people remembered, and what's in the archive. The finished book adds written chapters and photographs.</p>
+<p class="lede sp-note">This is a small taste, not the book. These pages are built from ${esc(town.name)}'s TownTales page: the contents and one page of the Roll of Remembrance. The full book adds written chapters, the whole timeline, every name and photographs.</p>
 <p class="sp-note"><b>The more history is added to ${esc(town.name)}'s page, the fuller its book will be.</b> <a href="/#upload">Share a photo, a story or a clipping</a>.</p>
 <div class="btns">${hasBook ? `<a class="btn" href="/${esc(town.slug)}/book">See the book</a>` : `<a class="btn" href="/${esc(town.slug)}/book#request">Request the ${esc(town.name)} book</a>`}<a class="btn alt" href="/${esc(town.slug)}">Back to ${esc(town.name)}</a></div></section>
 <section class="wrap stack"><div class="sp-grid">${pages}</div>${SAMPLE_CSS}</section>`;
@@ -345,7 +344,7 @@ ${revLine}
 <div class="btns">${book.sample
       ? `<a class="btn" href="${esc(book.sample)}" target="_blank" rel="noopener">Read the free sample (PDF)</a>`
       : `<a class="btn alt" href="/${esc(town.slug)}/book/sample">See a sample</a>`}${book.look ? `<a class="btn alt" href="/${esc(town.slug)}/book/preview">Look inside</a>` : ''}${eds.length ? `<a class="btn" href="#order">Buy the book</a>` : `<a class="btn alt" href="#request">Request the full book</a>`}</div>
-<p class="small muted">${book.sample ? 'The sample has the cover, the contents, the timeline at a glance and the first chapter. Free, nothing to sign up for.' : `The sample is built from ${esc(town.name)}'s TownTales page: the contents, the timeline at a glance and a page of the Roll of Remembrance. The finished book adds written chapters and photographs.`}</p>
+<p class="small muted">${book.sample ? 'The sample has the cover, the contents, the timeline at a glance and the first chapter. Free, nothing to sign up for.' : `The sample is built from ${esc(town.name)}'s TownTales page: the cover, the contents and a page of the Roll of Remembrance. It is a taste, not the book. The full book adds written chapters, the whole timeline, every name and photographs.`}</p>
 </div></div>
 </section>
 
