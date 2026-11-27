@@ -135,16 +135,45 @@ async function requestCounts() {
     return Object.fromEntries((await r.json()).map((x) => [x.town, x.n]));
   } catch (e) { return {}; }
 }
-// Towns with a finished book, for the front page: [{ slug, name, prov, pages, title }]
+// Towns with a finished book: [{ slug, name, prov, pages, title, revision, revised_at }]
 async function finishedBooks() {
   const out = [];
   try {
-    const rows = await q('town_books?select=slug,pages,title&order=ready_at.desc');
+    const rows = await q('town_books?select=slug,pages,title,revision,revised_at&order=ready_at.desc');
     const slugs = new Set(Object.keys(BOOKS).concat(rows.map((r) => r.slug)));
     const towns = await q('towns?select=slug,name,prov&hidden=eq.false&slug=in.(' + [...slugs].map(encodeURIComponent).join(',') + ')');
-    for (const t of towns) { const b = BOOKS[t.slug] || rows.find((r) => r.slug === t.slug); if (b) out.push({ slug: t.slug, name: t.name, prov: t.prov, pages: b.pages, title: (b.look && b.look.title) || b.title || '' }); }
+    for (const t of towns) {
+      const row = rows.find((r) => r.slug === t.slug), b = BOOKS[t.slug] || row;
+      if (b) out.push({ slug: t.slug, name: t.name, prov: t.prov, pages: (row && row.pages) || b.pages, title: (b.look && b.look.title) || (row && row.title) || '', revision: (row && row.revision) || 1, revised_at: (row && row.revised_at) || null });
+    }
   } catch (e) { /* none yet */ }
   return out;
+}
+const fmtDay = (iso) => { try { return new Date(iso).toLocaleDateString('en-CA', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'America/Regina' }); } catch (e) { return ''; } };
+const revText = (b) => `Revision ${b.revision || 1}${b.revised_at ? ' · updated ' + fmtDay(b.revised_at) : ''}`;
+const shelfCard = (b) => `<a class="bk-shelf-card" href="/${esc(b.slug)}/book"><div class="bk-cover"><div class="bk-cover-in"><p class="bk-kicker">A TownTales history</p><p class="bk-title">${esc(b.name)}</p><p class="bk-prov">${esc(PROV[b.prov] || b.prov)}</p></div></div><span class="bk-shelf-meta"><b>${esc(b.name)}</b><br><span class="small muted">${b.pages} pages · paperback, hardcover or digital</span><br><span class="small muted bk-rev">${esc(revText(b))}</span></span><span class="btn sm">See the book</span></a>`;
+const SHELF_CSS = '<style>.bk-shelf{display:flex;flex-wrap:wrap;gap:34px;align-items:flex-start}.bk-shelf-card{display:flex;flex-direction:column;gap:10px;align-items:flex-start;text-decoration:none;color:inherit;max-width:240px;padding:4px 14px 8px 4px}.bk-shelf-card .bk-cover{margin:0;width:170px}.bk-next{display:flex;flex-wrap:wrap;gap:8px 22px;list-style:none;padding:0;margin:0}</style>';
+
+// /books — every town that has a finished book, with its revision number, plus the towns people are asking for.
+async function booksIndex(res) {
+  const [done, counts] = await Promise.all([finishedBooks(), requestCounts()]);
+  const have = new Set(done.map((b) => b.slug));
+  const want = Object.entries(counts).filter(([slug]) => !have.has(slug)).sort((a, b) => b[1] - a[1]).slice(0, 24);
+  let wantTowns = [];
+  if (want.length) { try { wantTowns = (await q('towns?select=slug,name,prov&hidden=eq.false&slug=in.(' + want.map(([slug]) => encodeURIComponent(slug)).join(',') + ')')).filter((t) => counts[t.slug] > 0); } catch (e) { wantTowns = []; } }
+  const next = wantTowns.map((t) => `<li><a href="/${esc(t.slug)}/book#request">${esc(t.name)}</a>${counts[t.slug] >= 5 ? ` <span class="small muted">· ${counts[t.slug]} requests</span>` : ''}</li>`).join('');
+  const main = `<section class="wrap stack" style="padding-top:22px"><p class="crumbs"><a href="/">TownTales</a> › Books</p>
+<p class="eyebrow">TownTales books</p><h1>Town history books</h1>
+<p class="lede">Each book is built from a town's TownTales page: the timeline, the people, the cemeteries and the teams, with every source. Printed to order by <a href="https://www.lulu.com" rel="noopener">Lulu</a>, a print-on-demand publisher founded by Canadian Bob Young, with free shipping anywhere in Canada. Allow 4 to 6 weeks for a printed copy.</p>
+<p class="small muted">A book's revision number goes up each time it is updated with new history from its town's page. The number under each book tells you which version you'd get.</p>
+<h2>${done.length ? 'Books you can buy now' : 'No books are finished yet'}</h2>
+${done.length ? `<div class="bk-shelf">${done.map(shelfCard).join('')}</div>` : '<p>The first books are being finished. Request your town\'s below and we\'ll email you the day it is ready.</p>'}
+<h2>Don't see your town's book yet?</h2>
+<p>Find your town and request its book. When it's finished we'll email you a link to look through it first.</p>
+<p><a class="btn" href="/">Find my town</a></p>
+${next ? `<h3>Towns people are asking for</h3><ul class="bk-next">${next}</ul>` : ''}
+${SHELF_CSS}</section>`;
+  send(res, 200, page({ title: 'Town history books | TownTales', desc: 'Printed and digital history books for small prairie towns, built from each town\'s TownTales page. Free shipping in Canada.', canonical: `${SITE}/books`, main }), 'public, s-maxage=600, stale-while-revalidate=86400');
 }
 
 // /books/unsubscribe?t=<private token>  — the link at the bottom of the "your book is ready" email.
@@ -172,13 +201,12 @@ async function booksSection() {
     if (want.length) wantTowns = await q('towns?select=slug,name,prov&hidden=eq.false&slug=in.(' + want.map(([slug]) => encodeURIComponent(slug)).join(',') + ')');
     wantTowns = wantTowns.filter((t) => counts[t.slug] >= 3);
     if (!done.length && !wantTowns.length) return '';
-    const card = (b) => `<a class="bk-shelf-card" href="/${esc(b.slug)}/book"><div class="bk-cover"><div class="bk-cover-in"><p class="bk-kicker">A TownTales history</p><p class="bk-title">${esc(b.name)}</p><p class="bk-prov">${esc(PROV[b.prov] || b.prov)}</p></div></div><span class="bk-shelf-meta"><b>${esc(b.name)}</b><br><span class="small muted">${b.pages} pages · paperback, hardcover or digital</span></span><span class="btn sm">See the book</span></a>`;
     const next = wantTowns.map((t) => `<li><a href="/${esc(t.slug)}/book#request">${esc(t.name)}</a>${counts[t.slug] >= 5 ? ` <span class="small muted">· ${counts[t.slug]} requests</span>` : ''}</li>`).join('');
     return `<section class="wrap stack" id="books-shelf"><h2>${done.length ? 'Books you can buy now' : 'Town history books'}</h2>
 <p>Each book is built from a town's TownTales page: the timeline, the people, the cemeteries and the teams, with every source. Printed to order by <a href="https://www.lulu.com" rel="noopener">Lulu</a>, a print-on-demand publisher founded by Canadian Bob Young, with free shipping anywhere in Canada. Allow 4 to 6 weeks for a printed copy.</p>
-${done.length ? `<div class="bk-shelf">${done.map(card).join('')}</div>` : ''}
+${done.length ? `<div class="bk-shelf">${done.map(shelfCard).join('')}</div><p><a href="/books">See all books</a></p>` : ''}
 ${next ? `<h3>Coming next</h3><p class="small">People are asking for these. Don't see your town's book yet? Request it and we'll email you when it's ready.</p><ul class="bk-next">${next}</ul>` : ''}
-<style>.bk-shelf{display:flex;flex-wrap:wrap;gap:34px;align-items:flex-start}.bk-shelf-card{display:flex;flex-direction:column;gap:10px;align-items:flex-start;text-decoration:none;color:inherit;max-width:240px;padding:4px 14px 8px 4px}.bk-shelf-card .bk-cover{margin:0;width:170px}.bk-next{display:flex;flex-wrap:wrap;gap:8px 22px;list-style:none;padding:0;margin:0}</style>
+${SHELF_CSS}
 </section>`;
   } catch (e) { return ''; }
 }
@@ -224,6 +252,7 @@ module.exports = async (req, res) => {
   const url = new URL(req.url, 'http://localhost');
   if (url.searchParams.get('thanks')) return thanksPage(res, url.searchParams.get('e') === 'digital');
   if (url.searchParams.get('checkout')) return checkout(res, url);
+  if (url.searchParams.get('index')) return booksIndex(res);
   if (url.searchParams.get('unsub')) return unsubscribePage(res, String(url.searchParams.get('t') || ''));
   const slug = String(url.searchParams.get('slug') || '').toLowerCase();
   const book = BOOKS[slug] || await dbBook(slug);
@@ -239,6 +268,8 @@ module.exports = async (req, res) => {
     if (!town) return notFound(res, "We don't have a town at that address.");
     if (!book) return waitlist(res, town, (await requestCounts())[town.slug] || 0);
     const eds = await editionsFor(slug, book);
+    const revRow = (await q(`town_books?slug=eq.${s}&select=revision,revised_at`).catch(() => []))[0];
+    const revLine = `<p class="small muted">${esc(revText({ revision: revRow && revRow.revision, revised_at: revRow && revRow.revised_at }))}. <a href="/books">See all TownTales books</a></p>`;
     const [timeline, items, mems, cems, teams] = await Promise.all([
       q(`timeline?town=eq.${s}&select=year,label,title&order=year,sort`, { all: true }),
       q(`items?town=eq.${s}&status=eq.published&select=id`, { all: true }),
@@ -263,6 +294,7 @@ ${cover(town, prov, book.mainStreet)}
 <div class="stack">
 <p class="eyebrow">The ${esc(town.name)} Book</p>
 <h1>${esc(town.name)}'s history, in a book you can hold</h1>
+${revLine}
 <p class="lede">Everything on ${esc(town.name)}'s TownTales page, gathered into ${book.pages ? 'a ' + book.pages + '-page' : 'one'} book: the timeline, the people, the cemeteries and the teams. Every fact keeps its source.</p>
 <div class="btns">${book.sample
       ? `<a class="btn" href="${esc(book.sample)}" target="_blank" rel="noopener">Read the free sample (PDF)</a>`
