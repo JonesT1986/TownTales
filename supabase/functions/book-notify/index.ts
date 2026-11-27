@@ -4,6 +4,8 @@
 //   {action:"ready", slug, pages, title?}   -> mark a town's book finished (pages = interior page count)
 //   {action:"unready", slug}                -> take it back off the shelf
 //   {action:"test", slug, to}               -> send one sample "it's ready" email to `to` (marks nobody)
+//   {action:"revise", slug, note?}        -> book was rebuilt: revision +1, new snapshot of the town's data
+//   {action:"changes", slug}               -> what has been added to the town's page since the book's current revision
 //   {action:"send", slug}                   -> email everyone on that town's list who said yes and hasn't been emailed (max 80 per call)
 // Needs secrets: RESEND_API_KEY, TOWNTALES_ADMIN_KEY (already set). Optional: BOOK_MAIL_FROM.
 const SB = Deno.env.get("SUPABASE_URL")!;
@@ -15,6 +17,19 @@ const H = { apikey: SK, Authorization: "Bearer " + SK, "Content-Type": "applicat
 const esc = (v: unknown) => String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const rest = (path: string, init: RequestInit = {}) => fetch(SB + "/rest/v1/" + path, { ...init, headers: { ...H, ...(init.headers || {}) } });
+
+
+const count = async (path: string) => {
+  const r = await rest(path, { method: "HEAD", headers: { Prefer: "count=exact" } });
+  const m = /\/(\d+)$/.exec(r.headers.get("content-range") || "");
+  return m ? Number(m[1]) : 0;
+};
+// A small record of how much the town's page held when the book was built, so later changes can be spotted.
+async function snapshotOf(slug: string) {
+  const s = encodeURIComponent(slug);
+  const [timeline, items, people] = await Promise.all([count(`timeline?town=eq.${s}&select=id`), count(`items?town=eq.${s}&status=eq.published&select=id`), count(`memorials?town=eq.${s}&status=eq.published&select=id`)]);
+  return { timeline, items, people, at: new Date().toISOString() };
+}
 
 function email(town: string, slug: string, name: string, token: string) {
   const first = esc(String(name || "").trim().split(/\s+/)[0] || "there");
@@ -61,7 +76,7 @@ Deno.serve(async (req) => {
   try {
     if (action === "list") {
       const [books, waiting] = await Promise.all([
-        rest("town_books?select=slug,pages,title,ready_at&order=ready_at.desc").then((r) => r.json()),
+        rest("town_books?select=slug,pages,title,ready_at,revision,revised_at&order=ready_at.desc").then((r) => r.json()),
         rest("book_interest?select=town,updates_ok,notified_at&limit=10000").then((r) => r.json()),
       ]);
       const w: Record<string, { total: number; toEmail: number; emailed: number }> = {};
@@ -75,13 +90,27 @@ Deno.serve(async (req) => {
     if (action === "ready") {
       const pages = Math.round(Number(b.pages));
       if (!(pages >= 24 && pages <= 800)) return json({ error: "Pages must be between 24 and 800" }, 400);
-      const r = await rest("town_books?on_conflict=slug", { method: "POST", headers: { Prefer: "resolution=merge-duplicates,return=minimal" }, body: JSON.stringify({ slug, pages, title: b.title ? String(b.title).slice(0, 160) : null }) });
+      const r = await rest("town_books?on_conflict=slug", { method: "POST", headers: { Prefer: "resolution=merge-duplicates,return=minimal" }, body: JSON.stringify({ slug, pages, title: b.title ? String(b.title).slice(0, 160) : null, snapshot: await snapshotOf(slug) }) });
       if (!r.ok) return json({ error: "Couldn't save: " + (await r.text()).slice(0, 200) }, 500);
       return json({ ok: true });
     }
     if (action === "unready") {
       const r = await rest("town_books?slug=eq." + encodeURIComponent(slug), { method: "DELETE" });
       return r.ok ? json({ ok: true }) : json({ error: "Couldn't remove" }, 500);
+    }
+    if (action === "revise") {
+      const [cur] = await rest("town_books?slug=eq." + encodeURIComponent(slug) + "&select=revision").then((r) => r.json());
+      if (!cur) return json({ error: "Mark this town's book ready first" }, 400);
+      const r = await rest("town_books?slug=eq." + encodeURIComponent(slug), { method: "PATCH", body: JSON.stringify({ revision: (cur.revision || 1) + 1, revised_at: new Date().toISOString(), snapshot: await snapshotOf(slug), revision_note: b.note ? String(b.note).slice(0, 300) : null }) });
+      return r.ok ? json({ ok: true, revision: (cur.revision || 1) + 1 }) : json({ error: "Couldn't save" }, 500);
+    }
+    if (action === "changes") {
+      const [cur] = await rest("town_books?slug=eq." + encodeURIComponent(slug) + "&select=revision,revised_at,snapshot").then((r) => r.json());
+      if (!cur) return json({ error: "No finished book for this town" }, 400);
+      const now = await snapshotOf(slug); const was = cur.snapshot || {};
+      const fresh: any[] = await rest("items?town=eq." + encodeURIComponent(slug) + "&status=eq.published&created_at=gt." + encodeURIComponent(cur.revised_at) + "&select=title,kind,created_at&order=created_at.desc&limit=40").then((r) => r.json());
+      const diff = { timeline: now.timeline - (was.timeline ?? now.timeline), items: now.items - (was.items ?? now.items), people: now.people - (was.people ?? now.people) };
+      return json({ revision: cur.revision, revised_at: cur.revised_at, was, now, diff, changed: diff.timeline !== 0 || diff.items !== 0 || diff.people !== 0 || (Array.isArray(fresh) && fresh.length > 0), newItems: Array.isArray(fresh) ? fresh : [] });
     }
     const [t] = await rest("towns?slug=eq." + encodeURIComponent(slug) + "&select=slug,name").then((r) => r.json());
     if (!t) return json({ error: "No such town" }, 404);

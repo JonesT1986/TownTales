@@ -473,6 +473,8 @@
       if (a === "ct-load") return loadContacts(out);
       if (a === "wl-load") return loadWaitlist(out);
       if (a === "bk-ready") return bkReady(b, out);
+      if (a === "bk-changes") return bkChanges(b);
+      if (a === "bk-revise") return bkRevise(b, out);
       if (a === "bk-test") return bkTest(b, out);
       if (a === "bk-send") return bkSend(b, out);
       if (a === "bk-unready") return bkUnready(b, out);
@@ -698,8 +700,8 @@
         '<div class="formbox" style="max-width:820px"><div class="grid2"><div class="field"><label for="bk-slug">Town address (e.g. moosomin-sk)</label><input id="bk-slug" type="text"></div><div class="field"><label for="bk-pg">Pages in the printed book</label><input id="bk-pg" type="number" min="24" max="800"></div></div><button class="btn sm" data-tt="bk-ready">Mark book ready</button></div>' +
         (books.length ? books.map(function (b) {
           var x = w[b.slug] || { total: 0, toEmail: 0, emailed: 0 };
-          return '<div class="qitem" style="margin-top:10px"><p><b>' + esc(b.slug) + "</b> · " + esc(b.pages) + " pages · " + x.toEmail + " to email · " + x.emailed + " already emailed</p>" +
-            '<div class="btns"><button class="btn sm alt" data-tt="bk-test" data-slug="' + esc(b.slug) + '">Send a test to me</button>' +
+          return '<div class="qitem" style="margin-top:10px"><p><b>' + esc(b.slug) + "</b> · Revision " + esc(b.revision || 1) + " · " + esc(b.pages) + " pages · " + x.toEmail + " to email · " + x.emailed + " already emailed</p>" +
+            '<div class="btns"><button class="btn sm alt" data-tt="bk-changes" data-slug="' + esc(b.slug) + '">Check for changes</button><button class="btn sm alt" data-tt="bk-revise" data-slug="' + esc(b.slug) + '">New revision</button><button class="btn sm alt" data-tt="bk-test" data-slug="' + esc(b.slug) + '">Send a test to me</button>' +
             (x.toEmail ? '<button class="btn sm" data-tt="bk-send" data-slug="' + esc(b.slug) + '" data-n="' + x.toEmail + '">Email ' + x.toEmail + (x.toEmail === 1 ? " person" : " people") + "</button>" : "") +
             '<button class="btn sm alt" data-tt="bk-unready" data-slug="' + esc(b.slug) + '">Take off the shelf</button></div></div>';
         }).join("") : '<p class="small muted">No finished books marked yet.</p>');
@@ -710,6 +712,23 @@
     if (!slug || !pg) return window.alert("Enter the town address and the page count.");
     b.disabled = true;
     bn("ready", { slug: slug.trim(), pages: Number(pg) }).then(function () { loadWaitlist(out); }, function (e) { b.disabled = false; window.alert(e.message); });
+  }
+  function bkChanges(b) {
+    b.disabled = true;
+    bn("changes", { slug: b.getAttribute("data-slug") }).then(function (r) {
+      b.disabled = false;
+      var d = r.diff || {}, n = r.newItems || [];
+      var msg = "Revision " + r.revision + " (built " + String(r.revised_at || "").slice(0, 10) + ").\n\n" + (r.changed ? "The town's page has changed since:\n" : "Nothing has changed since this revision.\n") +
+        (r.changed ? "  Timeline entries: " + (d.timeline >= 0 ? "+" : "") + d.timeline + "\n  Archive items: " + (d.items >= 0 ? "+" : "") + d.items + "\n  People remembered: " + (d.people >= 0 ? "+" : "") + d.people + "\n" : "") +
+        (n.length ? "\nNew since then:\n" + n.slice(0, 15).map(function (x) { return "  - " + (x.title || "(untitled)"); }).join("\n") : "");
+      window.alert(msg);
+    }, function (e) { b.disabled = false; window.alert(e.message); });
+  }
+  function bkRevise(b, out) {
+    var note = window.prompt("The book was rebuilt with new history. What changed? (optional, one line)");
+    if (note === null) return;
+    if (!window.confirm("Make this Revision +1? Only do this after the updated book is built.")) return;
+    bn("revise", { slug: b.getAttribute("data-slug"), note: note }).then(function () { loadWaitlist(out); }, function (e) { window.alert(e.message); });
   }
   function bkTest(b, out) {
     var to = window.prompt("Send a sample email to which address?"); if (!to) return;

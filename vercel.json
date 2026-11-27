@@ -98,6 +98,10 @@
       "destination": "/api/extra?kind=book&checkout=1"
     },
     {
+      "source": "/books",
+      "destination": "/api/extra?kind=book&index=1"
+    },
+    {
       "source": "/books/thanks",
       "destination": "/api/extra?kind=book&thanks=1"
     },
