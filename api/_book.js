@@ -212,6 +212,22 @@ const SAMPLE_CSS = `<style>
 .sp-spec li{background:var(--sunk,#f1ead9);border-left:4px solid #B4512C;padding:12px 14px;border-radius:2px}
 .sp-spec b{display:block;font-family:var(--display);font-size:1.15rem;text-transform:uppercase;margin-bottom:2px}
 .sp-note{max-width:820px}
+.sp-photo{display:block;width:100%;height:auto;max-height:46%;object-fit:cover;border:1px solid #1E2930;filter:grayscale(1) contrast(1.05);margin:.2em 0 .4em}
+.sp-photo.sp-half{max-height:34%}
+.sp-cover .sp-photo{filter:none;max-height:52%;border:3px solid #E3B34A}
+.sp-plate-page{display:flex;flex-direction:column;justify-content:center;height:100%}
+.sp-photo.sp-full{max-height:82%}
+.sp-cr{font-style:normal;font-size:.85em;color:#7a6f5a}
+.sp-title{display:flex;flex-direction:column;justify-content:center;text-align:center;height:100%}
+.sp-title .k{letter-spacing:.16em;text-transform:uppercase;font-size:.75em;color:#B4512C;margin:0}
+.sp-title .t{font-family:var(--display);font-weight:900;font-size:3em;line-height:.95;text-transform:uppercase;margin:.25em 0}
+.sp-orn{font-size:1.6em;color:#B4512C;margin:.6em 0}
+.sp-imprint{margin-top:3em;font-size:.82em;color:#5b6770}
+.sp-toc{list-style:none;padding:0;margin:0;text-align:left}
+.sp-toc li{display:flex;align-items:baseline;gap:.4em;margin:0 0 .75em;font-size:1.08em}
+.sp-toc .dots{flex:1;border-bottom:1px dotted #9a8f78}
+.sp-src{padding-left:1.4em;text-align:left;font-size:.92em}
+.sp-src li{margin:0 0 .45em}
 </style>`;
 
 // An engraved-style plate of a prairie town (original artwork, used where the town has no photographs yet).
@@ -242,21 +258,62 @@ function farmPlateSvg() {
 <path d="M30 46c18-8 32 3 50-3M250 34c14-6 26 2 40-2" stroke="#8c7a55" fill="none"/></svg>`;
 }
 
+// Free-to-use photographs of a town from Wikimedia Commons (public domain or CC BY / BY-SA only), with credits. Cached a day.
+const PHOTO_CACHE = new Map();
+const stripTags = (h) => String(h || '').replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#0?39;/g, "'").replace(/\s+/g, ' ').trim();
+async function townPhotos(town) {
+  const key = town.slug, hit = PHOTO_CACHE.get(key);
+  if (hit && Date.now() - hit.at < 864e5) return hit.list;
+  let list = [];
+  try {
+    const provName = PROV[town.prov] || town.prov;
+    const url = 'https://commons.wikimedia.org/w/api.php?' + new URLSearchParams({
+      action: 'query', format: 'json', generator: 'search', gsrsearch: `"${town.name}" ${provName} filetype:bitmap`, gsrnamespace: '6', gsrlimit: '20',
+      prop: 'imageinfo', iiprop: 'url|extmetadata|mime|size', iiurlwidth: '1000',
+    });
+    const r = await fetch(url, { headers: { 'User-Agent': 'TownTales/1.0 (https://www.towntales.ca; towntalesinfo@gmail.com)' }, signal: AbortSignal.timeout(4000) });
+    if (r.ok) {
+      const pages = Object.values(((await r.json()).query || {}).pages || {}).sort((x, y) => (x.index || 0) - (y.index || 0));
+      const nameRe = new RegExp(town.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+      for (const pg of pages) {
+        const ii = (pg.imageinfo || [])[0]; if (!ii || !ii.thumburl) continue;
+        const md = ii.extmetadata || {}, lic = stripTags(md.LicenseShortName && md.LicenseShortName.value);
+        if (!/^(public domain|pd|cc0|cc[ -]by(-sa)?( \d\.\d)?)/i.test(lic) || /nc|nd/i.test(lic.replace(/^cc[ -]by-sa/i, ''))) continue;
+        if (!/jpe?g|png/i.test(ii.mime || '') || (ii.width || 0) < 700) continue;
+        if (/\b(map|logo|flag|coat of arms|locator|location|seal|diagram|chart|graph|sign)\b/i.test(pg.title)) continue;
+        const desc = stripTags(md.ImageDescription && md.ImageDescription.value);
+        if (!nameRe.test(pg.title + ' ' + desc)) continue;
+        const caption = (desc || pg.title.replace(/^File:/, '').replace(/\.[a-z]+$/i, '').replace(/[_-]+/g, ' ')).slice(0, 140);
+        const artist = stripTags(md.Artist && md.Artist.value).slice(0, 60);
+        list.push({ src: ii.thumburl, page: ii.descriptionurl, caption, credit: [artist || 'Unknown', lic, 'Wikimedia Commons'].join(' · '), wide: (ii.width || 0) >= (ii.height || 1) });
+        if (list.length >= 5) break;
+      }
+    }
+  } catch (e) { list = []; }
+  PHOTO_CACHE.set(key, { at: Date.now(), list });
+  return list;
+}
+
 async function samplePage(res, town) {
   const s = encodeURIComponent(town.slug), prov = PROV[town.prov] || town.prov;
-  const [timeline, items, people, cems, teams] = await Promise.all([
+  const [timeline, items, people, cems, teams, photos, revRow] = await Promise.all([
     q(`timeline?town=eq.${s}&select=year,label,title,body,cat,item_ids&order=year,sort`, { all: true }).catch(() => []),
     q(`items?town=eq.${s}&status=eq.published&select=id,kind,title,body,date_label,source,image_url`, { all: true }).catch(() => []),
     q(`memorials?town=eq.${s}&status=eq.published&select=name,birth_date_label,death_date_label`, { all: true }).catch(() => []),
-    q(`cemeteries?town=eq.${s}&select=id`).catch(() => []),
+    q(`cemeteries?town=eq.${s}&select=name&order=name`).catch(() => []),
     q(`teams?town=eq.${s}&select=id`).catch(() => []),
+    townPhotos(town),
+    q(`town_books?slug=eq.${s}&select=revision`).then((r) => r[0]).catch(() => null),
   ]);
   const n = (x) => Number(x).toLocaleString('en-CA');
   const cut = (t, max) => { t = String(t || '').replace(/\s+/g, ' ').trim(); if (t.length <= max) return t; const i = t.lastIndexOf('. ', max); return i > max * 0.5 ? t.slice(0, i + 1) : t.slice(0, t.lastIndexOf(' ', max)) + '…'; };
+  const AVOID = /unverified|klan|kkk|murder|killed|kills|suicide|massacre|scandal|disputed/i;
   const byId = Object.fromEntries(items.map((i) => [i.id, i]));
+  const ownPhotos = items.filter((i) => i.image_url).map((i) => ({ src: i.image_url, caption: i.title || '', credit: i.source || 'TownTales archive', wide: true }));
+  const pics = ownPhotos.concat(photos);
+  let picAt = 0; const nextPic = () => pics[picAt++] || null;
 
-  // Chapter 1: the town's earliest sourced history, written as prose with footnoted sources.
-  const early = timeline.filter((t) => t.body && t.body.length > 80 && !/unverified|klan|kkk/i.test(t.body)).slice(0, 7);
+  // Footnoted sources, numbered in the order they're used.
   const notes = [];
   const noteFor = (t) => {
     const src = (Array.isArray(t.item_ids) ? t.item_ids : []).map((id) => byId[id] && byId[id].source).find(Boolean);
@@ -264,42 +321,88 @@ async function samplePage(res, town) {
     let k = notes.indexOf(src); if (k < 0) { notes.push(src); k = notes.length - 1; }
     return `<sup>${k + 1}</sup>`;
   };
-  let budget1 = 900, budget2 = 700, ch1Notes = -1; const ch1 = [], ch2 = [];
-  early.forEach((t, i) => {
-    const body = cut(t.body, 420);
-    if (i === 0) { ch1.push(`<p class="sp-lede">${esc(body)}${noteFor(t)}</p>`); budget1 -= body.length; return; }
-    if (budget1 - body.length > 0) { ch1.push(`<p class="sp-h">${esc(t.title)}</p><p>${esc(body)}${noteFor(t)}</p>`); budget1 -= body.length + 60; }
-    else { if (ch1Notes < 0) ch1Notes = notes.length; if (budget2 - body.length > 0) ch2.push(`<p class="sp-h">${esc(t.title)}</p><p>${esc(body)}${noteFor(t)}</p>`); budget2 -= body.length + 60; }
-  });
-  if (ch1Notes < 0) ch1Notes = notes.length;
-  const notes1 = notes.slice(0, ch1Notes);
-  const fn = notes1.length ? `<div class="sp-fn">${notes1.map((x, i) => `${i + 1}. ${esc(cut(x, 110))}`).join('<br>')}</div>` : '';
+  const fnBox = (from, to) => to > from ? `<div class="sp-fn">${notes.slice(from, to).map((x, i) => `${from + i + 1}. ${esc(cut(x, 100))}`).join('<br>')}</div>` : '';
+  // Lay out timeline entries as chapter prose, filling pages up to a character budget.
+  const usable = timeline.filter((t) => t.body && t.body.length > 80 && !AVOID.test(t.title + ' ' + t.body));
+  const used = new Set();
+  const fill = (pool, budget, lede) => {
+    const out = [];
+    for (const t of pool) {
+      if (used.has(t)) continue;
+      const body = cut(t.body, 420);
+      if (budget - body.length < 0 && out.length) break;
+      used.add(t); budget -= body.length + 70;
+      out.push(lede && !out.length ? `<p class="sp-lede">${esc(body)}${noteFor(t)}</p>` : `<p class="sp-h">${esc(t.title)}</p><p>${esc(body)}${noteFor(t)}</p>`);
+    }
+    return out.join('');
+  };
+  const isCh2 = (t) => /railway|business|main street|economy|industry|agricult|farm/i.test(t.cat || '');
+  const isCh3 = (t) => /church|school|community|health|war|military|sport|culture|recreation/i.test(t.cat || '');
+  const early = usable.filter((t) => !isCh2(t) && !isCh3(t));
+  const ch2Pool = usable.filter(isCh2), ch3Pool = usable.filter(isCh3);
 
-  // A story from the archive, with a pull quote.
-  const AVOID = /unverified|klan|kkk|murder|killed|kills|suicide|massacre|scandal|disputed/i;
-  const story = items.filter((i) => i.body && i.body.length > 300 && !AVOID.test(i.title + ' ' + i.body)).sort((a, b) => b.body.length - a.body.length)[0];
-  const storySentences = story ? String(story.body).replace(/\s+/g, ' ').split(/(?<!\b(?:Sgt|Mr|Mrs|Dr|St|Lt|Col|Gen|Capt|Rev|Jr|Sr|No|Maj|Ste)\.)(?<=[a-z0-9)'"][.!?])\s+(?=[A-Z])/) : [];
-  const pull = storySentences.slice(1).find((x) => x.length > 40 && x.length < 200) || '';
-  const photo = items.find((i) => i.image_url);
-
-  const roll = people.filter((m) => m.name).slice().sort((a, b) => surnameOf(a.name).localeCompare(surnameOf(b.name)) || String(a.name).localeCompare(String(b.name))).slice(0, 24);
-  const hasBook = !!(BOOKS[town.slug] || (await dbBook(town.slug)));
   const pg = (inner, num, cls = '') => `<div class="sp-page ${cls}">${inner}${num ? `<span class="sp-n">${num}</span>` : ''}</div>`;
   const fig = (pageHtml, cap) => `<figure class="sp-fig">${pageHtml}<figcaption>${cap}</figcaption></figure>`;
+  const picHtml = (pic, cls = '') => pic ? `<img class="sp-photo ${cls}" src="${esc(pic.src)}" alt="${esc(pic.caption)}" loading="lazy"><p class="sp-cap">${esc(cut(pic.caption, 120))}<br><span class="sp-cr">Photo: ${esc(pic.credit)}</span></p>` : '';
+  const out = [];
 
-  const pages = [
-    fig(pg(`<p class="k">A TownTales history</p><div><p class="t">${esc(town.name)}</p><p class="pv">${esc(prov)}</p></div>${plateSvg(town.slug)}<p class="f">Every fact sourced · Every name remembered</p>`, '', 'sp-cover'),
-      `The cover. ${BOOKS[town.slug] && BOOKS[town.slug].mainStreet && BOOKS[town.slug].mainStreet.image ? '' : `The finished book puts a photograph of ${esc(town.name)}'s main street here.`}`),
-    early.length ? fig(pg(`<p class="sp-kick">Chapter 1</p><h3 class="sp-ch">Beginnings</h3>${ch1.join('')}${fn}`, '1'),
-      `Chapter 1 opens with ${esc(town.name)}'s own history, written in full sentences. Every fact carries a numbered source.`) : '',
-    ch2.length ? fig(pg(`${photo ? `<img class="sp-plate" src="${esc(photo.image_url)}" alt="">` : farmPlateSvg()}<p class="sp-cap">${photo ? esc(photo.title || '') : `A homestead near ${esc(town.name)}, as the first settlers built them. Illustration.`}</p>${ch2.join('')}`, '2'),
-      'Chapters are illustrated with photographs and plates, each with a caption and credit.') : '',
-    story ? fig(pg(`<p class="sp-kick">From the archive</p><h3 class="sp-ch" style="font-size:1.7em">${esc(cut(story.title, 70))}</h3>${pull ? `<p class="sp-pull">“${esc(pull.trim())}”</p>` : ''}<p>${esc(cut(story.body, 950))}</p><p class="sp-cap" style="text-align:left">${esc(cut([story.date_label, story.source].filter(Boolean).join(' · '), 120))}</p>`, '27'),
-      `Stories and documents from ${esc(town.name)}'s archive are set as features, with their source.`) : '',
-    roll.length ? fig(pg(`<p class="sp-kick">Part Four</p><h3 class="sp-ch" style="font-size:1.9em">The Roll of Remembrance</h3><p style="font-style:italic;text-align:left">${n(people.length)} people of ${esc(town.name)}${cems.length ? `, in ${cems.length === 1 ? 'one cemetery' : cems.length + ' cemeteries'}` : ''}, named one by one.</p><ul class="sp-roll sp-cols">${roll.map((m) => `<li>${esc(m.name)}${m.birth_date_label || m.death_date_label ? `<span class="d">${esc([m.birth_date_label, m.death_date_label].filter(Boolean).join(' – '))}</span>` : ''}</li>`).join('')}</ul>`, '49'),
-      `The Roll of Remembrance lists every person, all ${n(people.length)} of them.`) : '',
-  ].filter(Boolean).join('');
+  // 1. Cover
+  const coverPic = pics.find((p) => p.wide) || null;
+  out.push(fig(pg(`<p class="k">A TownTales history</p><div><p class="t">${esc(town.name)}</p><p class="pv">${esc(prov)}</p></div>${coverPic ? `<img class="sp-photo sp-cover-photo" src="${esc(coverPic.src)}" alt="">` : plateSvg(town.slug)}<p class="f">Every fact sourced · Every name remembered</p>`, '', 'sp-cover'),
+    `The cover, in full colour. ${coverPic ? `Photo: ${esc(cut(coverPic.credit, 90))}.` : `The finished book puts a photograph of ${esc(town.name)}'s main street here.`}`));
+  if (coverPic) pics.splice(pics.indexOf(coverPic), 1);
 
+  // 2. Title page
+  out.push(fig(pg(`<div class="sp-title"><p class="k">A TownTales history</p><p class="t">${esc(town.name)}</p><p>${esc(prov)}</p><p class="sp-orn">❦</p><p style="font-style:italic">The story of a prairie town, told from its own records, newspapers, land grants and families.</p><p class="sp-imprint">Revision ${(revRow && revRow.revision) || 1} · Printed to order by Lulu<br>TownTales · towntales.ca</p></div>`, ''),
+    'The title page, with the revision number of your copy.'));
+
+  // 3. Contents
+  let chN = 0;
+  const chapters = [
+    ['Beginnings', 1], ch2Pool.length && ['The Railway and Main Street', 9], ch3Pool.length && ['Faith, School and Community', 17], items.length && ['From the Archive', 27],
+  ].filter(Boolean).map(([t, p]) => [String(++chN), t, p]).concat([people.length && ['', 'The Roll of Remembrance', 49], ['', 'Sources', 74]].filter(Boolean));
+  out.push(fig(pg(`<h3 class="sp-ch" style="font-size:1.9em;margin-top:8%">Contents</h3><ol class="sp-toc">${chapters.map(([c, t, p]) => `<li><span>${c ? `<b>${c}</b> ` : ''}${esc(t)}</span><span class="dots"></span><span>${p || ''}</span></li>`).join('')}</ol><p style="margin-top:1.5em;font-style:italic;text-align:left">${timeline.length ? `With ${n(timeline.length)} dated events, ` : ''}${items.length ? `${n(items.length)} archive pieces` : ''}${people.length ? ` and ${n(people.length)} names` : ''}.</p>`, 'v'),
+    'Contents. Page numbers in this sample are approximate.'));
+
+  // 4–5. Chapter 1
+  const n0 = notes.length; const c1 = fill(early.length ? early : usable, 1250, true); const n1 = notes.length;
+  if (c1) out.push(fig(pg(`<p class="sp-kick">Chapter 1</p><h3 class="sp-ch">Beginnings</h3>${c1}${fnBox(n0, n1)}`, '1'), `Chapter 1 opens with ${esc(town.name)}'s own story, written in full sentences, with every fact numbered to its source.`));
+  const p5pic = nextPic(); const c1b = fill(early.length ? early : usable, p5pic ? 520 : 1100, false); const n2 = notes.length;
+  if (c1b) out.push(fig(pg(`${p5pic ? picHtml(p5pic) : farmPlateSvg() + `<p class="sp-cap">A homestead near ${esc(town.name)}, as the first settlers built them. Illustration.</p>`}${c1b}${fnBox(n1, n2)}`, '2'), 'Photographs run through the chapters, each with a caption and credit. Inside pages print in black and white.'));
+
+  // 6. Full-page photograph
+  const fullPic = nextPic();
+  if (fullPic) out.push(fig(pg(`<div class="sp-plate-page"><img class="sp-photo sp-full" src="${esc(fullPic.src)}" alt="${esc(fullPic.caption)}" loading="lazy"><p class="sp-cap">${esc(cut(fullPic.caption, 140))}<br><span class="sp-cr">Photo: ${esc(fullPic.credit)}</span></p></div>`, '8'), 'Full-page photographs, printed large.'));
+
+  // 7. Chapter 2
+  const n3 = notes.length; const c2 = fill(ch2Pool, 950, true); const n4 = notes.length;
+  if (c2) { const pic = nextPic(); out.push(fig(pg(`<p class="sp-kick">Chapter 2</p><h3 class="sp-ch">The Railway and Main Street</h3>${pic ? picHtml(pic, 'sp-half') : ''}${c2}${fnBox(n3, n4)}`, '9'), `Chapter 2 follows the railway, the stores and the businesses that made ${esc(town.name)} a town.`)); }
+
+  // 8. Chapter 3
+  const n5 = notes.length; const c3 = fill(ch3Pool, 1000, true); const n6 = notes.length;
+  if (c3) out.push(fig(pg(`<p class="sp-kick">Chapter ${c2 ? 3 : 2}</p><h3 class="sp-ch">Faith, School and Community</h3>${c3}${fnBox(n5, n6)}`, '17'), 'Churches, schools, halls and the people who ran them.'));
+
+  // 9–10. Archive features
+  const feats = items.filter((i) => i.body && i.body.length > 250 && !AVOID.test(i.title + ' ' + i.body)).sort((a, b) => b.body.length - a.body.length).slice(0, 2);
+  const sentences = (t) => String(t).replace(/\s+/g, ' ').split(/(?<!\b(?:Sgt|Mr|Mrs|Dr|St|Lt|Col|Gen|Capt|Rev|Jr|Sr|No|Maj|Ste)\.)(?<=[a-z0-9)'"][.!?])\s+(?=[A-Z])/);
+  feats.forEach((f, i) => {
+    const pull = sentences(f.body).slice(1).find((x) => x.length > 40 && x.length < 200) || '';
+    const pic = i === 1 ? nextPic() : null;
+    out.push(fig(pg(`<p class="sp-kick">From the archive</p><h3 class="sp-ch" style="font-size:1.6em">${esc(cut(f.title, 70))}</h3>${i === 0 && pull ? `<p class="sp-pull">“${esc(pull.trim())}”</p>` : ''}${pic ? picHtml(pic, 'sp-half') : ''}<p>${esc(cut(f.body, i === 0 ? 950 : 700))}</p><p class="sp-cap" style="text-align:left">${esc(cut([f.date_label, f.source].filter(Boolean).join(' · '), 120))}</p>`, String(27 + i * 3)),
+      i === 0 ? `Stories from ${esc(town.name)}'s archive are set as features, with their source.` : 'Every archive piece in the book keeps its date and where it came from.'));
+  });
+
+  // 11. Roll of Remembrance
+  const roll = people.filter((m) => m.name).slice().sort((a, b) => surnameOf(a.name).localeCompare(surnameOf(b.name)) || String(a.name).localeCompare(String(b.name))).slice(0, 24);
+  if (roll.length) out.push(fig(pg(`<p class="sp-kick">Part Four</p><h3 class="sp-ch" style="font-size:1.9em">The Roll of Remembrance</h3><p style="font-style:italic;text-align:left">${n(people.length)} people of ${esc(town.name)}, named one by one${cems.length ? `, from ${cems.length === 1 ? esc(cems[0].name) : cems.slice(0, 3).map((c) => esc(c.name)).join(', ') + (cems.length > 3 ? ' and others' : '')}` : ''}.</p><ul class="sp-roll sp-cols">${roll.map((m) => `<li>${esc(m.name)}${m.birth_date_label || m.death_date_label ? `<span class="d">${esc([m.birth_date_label, m.death_date_label].filter(Boolean).join(' – '))}</span>` : ''}</li>`).join('')}</ul>`, '49'),
+    `The Roll of Remembrance lists every person, all ${n(people.length)} of them.`));
+
+  // 12. Sources
+  const allSources = [...new Set(items.filter((i) => !AVOID.test(i.title + ' ' + i.body)).map((i) => i.source).filter(Boolean))].slice(0, 16);
+  if (allSources.length) out.push(fig(pg(`<p class="sp-kick">Back matter</p><h3 class="sp-ch" style="font-size:1.9em">Sources</h3><ol class="sp-src">${allSources.map((x) => `<li>${esc(cut(x, 120))}</li>`).join('')}</ol>`, '74'), 'A full list of sources at the back, so any fact can be checked.'));
+
+  const pages = out.join('');
+  const hasBook = !!(BOOKS[town.slug] || (await dbBook(town.slug)));
   const realPages = [['p23', 'A chapter opening'], ['p24', 'Families and the people who built the town'], ['p14', 'Treaty 4 and the meaning of the town’s name'], ['p49', 'The Roll of Remembrance']];
   const contents = [
     `<li><b>Written chapters</b>: how ${esc(town.name)} began, grew and changed</li>`,
