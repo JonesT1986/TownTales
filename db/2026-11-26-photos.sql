@@ -1,0 +1,3 @@
+-- Applied to Supabase (Nov 26 2026) as migrations memorial_photos and family_photos. Kept for the record.
+-- memorial_photos: one free reviewed photo per Remembrance person; submit_memorial_photo() for the public form.
+-- family_photos + family_photo_people: tree photos with tagged people; family_photos_get() hides photos of living people from visitors.

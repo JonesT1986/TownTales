@@ -94,6 +94,14 @@
 .fam-lines path{fill:none;stroke:var(--ink-2);stroke-width:1.6}
 .fam-detail{background:var(--card);border:2px solid var(--ink);border-radius:2px;padding:20px;display:grid;gap:14px;grid-template-columns:minmax(0,1fr)}
 .fam-detail img{max-width:260px;border:2px solid var(--ink)}
+.fam-gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,180px),1fr));gap:14px}
+.fam-gal figure{margin:0}
+.fam-gal img{width:100%;height:170px;object-fit:cover;display:block;border:2px solid var(--ink);max-width:none}
+.fam-gal figcaption{font-size:.9rem;margin-top:6px;line-height:1.4}
+.fam-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+.fam-tags .fam-chip{font-size:.78rem;padding:2px 7px}
+.fam-tagpick{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px 14px}
+.fam-tagpick label{display:flex;gap:6px;align-items:center;font-weight:400}
 .fam-rel{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .fam-chip{border:1.5px solid var(--rule);background:#FFFEFA;border-radius:2px;padding:4px 10px;font:600 .9rem var(--body);cursor:pointer;color:var(--denim)}
 .fam-chip:hover{border-color:var(--red);color:var(--red)}
@@ -342,6 +350,12 @@
     });
     svg.innerHTML = d ? `<path d="${d}"/>` : "";
   }
+  function galleryHTML(t, only) {
+    const list = (t.photos || []).filter((f) => !only || (f.people || []).includes(only));
+    if (!list.length) return "";
+    const nameOf = (pid) => { const q = t.people.find((x) => x.id === pid); return q ? fullName(q) : ""; };
+    return `<div class="fam-gal">${list.map((f) => `<figure><a href="${esc(f.url)}" target="_blank" rel="noopener"><img src="${esc(f.url)}" alt="${esc(f.caption || "Family photo")}" loading="lazy"></a><figcaption>${f.caption ? esc(f.caption) : ""}${f.year ? ` <span class="muted">(${esc(f.year)})</span>` : ""}${(f.people || []).length && !only ? `<span class="fam-tags">${f.people.map((pid) => nameOf(pid) ? `<button type="button" class="fam-chip" data-go="${esc(pid)}">${esc(nameOf(pid))}</button>` : "").join("")}</span>` : ""}</figcaption></figure>`).join("")}</div>`;
+  }
   function detailHTML(t, id, L) {
     const p = L.P[id]; if (!p) return "";
     const priv = p.living && p.surname === undefined;
@@ -357,6 +371,7 @@
       <div class="stack" style="gap:6px"><h2>${esc(fullName(p))}</h2>${p.maiden ? `<p class="muted">née ${esc(p.maiden)}</p>` : ""}${priv ? `<p class="muted">This person is marked as living, so their details are private.</p>` : facts.map((f) => `<p>${f}</p>`).join("")}</div>
       ${!priv && p.photo_url ? `<img src="${esc(p.photo_url)}" alt="Photo of ${esc(fullName(p))}">` : ""}
       ${!priv && p.bio ? `<p style="white-space:pre-wrap">${esc(p.bio)}</p>` : ""}
+      ${!priv && galleryHTML(t, id) ? `<div class="stack" style="gap:6px"><b>Photos</b>${galleryHTML(t, id)}</div>` : ""}
       ${parents.length ? `<div class="fam-rel"><b>Parents:</b>${parents.map(chip).join("")}</div>` : ""}
       ${sp.length ? `<div class="fam-rel"><b>Spouse${sp.length > 1 ? "s" : ""}:</b>${sp.map((x) => chip(x.q) + (x.label ? `<span class="small muted">${esc(x.label)}</span>` : "")).join("")}</div>` : ""}
       ${kids.length ? `<div class="fam-rel"><b>Children:</b>${kids.map(chip).join("")}</div>` : ""}
@@ -382,9 +397,10 @@
 
   /* ---------- tree page ---------- */
   async function pageTree(seq, slug) {
-    const { data: t, error } = await sb.rpc("family_get", { p_slug: slug });
+    const [{ data: t, error }, { data: photos }] = await Promise.all([sb.rpc("family_get", { p_slug: slug }), sb.rpc("family_photos_get", { p_slug: slug }).then((r) => r, () => ({ data: [] }))]);
     if (error) throw error;
     if (seq !== renderSeq) return;
+    if (t) t.photos = Array.isArray(photos) ? photos : [];
     if (!t) { paint(`<section class="wrap stack" style="padding:40px 16px"><h1>Tree not found</h1><p class="muted">It may have been removed or made private.</p><p><a href="#families">See all family trees</a></p></section>`); return; }
     document.title = t.title + " · Family trees · TownTales";
     const link = location.origin + "/#fam-" + t.slug;
@@ -397,10 +413,12 @@
       <p class="small muted">Tap anyone in the tree to see their story.</p>
       ${chartHTML(t)}
       <div id="fam-detail-slot"></div>
+      ${t.photos.length ? `<div class="stack" style="gap:10px" id="fam-photos"><h2>Family photos</h2>${galleryHTML(t)}</div>` : ""}
       <p class="fam-fine">People marked as living show a first name only. See something wrong or private? <a href="#corrections">Ask for a correction or removal</a>.</p>
     </section>`);
     const root = view();
-    wireChart(t, root);
+    const pick = wireChart(t, root);
+    $$("#fam-photos [data-go]", root).forEach((b) => (b.onclick = () => { pick(b.dataset.go, true); }));
     $("#fam-share").onclick = async () => { try { await navigator.clipboard.writeText(link); $("#fam-share").textContent = "Link copied"; } catch (e) { prompt("Copy this link:", link); } };
   }
 
@@ -471,13 +489,18 @@
     if (seq !== renderSeq) return;
     if (!t || !t.mine) { paint(`<section class="wrap stack" style="padding:40px 16px"><h1>You can't edit this tree</h1><p class="muted">Only the person who built a tree can edit it.</p><p><a href="#fam-${esc(slug)}">View the tree</a></p></section>`); return; }
     ED = { t, all };
+    await loadEdPhotos();
     document.title = "Editing " + t.title + " · TownTales";
     drawEditor();
   }
   async function reloadTree(keepOpen) {
     const { data, error } = await sb.rpc("family_get", { p_slug: ED.t.slug });
     if (error) throw error;
-    ED.t = data; drawEditor(keepOpen);
+    ED.t = data; await loadEdPhotos(); drawEditor(keepOpen);
+  }
+  async function loadEdPhotos() {
+    const { data } = await sb.rpc("family_photos_get", { p_slug: ED.t.slug });
+    ED.t.photos = Array.isArray(data) ? data : [];
   }
   function drawEditor(openPid) {
     const t = ED.t;
@@ -489,6 +512,17 @@
       <div id="fe-form-slot"></div>
       ${t.people.length ? `<div class="stack" style="gap:10px"><h2>Tree preview</h2><p class="small muted">Tap a person to edit them.</p>${chartHTML(t)}</div>` : `<div class="formbox"><h2>Add the first person</h2><p>Start with the oldest ancestor you know about, or with yourself and work back. You can add parents, spouses and children from each person.</p><div class="btns"><button class="btn" type="button" id="fe-add2">Add the first person</button></div></div>`}
       ${t.people.length ? `<div class="stack" style="gap:10px"><h2>Everyone in this tree</h2><div class="fam-plist">${people.map((p) => `<div class="fam-prow"><div class="who"><b>${esc(fullName(p))}${p.living ? ` <span class="pill st">Living</span>` : ""}</b><span class="small muted">${esc(lifeSpan(p) || "No dates yet")}</span></div><div class="btns"><button class="btn alt sm" data-edit="${esc(p.id)}" type="button">Edit</button><button class="btn alt sm" data-rel="child" data-of="${esc(p.id)}" type="button">+ Child</button><button class="btn alt sm" data-rel="spouse" data-of="${esc(p.id)}" type="button">+ Spouse</button><button class="btn alt sm" data-rel="parent" data-of="${esc(p.id)}" type="button">+ Parent</button></div></div>`).join("")}</div></div>` : ""}
+      <details class="formbox" id="fe-photos"${t.photos && t.photos.length ? "" : ""}><summary><b>Family photos (${(t.photos || []).length})</b> <span class="small muted">Group photos, weddings, the farm, reunions. Tag who's in each one.</span></summary>
+        <form id="fe-pf" class="stack" style="gap:14px;margin-top:16px" novalidate>
+          <div class="field"><label for="fph-file">Photo <span class="muted small">(JPG, PNG or WebP)</span></label><input type="file" id="fph-file" accept="image/jpeg,image/png,image/webp"></div>
+          <div class="grid2"><div class="field"><label for="fph-cap">Caption</label><input type="text" id="fph-cap" maxlength="200" placeholder="e.g. Wedding of John and Mary"></div>
+          <div class="field"><label for="fph-year">Year <span class="muted small">(optional)</span></label><input type="text" id="fph-year" maxlength="30" placeholder="e.g. 1948 or about 1920"></div></div>
+          ${t.people.length ? `<fieldset class="field"><legend>Who's in this photo?</legend><div class="fam-tagpick">${people.map((p) => `<label><input type="checkbox" value="${esc(p.id)}"> ${esc(fullName(p))}${p.living ? ' <span class="muted small">(living)</span>' : ""}</label>`).join("")}</div><p class="fam-fine">A photo that shows anyone marked living is only visible to you, never to visitors.</p></fieldset>` : ""}
+          <p class="fam-err" id="fph-err" hidden></p>
+          <div class="btns"><button class="btn" type="submit">Add photo</button></div>
+        </form>
+        ${(t.photos || []).length ? `<div class="fam-gal fam-gal-edit" style="margin-top:16px">${t.photos.map((f) => `<figure><img src="${esc(f.url)}" alt="" loading="lazy"><figcaption>${esc(f.caption || "")}${f.year ? ` (${esc(f.year)})` : ""}<br><button type="button" class="btn sm alt" data-delphoto="${esc(f.id)}">Remove</button></figcaption></figure>`).join("")}</div>` : ""}
+      </details>
       <details class="formbox" id="fe-settings"><summary><b>Tree settings: name, about, towns, privacy</b></summary>
         <form id="fe-tf" class="stack" style="gap:16px;margin-top:16px" novalidate>
           <div class="field"><label for="ft-title">Tree name</label><input type="text" id="ft-title" maxlength="120" value="${esc(t.title)}"></div>
@@ -507,6 +541,26 @@
     [$("#fe-add"), $("#fe-add2")].forEach((b) => b && (b.onclick = () => personForm(null)));
     $$("[data-edit]").forEach((b) => (b.onclick = () => personForm(b.dataset.edit)));
     $$("[data-rel]").forEach((b) => (b.onclick = () => personForm(null, { rel: b.dataset.rel, of: b.dataset.of })));
+    $("#fe-pf").onsubmit = async (e) => {
+      e.preventDefault(); const err = $("#fph-err"), btn = $("#fe-pf button[type=submit]"); err.hidden = true;
+      const file = $("#fph-file").files[0];
+      if (!file) { err.textContent = "Please choose a photo."; err.hidden = false; return; }
+      btn.disabled = true; btn.textContent = "Uploading…";
+      try {
+        const url = await uploadPhoto(file);
+        const { data: ph, error } = await sb.from("family_photos").insert({ tree: t.id, url, caption: $("#fph-cap").value.trim() || null, year_label: $("#fph-year").value.trim() || null }).select("id").single();
+        if (error) throw error;
+        const tags = $$(".fam-tagpick input:checked").map((c) => ({ photo: ph.id, person: c.value }));
+        if (tags.length) { const { error: e2 } = await sb.from("family_photo_people").insert(tags); if (e2) throw e2; }
+        await reloadTree(); const d = $("#fe-photos"); if (d) d.open = true;
+      } catch (x) { err.textContent = (x && x.message) || "Couldn't add that photo."; err.hidden = false; btn.disabled = false; btn.textContent = "Add photo"; }
+    };
+    $$("[data-delphoto]").forEach((b) => (b.onclick = async () => {
+      if (!confirm("Remove this photo from the tree?")) return;
+      const { error } = await sb.from("family_photos").delete().eq("id", b.dataset.delphoto);
+      if (error) return alert(error.message);
+      await reloadTree(); const d = $("#fe-photos"); if (d) d.open = true;
+    }));
     const getTowns = wireTownPicker(ED.all, t.towns.map((w) => w.slug));
     $("#fe-tf").onsubmit = async (e) => {
       e.preventDefault(); const err = $("#ft-err"), ok = $("#ft-ok"); err.hidden = ok.hidden = true;

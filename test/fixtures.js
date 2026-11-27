@@ -116,6 +116,7 @@ tables.items.push({ id: '568f3cdc-c042-4c15-a5b5-275cc5f7a05a', town: 'whitewood
 tables.timeline.push({ id: 'ww-1', town: 'whitewood-sk', year: 1884, label: '1884', title: 'First Agricultural Fair; Presbyterians organize', body: 'The first Agricultural Fair was held in 1884. The Presbyterian congregation was organized the same year.', cat: 'Churches', tier: 'documented', item_ids: ['568f3cdc-c042-4c15-a5b5-275cc5f7a05a'], cite: '', sort: 0 });
 tables.timeline.push({ id: 'ww-2', town: 'whitewood-sk', year: 1905, label: 'September 1, 1905', title: 'Saskatchewan becomes a province', body: 'Whitewood becomes part of the new province.', cat: 'Events', tier: 'documented', item_ids: ['568f3cdc-c042-4c15-a5b5-275cc5f7a05a'], cite: 'p. 27', sort: 1 });
 
+tables.memorial_photos = [{ memorial_id: 'wap-0003', status: 'published', url: 'ph/0.jpg', caption: 'On the farm, about 1940', kind: 'portrait', shared_by: 'Mary Smith', relation: 'granddaughter' }];
 tables.town_books = [{ slug: 'whitewood-sk', pages: 60, title: 'Whitewood test book', ready_at: '2026-11-26T00:00:00Z', revision: 2, revised_at: '2026-11-30T12:00:00Z' }];
 
 try { const mo = require('./data/moosomin.json'); towns.push(mo.town); tables.timeline.push(...mo.timeline); tables.items.push(...mo.items); tables.memorials.push(...mo.memorials); } catch (e) {}
