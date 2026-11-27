@@ -1,0 +1,8 @@
+-- APPLIED to Supabase Nov 26 2026 ~22:45 SK (migration contact_finder_milestones_first_2026_11_27). Kept for the record.
+-- The contact finder now looks up town offices for milestone-birthday towns (this year or next: 50, 75, 100, 125 … years)
+-- before the rest of the queue, so the anniversary emails have addresses. Daily cap (60) unchanged.
+-- Only change from the previous towns_research_sweep(): the "order by" on the contact loop.
+--   for r in select slug from public.towns where contact_status = 'queued' and created_at < now() - interval '2 minutes'
+--       order by (case when est ~ '^\d{4}$' and (((y - est::int) >= 50 and (y - est::int) % 25 = 0)
+--                 or ((y + 1 - est::int) >= 50 and (y + 1 - est::int) % 25 = 0)) then 0 else 1 end), slug
+--       limit 10 loop
