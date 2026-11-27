@@ -53,11 +53,17 @@ function call(handler, reqUrl) {
     ['seo-home', seo, '/api/seo?slug=_home'],
     ['seo-town', seo, '/api/seo?slug=wapella-sk'],
     ['seo-archive', seo, '/api/seo?slug=wapella-sk&sub=archive'],
+    ['rm-index', require('../api/extra'), '/api/extra?kind=rm'],
+    ['rm-martin', require('../api/extra'), '/api/extra?kind=rm&slug=martin-122-sk'],
+    ['rm-empty', require('../api/extra'), '/api/extra?kind=rm&slug=moose-jaw-161-sk'],
+    ['rm-hidden', require('../api/extra'), '/api/extra?kind=rm&slug=hidden-1-sk'],
+    ['rm-bad', require('../api/extra'), '/api/extra?kind=rm&slug=atlantis'],
+    ['sitemap-core', sitemap, '/api/sitemap?part=core'],
     ['sitemap', sitemap, '/api/sitemap'],
   ];
   for (const [name, h, u] of cases) {
     const r = await call(h, u);
-    fs.writeFileSync(path.join(OUT, name + (name === 'sitemap' ? '.xml' : '.html')), r.body);
+    fs.writeFileSync(path.join(OUT, name + (name.startsWith('sitemap') ? '.xml' : '.html')), r.body);
     const t = (r.body.match(/<title>([^<]*)/) || [])[1] || '';
     console.log(String(r.status).padEnd(6), name.padEnd(22), (r.headers.location || t).slice(0, 110), r.body.length);
   }

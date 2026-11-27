@@ -180,14 +180,17 @@ module.exports = async (req, res) => {
         if (town) {
           const s = encodeURIComponent(slug);
           const soft = (p) => p.catch(() => []); // new tables: never let them break the town page
-          const [timeline, items, cems, clips, teams] = await Promise.all([
+          const [timeline, items, cems, clips, teams, rmRow] = await Promise.all([
             archive ? Promise.resolve([]) : q('timeline?town=eq.' + s + '&select=year,label,title,body&order=year,sort'),
             q('items?town=eq.' + s + '&status=eq.published&select=title,body,year,source&order=created_at.desc'),
             archive ? Promise.resolve([]) : soft(q('cemeteries?town=eq.' + s + '&select=name&order=name')),
             archive ? soft(q('clippings?town=eq.' + s + '&select=paper_name,date_label,description,transcription,transcription_status,submitter_name&order=created_at.desc&limit=100')) : Promise.resolve([]),
             archive ? Promise.resolve([]) : soft(q('teams?town=eq.' + s + '&select=name,sport,league,years_label,home_venue,championships,note,tier,source&order=sport,name')),
+            soft(q('towns?slug=eq.' + s + '&select=rm:rms(slug,name,number,prov,kind_label,full_name)')),
           ]);
           main = townBody(town, timeline, items, archive, cems, clips, teams);
+          const rm = rmRow && rmRow[0] && rmRow[0].rm;
+          if (rm && rm.slug) main = main.replace('</h1>', '</h1><p class="small">Part of the <a href="/rm/' + esc(rm.slug) + '">' + esc(require('./_rm').rmTitle(rm)) + '</a></p>');
           const msBanner = MS.banner(town, msYear);
           if (msBanner) main = '<style>' + MS.CSS + '</style>' + main.replace('<h1>', msBanner + '<h1>');
           const prov = PROV[town.prov] || town.prov;

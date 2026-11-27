@@ -6,6 +6,7 @@ const { SITE, PROV, PROV_SLUG, esc, q, page, send, notFound } = require('./_shel
 const { regionIcon } = require('./_icons');
 const MK = require('./_markers');
 const MS = require('./_milestones');
+const { rmTitle } = require('./_rm');
 
 const TERR = new Set(['YT', 'NT', 'NU']);
 const ORDER = ['BC', 'AB', 'SK', 'MB', 'ON', 'QC', 'NB', 'NS', 'PE', 'NL', 'YT', 'NT', 'NU']; // west to east, then north
@@ -40,10 +41,11 @@ async function indexPage(res) {
 
 async function provPage(res, code) {
   const s = encodeURIComponent(code);
-  const [towns, rows] = await Promise.all([
+  const [towns, rows, rms] = await Promise.all([
     q(`towns?hidden=eq.false&prov=eq.${s}&select=slug,name,est,place_kind&order=name`, { all: true })
       .catch(() => q(`towns?hidden=eq.false&prov=eq.${s}&select=slug,name,est&order=name`, { all: true })),
     q(`provinces?code=eq.${s}&select=*`).catch(() => []),
+    q(`rms?hidden=eq.false&prov=eq.${s}&select=slug,name,number,prov,kind_label,full_name&order=number.nullslast,name`, { all: true }).catch(() => []),
   ]);
   const pv = rows[0] || {};
   const name = PROV[code];
@@ -81,7 +83,8 @@ async function provPage(res, code) {
 ${msHtml}
 <section class="wrap stack"><h2>How ${esc(name)} was settled</h2>${overview}</section>
 <section class="wrap stack"><h2>${esc(name)}-wide history</h2><div class="rm-cems">${topicsHtml}</div></section>
-<section class="wrap stack" id="towns"><h2>${esc(name)} towns on TownTales</h2>${townsHtml}</section>`;
+<section class="wrap stack" id="towns"><h2>${esc(name)} towns on TownTales</h2>${townsHtml}</section>
+${rms.length ? `<section class="wrap stack" id="rms"><h2>Rural municipalities in ${esc(name)}</h2><p class="muted">The country around the towns: hamlets, school districts, churches and cemeteries. <a href="/rm">All rural municipalities</a></p><ul class="pv-towns mun-list">${rms.map((r) => `<li><a href="/rm/${esc(r.slug)}">${esc(rmTitle(r))}</a></li>`).join('')}</ul></section>` : ''}`;
 
   send(res, 200, page({
     title: `${name} Small-Town History — ${towns.length ? towns.length + (towns.length === 1 ? ' Town' : ' Towns') : 'Towns'}, Timelines and Archives | TownTales`,

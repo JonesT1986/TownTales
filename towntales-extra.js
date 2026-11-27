@@ -7,6 +7,7 @@
    6. Honour Pages: order form (photos + story → Stripe), offer after a family adds someone, admin review queue
    9. Train start: lands on the signed-in visitor's home town, else the stop matching their location
    8. Whole-book upload (/share-a-book): many page photos at once → private book-pages bucket; admin "Book uploads" queue
+   10. "Part of the RM of …" link under the town name
    7. Homepage "Recently remembered" carousel (Honour Pages first, then the newest names, max 3 per town)
    Nothing here can break the main app: every step is wrapped, and the app never depends on it. */
 (function () {
@@ -106,14 +107,18 @@
       if (!v("name")) return (err.textContent = "Please enter your name.");
       if (!okEmail(v("email"))) return (err.textContent = "Please enter a working email address.");
       btn.disabled = true; btn.textContent = "Sending…";
-      fetch(SB + "/rest/v1/book_interest", { method: "POST", headers: H({ "Content-Type": "application/json", Prefer: "return=minimal" }),
-        body: JSON.stringify({ town: f.getAttribute("data-town"), name: v("name").slice(0, 120), email: v("email").slice(0, 200).toLowerCase(), format: v("format"), copies: parseInt(v("copies"), 10) || 1, updates_ok: f.elements.updates.type === "hidden" ? true : !!f.elements.updates.checked }) })
+      // Nov 27 2026: RM pages use the same form with data-rm; those go to rm_book_interest.
+      var rmSlug = f.getAttribute("data-rm");
+      var row = { name: v("name").slice(0, 120), email: v("email").slice(0, 200).toLowerCase(), format: v("format"), copies: parseInt(v("copies"), 10) || 1, updates_ok: f.elements.updates.type === "hidden" ? true : !!f.elements.updates.checked };
+      if (rmSlug) row.rm = rmSlug; else row.town = f.getAttribute("data-town");
+      fetch(SB + "/rest/v1/" + (rmSlug ? "rm_book_interest" : "book_interest"), { method: "POST", headers: H({ "Content-Type": "application/json", Prefer: "return=minimal" }),
+        body: JSON.stringify(row) })
         .then(function (r) {
           if (!r.ok) throw new Error("save");
           f.hidden = true;
           var share = f.getAttribute("data-share");
           $("#bk-done").innerHTML = f.getAttribute("data-waitlist")
-            ? '<div class="rm-ok"><h3>You\'re on the list.</h3><p>Thank you. We\'ll email you at <b>' + esc(v("email")) + '</b> when this town\'s book is ready, with a link to look through it first.</p>' +
+            ? '<div class="rm-ok"><h3>You\'re on the list.</h3><p>Thank you. We\'ll email you at <b>' + esc(v("email")) + '</b> when ' + (rmSlug ? "the RM\'s" : "this town\'s") + ' book is ready, with a link to look through it first.</p>' +
               (share ? '<p>Know someone from here? The more people ask, the sooner the book gets built.</p><div class="btns"><a class="btn sm" href="https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(location.href.split("#")[0]) + '" rel="noopener" target="_blank">Share on Facebook</a><a class="btn sm alt" href="mailto:?subject=' + encodeURIComponent("A history book about " + (document.title.split(",")[0] || "our town")) + "&body=" + share + '">Email a friend</a></div>' : "") + "</div>"
             : '<div class="rm-ok"><h3>You\'re on the list.</h3><p>Thank you. We\'ll email you the price and let you know when your copy is ready to order.</p></div>';
         })
@@ -230,6 +235,25 @@
     qi.addEventListener("input", function () { clearTimeout(timer); timer = setTimeout(draw, 300); }); if (ci) ci.addEventListener("change", draw);
     $(".tt-rm-search", sec).addEventListener("submit", function (e) { e.preventDefault(); clearTimeout(timer); draw(); });
     draw();
+  }
+
+  /* ---------- 10: "Part of the RM of …" under the town's name (Nov 27 2026; hidden until the town is linked) ---------- */
+  var rmCache = {};
+  function rmTitle(r) {
+    if (r.full_name) return r.full_name;
+    var kl = r.kind_label || "Rural Municipality";
+    return /^rural municipality$/i.test(kl) ? "RM of " + r.name + (r.number ? " No. " + r.number : "") : kl + " of " + r.name;
+  }
+  function rmLink(t) {
+    var view = $("#view"); if (!view || $("#tt-rmlink", view)) return;
+    rmCache[t.slug] = rmCache[t.slug] || get("towns?slug=eq." + encodeURIComponent(t.slug) + "&select=rm:rms(slug,name,number,kind_label,full_name)").catch(function () { return []; });
+    rmCache[t.slug].then(function (rows) {
+      var r = rows && rows[0] && rows[0].rm; if (!r || !r.slug) return;
+      var h1 = $("#view h1"); if (!h1 || $("#tt-rmlink", view)) return;
+      var p = document.createElement("p"); p.id = "tt-rmlink"; p.className = "mun-link small";
+      p.innerHTML = 'Part of the <a href="/rm/' + esc(r.slug) + '">' + esc(rmTitle(r)) + "</a>";
+      h1.parentNode.insertBefore(p, h1.nextSibling);
+    });
   }
 
   /* ---------- 5: Sports & Teams on the town page (hidden when the town has no teams) ---------- */
@@ -1109,7 +1133,7 @@
       var h = (location.hash || "").slice(1);
       if (h === "admin" || h.indexOf("admin/") === 0) return adminBlock();
       var t = currentTown(); if (!t) { homeBooksBlock(); return recentBlock(); }
-      if (t.archive) clipBlock(t); else { rmBlock(t); teamsBlock(t); bookBlock(t); }
+      if (t.archive) clipBlock(t); else { rmLink(t); rmBlock(t); teamsBlock(t); bookBlock(t); }
     } catch (e) { if (window.console) console.error("towntales-extra", e); }
   }
   function boot() {
