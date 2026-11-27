@@ -20,7 +20,7 @@
     var grp = document.querySelector("#tt-adm .tt-qgroups");
     if (!grp || document.getElementById("tt-ai-grp")) return;
     var d = document.createElement("div"); d.className = "tt-qg"; d.id = "tt-ai-grp";
-    d.innerHTML = '<h3>AI reader</h3><p class="small muted">Reads photos, clippings, gravestones and book pages, translates English ↔ French, and drafts book updates for you to approve.</p>' +
+    d.innerHTML = '<h3>AI reader</h3><p class="small muted">Reads photos, clippings, gravestones and book pages, translates other languages into English, and drafts book updates for you to approve.</p>' +
       '<div class="btns"><button class="btn sm" data-ai="drafts">Book update drafts</button><button class="btn sm alt" data-ai="status">What the AI read</button></div>';
     grp.appendChild(d);
     var out = document.createElement("div"); out.id = "tt-ai-out"; out.className = "stack";

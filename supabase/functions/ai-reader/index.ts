@@ -2,7 +2,8 @@
 //
 // What it does
 //   1. Reads pictures queued in public.ai_reads (shared photos, newspaper clippings, gravestone photos, pages of
-//      whole-book uploads): copies the writing exactly, describes photos, and gives the writing in English AND French.
+//      whole-book uploads): copies the writing exactly, describes photos, and gives an English translation of
+//      writing that isn't English (French writing is kept as written; nothing is translated into French).
 //      Results are written back where a reviewer will see them before anything goes public:
 //        photo           → added to the bottom of the pending upload's text (visitor uploads only)
 //        clipping        → fills an empty transcription (status "transcribed" = shown with the AI label) + translation
@@ -79,29 +80,28 @@ const RULES = `Rules for the writing:
 - Where a word can't be read, write [illegible]. Never guess, never fill gaps, never fix spelling.
 - If there is no writing at all, "writing" is "".
 - "lang" is the language of the writing as a two-letter code (en, fr, de, uk, pl, …); "" if there is no writing.
-- "writing_en": the writing in English. "writing_fr": the writing in French. Translate faithfully, keep [illegible] marks, keep names as written.
-  Leave the one that is in the writing's own language as "" (it would just repeat the writing).
+- "writing_en": the writing translated into English, faithfully, keeping [illegible] marks and names as written. If the writing is already in English, leave "writing_en" as "".
 Reply with JSON only, no other text.`;
 const PROMPTS: Record<string, string> = {
   photo: `You read old photographs for a small-town history archive in Canada.
-Describe what the photo shows in one or two plain sentences (people, buildings, vehicles, signs, season), without guessing names, dates or places that aren't written on it. Give the description in English and in French.
+Describe what the photo shows in one or two plain sentences (people, buildings, vehicles, signs, season), without guessing names, dates or places that aren't written on it. Write the description in English.
 Then copy any writing on it: signs, captions, notes written on the photo or on its back, stamps.
 ${RULES}
-JSON: {"description_en":"","description_fr":"","writing":"","lang":"","writing_en":"","writing_fr":""}`,
+JSON: {"description_en":"","writing":"","lang":"","writing_en":""}`,
   clipping: `You transcribe old newspaper clippings for a small-town history archive in Canada.
 "headline" is the main headline if readable, else "". "paper" and "date" only if they are printed on the clipping itself, else "".
 ${RULES}
-JSON: {"headline":"","paper":"","date":"","writing":"","lang":"","writing_en":"","writing_fr":""}`,
+JSON: {"headline":"","paper":"","date":"","writing":"","lang":"","writing_en":""}`,
   memorial_photo: `You read gravestone and memorial photos for a small-town history archive in Canada.
 Copy the whole inscription as "writing". Also list each person named on the stone in "names" with birth and death exactly as carved (or "" when not carved).
-Describe the stone in one short sentence in English and in French (e.g. "Grey granite headstone with a carved cross").
+Describe the stone in one short English sentence (e.g. "Grey granite headstone with a carved cross").
 ${RULES}
-JSON: {"names":[{"name":"","born":"","died":""}],"description_en":"","description_fr":"","writing":"","lang":"","writing_en":"","writing_fr":""}`,
+JSON: {"names":[{"name":"","born":"","died":""}],"description_en":"","writing":"","lang":"","writing_en":""}`,
   book_page: `You transcribe one page of a local history book (photographed with a phone) so it can be digitized.
 Copy all the text on the page in reading order. Keep headings on their own line. For a photo on the page, write [Photo: <its caption, copied exactly, or a few words if it has none>].
 "page_number" is the printed page number if there is one, else "".
 ${RULES}
-JSON: {"page_number":"","writing":"","lang":"","writing_en":"","writing_fr":""}`,
+JSON: {"page_number":"","writing":"","lang":"","writing_en":""}`,
 };
 
 async function imageDataUrl(job: any): Promise<string> {
@@ -147,9 +147,9 @@ async function readOne(job: any) {
     text_original: writing || null,
     // The language the writing is already in gets the original words, not a re-translation.
     text_en: writing ? (lang === "en" ? writing : clean(p.writing_en, 60000) || null) : null,
-    text_fr: writing ? (lang === "fr" ? writing : clean(p.writing_fr, 60000) || null) : null,
+    text_fr: writing && lang === "fr" ? writing : null, // French only when the writing itself is French; never translated into French
     description_en: clean(p.description_en, 1000) || null,
-    description_fr: clean(p.description_fr, 1000) || null,
+    description_fr: null,
     fields: {} as Record<string, unknown>,
     model: a.model,
     cost_usd: a.cost,
@@ -165,7 +165,6 @@ function translationLine(r: any): string {
   if (!r.text_original) return "";
   const parts: string[] = [];
   if (r.lang !== "en" && r.text_en) parts.push("English: " + r.text_en);
-  if (r.lang !== "fr" && r.text_fr) parts.push("Français : " + r.text_fr);
   return parts.join("\n");
 }
 
@@ -177,7 +176,6 @@ async function applyResult(job: any, r: any): Promise<boolean> {
     if (body.includes("[Read by AI")) return false;
     const lines = ["[Read by AI from the photo. Please check before approving.]"];
     if (r.description_en) lines.push("What it shows: " + r.description_en);
-    if (r.description_fr) lines.push("Ce qu'on y voit : " + r.description_fr);
     if (r.text_original) lines.push("Writing on the photo: " + r.text_original);
     const tl = translationLine(r); if (tl) lines.push(tl);
     if (lines.length === 1) return false;
