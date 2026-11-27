@@ -850,6 +850,16 @@
     }).catch(function () { recentP = null; return []; });
     return recentP;
   }
+  function homeBooksBlock() {
+    var view = $("#view"), grow = view && $("#grow", view);
+    if (!grow || $("#tt-homebooks", view)) return;
+    var sec = document.createElement("section");
+    sec.id = "tt-homebooks"; sec.className = "wrap";
+    sec.innerHTML = '<div class="grow" style="max-width:none"><p class="eyebrow">TownTales books</p><h2>Buy a town history book</h2>' +
+      "<p>Each town's page becomes a printed or digital history book, with every source. <b>The more history is added to a town's page, the better its book will be.</b> Printed to order, free shipping in Canada.</p>" +
+      '<div class="btns"><a class="btn" href="/books">See the books</a><a class="btn alt" href="#upload">Add to your town\'s page</a></div></div>';
+    grow.parentNode.insertBefore(sec, grow);
+  }
   function recentBlock() {
     var view = $("#view"), grow = view && $("#grow", view);
     if (!grow || $("#tt-recent", view)) return;
@@ -1037,7 +1047,7 @@
       var nb = $("#tt-notice"); if (nb) { try { if (localStorage.getItem("tt-notice-1")) nb.remove(); } catch (e) {} }
       var h = (location.hash || "").slice(1);
       if (h === "admin" || h.indexOf("admin/") === 0) return adminBlock();
-      var t = currentTown(); if (!t) return recentBlock();
+      var t = currentTown(); if (!t) { homeBooksBlock(); return recentBlock(); }
       if (t.archive) clipBlock(t); else { rmBlock(t); teamsBlock(t); bookBlock(t); }
     } catch (e) { if (window.console) console.error("towntales-extra", e); }
   }

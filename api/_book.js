@@ -165,6 +165,7 @@ async function booksIndex(res) {
   const main = `<section class="wrap stack" style="padding-top:22px"><p class="crumbs"><a href="/">TownTales</a> › Books</p>
 <p class="eyebrow">TownTales books</p><h1>Town history books</h1>
 <p class="lede">Each book is built from a town's TownTales page: the timeline, the people, the cemeteries and the teams, with every source. Printed to order by <a href="https://www.lulu.com" rel="noopener">Lulu</a>, a print-on-demand publisher founded by Canadian Bob Young, with free shipping anywhere in Canada. Allow 4 to 6 weeks for a printed copy.</p>
+<p><b>The more history is added to a town's page, the better its book will be.</b> Every photo, story, clipping and name shared on TownTales goes into that town's next revision. <a href="/#upload">Share something about your town</a>.</p>
 <p class="small muted">A book's revision number goes up each time it is updated with new history from its town's page. The number under each book tells you which version you'd get.</p>
 <h2>${done.length ? 'Books you can buy now' : 'No books are finished yet'}</h2>
 ${done.length ? `<div class="bk-shelf">${done.map(shelfCard).join('')}</div>` : '<p>The first books are being finished. Request your town\'s below and we\'ll email you the day it is ready.</p>'}
@@ -203,7 +204,7 @@ async function booksSection() {
     if (!done.length && !wantTowns.length) return '';
     const next = wantTowns.map((t) => `<li><a href="/${esc(t.slug)}/book#request">${esc(t.name)}</a>${counts[t.slug] >= 5 ? ` <span class="small muted">· ${counts[t.slug]} requests</span>` : ''}</li>`).join('');
     return `<section class="wrap stack" id="books-shelf"><h2>${done.length ? 'Books you can buy now' : 'Town history books'}</h2>
-<p>Each book is built from a town's TownTales page: the timeline, the people, the cemeteries and the teams, with every source. Printed to order by <a href="https://www.lulu.com" rel="noopener">Lulu</a>, a print-on-demand publisher founded by Canadian Bob Young, with free shipping anywhere in Canada. Allow 4 to 6 weeks for a printed copy.</p>
+<p>Each book is built from a town's TownTales page: the timeline, the people, the cemeteries and the teams, with every source. Printed to order by <a href="https://www.lulu.com" rel="noopener">Lulu</a>, a print-on-demand publisher founded by Canadian Bob Young, with free shipping anywhere in Canada. Allow 4 to 6 weeks for a printed copy. <b>The more history is added to a town's page, the better its book will be.</b></p>
 ${done.length ? `<div class="bk-shelf">${done.map(shelfCard).join('')}</div><p><a href="/books">See all books</a></p>` : ''}
 ${next ? `<h3>Coming next</h3><p class="small">People are asking for these. Don't see your town's book yet? Request it and we'll email you when it's ready.</p><ul class="bk-next">${next}</ul>` : ''}
 ${SHELF_CSS}
@@ -269,7 +270,8 @@ module.exports = async (req, res) => {
     if (!book) return waitlist(res, town, (await requestCounts())[town.slug] || 0);
     const eds = await editionsFor(slug, book);
     const revRow = (await q(`town_books?slug=eq.${s}&select=revision,revised_at`).catch(() => []))[0];
-    const revLine = `<p class="small muted">${esc(revText({ revision: revRow && revRow.revision, revised_at: revRow && revRow.revised_at }))}. <a href="/books">See all TownTales books</a></p>`;
+    const revLine = `<p class="small muted">${esc(revText({ revision: revRow && revRow.revision, revised_at: revRow && revRow.revised_at }))}. <a href="/books">See all TownTales books</a></p>
+<p class="small">This book is built from ${esc(town.name)}'s TownTales page, so the more history is added there, the better it gets. <a href="/#upload">Share a photo, a story or a clipping</a>.</p>`;
     const [timeline, items, mems, cems, teams] = await Promise.all([
       q(`timeline?town=eq.${s}&select=year,label,title&order=year,sort`, { all: true }),
       q(`items?town=eq.${s}&status=eq.published&select=id`, { all: true }),
