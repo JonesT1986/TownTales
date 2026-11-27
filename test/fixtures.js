@@ -78,6 +78,17 @@ tables.memorials.push(
 const pendingMem = { id: 'm-pend1', town: 'wapella-sk', name: 'Agnes Fraser', birth_date_label: '1901', death_date_label: '1988', status: 'pending' };
 const mockFetch = async (url, opts = {}) => {
   const u = new URL(url);
+  if (u.hostname === 'commons.wikimedia.org') {
+    const md = (lic, art, desc) => ({ LicenseShortName: { value: lic }, Artist: { value: art }, ImageDescription: { value: desc } });
+    const pages = {
+      1: { index: 1, title: 'File:Main Street Moosomin 1905.jpg', imageinfo: [{ thumburl: 'ph/0.jpg', descriptionurl: 'x', mime: 'image/jpeg', width: 1600, height: 1000, extmetadata: md('Public domain', 'Unknown photographer', 'Main Street, Moosomin, Saskatchewan, about 1905') }] },
+      2: { index: 2, title: 'File:Moosomin map.png', imageinfo: [{ thumburl: 'ph/1.jpg', mime: 'image/png', width: 1600, height: 1000, extmetadata: md('CC BY-SA 4.0', 'X', 'Location map of Moosomin') }] },
+      3: { index: 3, title: 'File:Moosomin elevator.jpg', imageinfo: [{ thumburl: 'ph/1.jpg', mime: 'image/jpeg', width: 1400, height: 900, extmetadata: md('CC BY-SA 3.0', '<a href="#">Jane Doe</a>', 'Grain elevators at Moosomin') }] },
+      4: { index: 4, title: 'File:Moosomin cenotaph.jpg', imageinfo: [{ thumburl: 'ph/2.jpg', mime: 'image/jpeg', width: 900, height: 1200, extmetadata: md('CC BY 4.0', 'John Roe', 'The Moosomin cenotaph') }] },
+      5: { index: 5, title: 'File:Moosomin NC.jpg', imageinfo: [{ thumburl: 'ph/2.jpg', mime: 'image/jpeg', width: 900, height: 1200, extmetadata: md('CC BY-NC 2.0', 'No', 'Moosomin') }] },
+    };
+    return new Response(JSON.stringify(u.searchParams.get('gsrsearch').includes('Moosomin') ? { query: { pages } } : {}), { status: 200, headers: { 'content-type': 'application/json' } });
+  }
   const table = u.pathname.split('/').pop();
   if (table === 'honour_target') {
     const id = u.searchParams.get('p_id');
