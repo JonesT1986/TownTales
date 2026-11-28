@@ -84,7 +84,7 @@ function cemeteryCard(c, count) {
   return `<div class="rm-cem" id="cem-${esc(c.id)}"><h3>${esc(c.name)}</h3>` +
     (aka.length ? `<p class="small muted">Also known as ${aka.map(esc).join(', ')}</p>` : '') +
     (bits.length ? `<dl class="kv">${bits.join('')}</dl>` : '') +
-    `<p class="small">${count === 1 ? '1 person' : count + ' people'} remembered here${count ? ` · <a href="?c=${encodeURIComponent(c.id)}#names">Show only this cemetery</a>` : ''}</p>` +
+    `<p class="small">${count === 1 ? '1 person' : count + ' people'} remembered here${count ? ` · <a href="?c=${encodeURIComponent(c.id)}#names" rel="nofollow">Show only this cemetery</a>` : ''}</p>` +
     srcHtml(c.source, c.source_url) + '</div>';
 }
 
@@ -261,7 +261,7 @@ async function memorialPage(req, res, town, id, url) {
   const facts = [];
   if (m.birth_date_label || m.birth_place) facts.push(`<dt>Born</dt><dd>${esc([m.birth_date_label, m.birth_place].filter(Boolean).join(', '))}</dd>`);
   if (m.death_date_label || m.death_place) facts.push(`<dt>Died</dt><dd>${esc([m.death_date_label, m.death_place].filter(Boolean).join(', '))}</dd>`);
-  if (cn) facts.push(`<dt>Resting place</dt><dd>${cem ? `<a href="/${esc(town.slug)}/remembrance?c=${encodeURIComponent(cem.id)}#names">${esc(cn)}</a>` : esc(cn)}${cem && cem.location_desc ? `<br><span class="small muted">${esc(cem.location_desc)}</span>` : ''}</dd>`);
+  if (cn) facts.push(`<dt>Resting place</dt><dd>${cem ? `<a href="/${esc(town.slug)}/remembrance?c=${encodeURIComponent(cem.id)}#names" rel="nofollow">${esc(cn)}</a>` : esc(cn)}${cem && cem.location_desc ? `<br><span class="small muted">${esc(cem.location_desc)}</span>` : ''}</dd>`);
   const d = dates(m);
 
   const main = `<section class="wrap stack rm rm-person" style="padding-top:22px">

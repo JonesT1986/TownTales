@@ -15,7 +15,16 @@ module.exports = async (req, res) => {
   const slug = String(url.searchParams.get('slug') || '').toLowerCase();
   const isArchive = url.searchParams.get('sub') === 'archive';
   let towns = {};
-  try { towns = await getTowns(); } catch (e) { /* database unreachable: fall through to 404 page */ }
+  try { towns = await getTowns(); } catch (e) {
+    // Database unreachable: say "try again later" (503), never "this page doesn't exist" (404),
+    // or Google drops real town pages whenever the database has a slow moment.
+    res.statusCode = 503;
+    res.setHeader('Retry-After', '60');
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-store');
+    res.end('<!doctype html><meta charset="utf-8"><title>Back shortly | TownTales</title><p style="font:20px/1.5 sans-serif;padding:24px">This page is having trouble loading. Please try again in a minute. <a href="/">TownTales home</a></p>');
+    return;
+  }
   const town = towns[slug];
   const name = town && esc(town.name); // visitor-supplied, so escaped before going into the page head
   const provName = town ? esc(town.prov) : 'Saskatchewan';

@@ -14,6 +14,7 @@ const MS = require('./_milestones');
 const { getApp } = require('./_app');
 
 const SITE = 'https://www.towntales.ca';
+const ARCHIVE_MIN = 25; // the town page shows this many archive items in full
 const PROV = { SK: 'Saskatchewan', AB: 'Alberta', MB: 'Manitoba', BC: 'British Columbia', ON: 'Ontario', QC: 'Quebec', NB: 'New Brunswick', NS: 'Nova Scotia', PE: 'Prince Edward Island', NL: 'Newfoundland and Labrador', YT: 'Yukon', NT: 'Northwest Territories', NU: 'Nunavut' };
 const esc = (v) => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 const jsonLd = (o) => '<script type="application/ld+json">' + JSON.stringify(o).replace(/</g, '\\u003c') + '</script>';
@@ -134,7 +135,7 @@ function townBody(town, timeline, items, archive, cems, clips, teams) {
     for (const it of items.slice(0, archive ? 200 : 25)) {
       const body = String(it.body || '');
       h += '<li><h3>' + esc(it.title || 'Untitled') + '</h3>' +
-        (body ? '<p>' + esc(archive ? body : body.slice(0, 280) + (body.length > 280 ? '…' : '')) + '</p>' : '') +
+        (body ? '<p>' + esc(body) + '</p>' : '') +
         (it.source ? '<p class="small">Source: ' + esc(it.source) + '</p>' : '') + '</li>';
     }
     h += '</ul>';
@@ -188,6 +189,9 @@ module.exports = async (req, res) => {
             archive ? Promise.resolve([]) : soft(q('teams?town=eq.' + s + '&select=name,sport,league,years_label,home_venue,championships,note,tier,source&order=sport,name')),
           ]);
           main = townBody(town, timeline, items, archive, cems, clips, teams);
+          // The town page now carries every archive item in full (up to 25), so an archive page with 25 or fewer
+          // items and no clippings repeats it. Keep it for visitors, but out of Google (matches sitemap.js).
+          if (archive && items.length <= ARCHIVE_MIN && !clips.length) inject.push('<meta name="robots" content="noindex, follow">');
           const msBanner = MS.banner(town, msYear);
           if (msBanner) main = '<style>' + MS.CSS + '</style>' + main.replace('<h1>', msBanner + '<h1>');
           const prov = PROV[town.prov] || town.prov;

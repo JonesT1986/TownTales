@@ -34,10 +34,32 @@ async function memorialRows(from, to) {
   const jobs = [];
   for (let s = from; s < to; s += PAGE) {
     const e = Math.min(s + PAGE, to) - 1;
-    jobs.push(fetch(`${SB}/rest/v1/memorials?status=eq.published&select=id,town&order=id`, { headers: headers({ Range: `${s}-${e}` }) })
+    jobs.push(fetch(`${SB}/rest/v1/memorials?status=eq.published&select=id,town,birth_date_label,death_date_label&order=id`, { headers: headers({ Range: `${s}-${e}` }) })
       .then((r) => (r.ok ? r.json() : r.status === 416 ? [] : Promise.reject(new Error('memorials ' + r.status)))));  // 416 = page is past the last row
   }
   return [].concat(...(await Promise.all(jobs)));
+}
+
+// Towns with more than ARCHIVE_MIN published items, or any clippings. Their archive page is worth indexing;
+// the rest repeat the town page and are noindexed there.
+const ARCHIVE_MIN = 25;
+async function archiveTowns() {
+  const r = await fetch(`${SB}/rest/v1/items?status=eq.published&select=id`, { headers: headers({ Prefer: 'count=exact', Range: '0-0' }) });
+  const m = /\/(\d+)$/.exec(r.headers.get('content-range') || '');
+  if (!m) throw new Error('no item count');
+  const total = Number(m[1]);
+  const jobs = [];
+  for (let s = 0; s < total; s += PAGE) {
+    jobs.push(fetch(`${SB}/rest/v1/items?status=eq.published&select=town&order=id`, { headers: headers({ Range: `${s}-${s + PAGE - 1}` }) })
+      .then((x) => (x.ok ? x.json() : x.status === 416 ? [] : Promise.reject(new Error('items ' + x.status)))));
+  }
+  const rows = [].concat(...(await Promise.all(jobs)));
+  const n = {};
+  for (const it of rows) n[it.town] = (n[it.town] || 0) + 1;
+  const out = new Set(Object.keys(n).filter((t) => n[t] > ARCHIVE_MIN));
+  const clips = await q('clippings?select=town', { all: true, timeout: 8000 }).catch(() => []);
+  for (const c of clips) out.add(c.town);
+  return out;
 }
 
 module.exports = async (req, res) => {
@@ -59,8 +81,11 @@ module.exports = async (req, res) => {
   if (part === 'core') {
     const urls = [S + '/', S + '/province'];
     const provs = new Set();
+    let bigArchive = null; // towns whose archive has more than the town page shows (see seo.js ARCHIVE_MIN)
+    try { bigArchive = await archiveTowns(); } catch (e) { /* unknown: list every archive, as before */ }
     for (const slug of Object.keys(towns)) {
-      urls.push(`${S}/${slug}`, `${S}/${slug}/archive`);
+      urls.push(`${S}/${slug}`);
+      if (!bigArchive || bigArchive.has(slug)) urls.push(`${S}/${slug}/archive`);
       const code = Object.keys(PROV_SLUG).find((c) => c === slug.slice(-2).toUpperCase());
       if (code) provs.add(code);
     }
@@ -87,6 +112,7 @@ module.exports = async (req, res) => {
         if (!towns[m.town]) continue;
         if (!seen.has(m.town)) { seen.add(m.town); urls.push(`${S}/${m.town}/remembrance`); } // a town's index can repeat across files; harmless
         if (!m.id || m.id.length > MAX_ID) continue;
+        if (!m.birth_date_label && !m.death_date_label) continue; // name only: too thin to submit (the page stays live)
         urls.push(`${S}/${m.town}/remembrance/${encodeURIComponent(m.id)}`);
       }
     } catch (e) { res.statusCode = 503; return res.end('Temporarily unavailable'); }
