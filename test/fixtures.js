@@ -26,7 +26,13 @@ const teams = [
   { id: 't2', town: 'wapella-sk', name: 'Wapella Wolves', sport: 'Hockey', league: null, years_label: '1948–1972', home_venue: 'Wapella Rink', championships: [], note: null, tier: 'community', source: 'Recollection of J. Smith', source_url: null, status: 'published' },
 ];
 const athletes = [{ id: 'a1', town: 'wapella-sk', name: 'Test Athlete', sport: 'Hockey', level: 'NHL', connection: 'Born in Wapella', teams_label: 'Test Team A, Test Team B', years_label: '1990s–2000s', achievements: ['Test highlight'], note: null, tier: 'documented', source: 'Test source', source_url: null, status: 'published' }];
-const tables = { athletes, teams, town_stats, towns, cemeteries: cems, memorials: mems, clippings: clips, provinces, timeline: [
+const donors = [
+  { id: 'd1', town: 'wapella-sk', display_name: 'The Anderson family', dedication: 'In memory of John and Mary Anderson', monthly: true, monthly_active: true, status: 'published', created_at: '2026-11-27T12:00:00Z' },
+  { id: 'd2', town: 'wapella-sk', display_name: '<i>Bob</i> Lee', dedication: null, monthly: false, monthly_active: false, status: 'published', created_at: '2026-11-26T12:00:00Z' },
+  { id: 'd3', town: null, display_name: 'Carol Smith', dedication: null, monthly: false, monthly_active: false, status: 'published', created_at: '2026-11-25T12:00:00Z' },
+  { id: 'd4', town: 'wapella-sk', display_name: 'Not Yet Approved', dedication: null, monthly: false, monthly_active: false, status: 'pending', created_at: '2026-11-25T12:00:00Z' },
+];
+const tables = { donors, athletes, teams, town_stats, towns, cemeteries: cems, memorials: mems, clippings: clips, provinces, timeline: [
   {"town": "wapella-sk", "year": 1874, "label": "September 1874", "title": "Treaty 4 signed at Fort Qu'Appelle", "body": "", "sort": 0},
   {"town": "wapella-sk", "year": 1882, "label": "1882", "title": "The CPR main line reaches Wapella", "body": "", "sort": 1},
   {"town": "wapella-sk", "year": 1883, "label": "1883", "title": "Scottish settlement founded south of town", "body": "", "sort": 2},

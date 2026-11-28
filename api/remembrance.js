@@ -415,6 +415,7 @@ function donateThanksPage(res) {
 <h1>Thank you</h1>
 <div class="rm-ok"><p>Your gift went through, and Stripe has emailed you a receipt.</p>
 <p>It goes straight into keeping TownTales online and digging up more of each town's history. We're grateful you're part of it.</p>
+<p>Asked to be recognized? Your name appears on <a href="/donors">our donors page</a> once we've checked it, usually within a few days.</p>
 <p>Gave monthly? You can cancel or update your card anytime from the link in your Stripe receipt email.</p></div>
 <p>Questions? Email <a href="mailto:towntalesinfo@gmail.com">towntalesinfo@gmail.com</a>.</p>
 <p><a class="btn alt" href="/#towns">Back to TownTales</a></p>
