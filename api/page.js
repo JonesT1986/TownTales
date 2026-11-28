@@ -20,11 +20,14 @@ function donateNotice() {
   if (!once && !monthly) {
     return '<div class="notice info" style="max-width:780px"><b>Online card payments are coming soon.</b><p>Until then, tell us how you\'d like to help below and we\'ll email you the details for sending your donation.</p></div>';
   }
-  const btns = (once ? '<a class="btn" href="' + once + '" rel="noopener">Give once</a>' : '') +
-    (monthly ? '<a class="btn' + (once ? ' alt' : '') + '" href="' + monthly + '" rel="noopener">Give monthly</a>' : '');
+  const cap = 'font-size:.92em;margin:6px 0 0;max-width:300px';
+  const btns = (once ? '<div style="flex:1 1 260px"><a class="btn" href="' + once + '" rel="noopener">Give once: any amount</a>' +
+      '<p style="' + cap + '">A single gift. You type in whatever amount you like.</p></div>' : '') +
+    (monthly ? '<div style="flex:1 1 260px"><a class="btn' + (once ? ' alt' : '') + '" href="' + monthly + '" rel="noopener">Give monthly: recurring</a>' +
+      '<p style="' + cap + '">A recurring gift, charged every month until you cancel. Cancel anytime.</p></div>' : '');
   return '<div class="notice info" style="max-width:780px"><b>Every gift helps keep this going.</b>' +
-    '<p>You choose the amount, and pay securely through Stripe. Stripe emails you a receipt. TownTales is not a registered charity, so donations are not tax-deductible.</p></div>' +
-    '<div style="display:flex;flex-wrap:wrap;gap:12px;max-width:780px;margin:16px 0">' + btns + '</div>' +
+    '<p>You pay securely through Stripe, and Stripe emails you a receipt. TownTales is not a registered charity, so donations are not tax-deductible.</p></div>' +
+    '<div style="display:flex;flex-wrap:wrap;gap:18px;max-width:780px;margin:16px 0">' + btns + '</div>' +
     '<p style="max-width:780px"><b>Prefer another way, or want to sponsor a town?</b> Tell us below and we\'ll email you the details.</p>';
 }
 
