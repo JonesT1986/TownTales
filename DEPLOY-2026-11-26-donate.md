@@ -8,7 +8,7 @@ Switches on when Payment Links are set in Vercel. Until then the Donate page is 
 3. Leave tax collection off on both unless the accountant says otherwise.
 
 ## Vercel -> Environment Variables
-- `DONATE_LINK_ONCE` = the one-time link (https://buy.stripe.com/...)
+- `DONATE_LINK_ONCE` = the one-time link (https://buy.stripe.com/... or https://donate.stripe.com/...)
 - `DONATE_LINK_MONTHLY` = the monthly link
 - Either one alone works (that single button shows). Redeploy after adding.
 

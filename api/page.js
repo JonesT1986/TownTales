@@ -11,7 +11,7 @@ const MORE_TAG = '<script src="/towntales-more.js?v=3" defer></script>';
 // Donate buttons switch on when DONATE_LINK_ONCE and/or DONATE_LINK_MONTHLY (Stripe Payment Links) are set in Vercel.
 // With neither set, the Donate page keeps its "tell us how you'd like to help" form exactly as before.
 function donateLinks() {
-  const ok = (v) => { v = String(v || '').trim(); return /^https:\/\/buy\.stripe\.com\/[A-Za-z0-9_-]+$/.test(v) ? v : ''; };
+  const ok = (v) => { v = String(v || '').trim(); return /^https:\/\/(?:buy|donate)\.stripe\.com\/[A-Za-z0-9_-]+$/.test(v) ? v : ''; };
   return { once: ok(process.env.DONATE_LINK_ONCE), monthly: ok(process.env.DONATE_LINK_MONTHLY) };
 }
 // Built without backticks or dollar-brace: this text lands inside a template literal in app.html.
