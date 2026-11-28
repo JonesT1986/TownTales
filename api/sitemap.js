@@ -48,12 +48,14 @@ async function archiveTowns() {
   const m = /\/(\d+)$/.exec(r.headers.get('content-range') || '');
   if (!m) throw new Error('no item count');
   const total = Number(m[1]);
-  const jobs = [];
-  for (let s = 0; s < total; s += PAGE) {
-    jobs.push(fetch(`${SB}/rest/v1/items?status=eq.published&select=town&order=id`, { headers: headers({ Range: `${s}-${s + PAGE - 1}` }) })
-      .then((x) => (x.ok ? x.json() : x.status === 416 ? [] : Promise.reject(new Error('items ' + x.status)))));
+  const rows = [];
+  const one = (s) => fetch(`${SB}/rest/v1/items?status=eq.published&select=town&order=id`, { headers: headers({ Range: `${s}-${s + PAGE - 1}` }) })
+    .then((x) => (x.ok ? x.json() : x.status === 416 ? [] : Promise.reject(new Error('items ' + x.status))));
+  for (let s = 0; s < total; s += PAGE * 10) { // ten requests at a time: the database refuses a burst of 70+
+    const batch = [];
+    for (let b = s; b < Math.min(s + PAGE * 10, total); b += PAGE) batch.push(one(b));
+    for (const part of await Promise.all(batch)) rows.push(...part);
   }
-  const rows = [].concat(...(await Promise.all(jobs)));
   const n = {};
   for (const it of rows) n[it.town] = (n[it.town] || 0) + 1;
   const out = new Set(Object.keys(n).filter((t) => n[t] > ARCHIVE_MIN));
