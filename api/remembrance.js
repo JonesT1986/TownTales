@@ -4,6 +4,7 @@
 //   /<town>/remembrance/<memorial>/honour        → Honour Page order form (photos + life story, paid once via Stripe)
 //   /<town>/remembrance/<memorial>?certificate=1 → printable certificate for an honoured person
 //   /honour/thanks                               → where Stripe sends people after paying
+//   /donate/thanks                               → where Stripe sends people after a donation (kept here to stay under the function limit)
 const { SITE, SB, KEY, PROV, PROV_SLUG, esc, q, page, send, notFound } = require('./_shell');
 
 // Honour Pages switch on when HONOUR_PAYMENT_LINK (a Stripe Payment Link) is set in Vercel. Without it, no offer is shown anywhere.
@@ -408,8 +409,22 @@ function thanksPage(res) {
   send(res, 200, page({ title: 'Thank you | TownTales', desc: 'Thank you for honouring your family on TownTales.', main, noindex: true }), NOSTORE);
 }
 
+function donateThanksPage(res) {
+  const main = `<section class="wrap stack" style="padding-top:28px">
+<p class="eyebrow">Donate</p>
+<h1>Thank you</h1>
+<div class="rm-ok"><p>Your gift went through, and Stripe has emailed you a receipt.</p>
+<p>It goes straight into keeping TownTales online and digging up more of each town's history. We're grateful you're part of it.</p>
+<p>Gave monthly? You can cancel or update your card anytime from the link in your Stripe receipt email.</p></div>
+<p>Questions? Email <a href="mailto:towntalesinfo@gmail.com">towntalesinfo@gmail.com</a>.</p>
+<p><a class="btn alt" href="/#towns">Back to TownTales</a></p>
+</section>`;
+  send(res, 200, page({ title: 'Thank you | TownTales', desc: 'Thank you for supporting TownTales.', main, noindex: true }), NOSTORE);
+}
+
 module.exports = async (req, res) => {
   const url = new URL(req.url, 'http://localhost');
+  if (url.searchParams.get('donatethanks')) return donateThanksPage(res);
   if (url.searchParams.get('thanks')) return thanksPage(res);
   const slug = String(url.searchParams.get('slug') || '').toLowerCase();
   const id = url.searchParams.get('id');
