@@ -10,21 +10,36 @@ const MORE_TAG = '<script src="/towntales-more.js?v=3" defer></script>';
 
 // Donate buttons switch on when DONATE_LINK_ONCE and/or DONATE_LINK_MONTHLY (Stripe Payment Links) are set in Vercel.
 // With neither set, the Donate page keeps its "tell us how you'd like to help" form exactly as before.
+const MONTHLY_TIERS = [5, 10, 25, 50];
 function donateLinks() {
   const ok = (v) => { v = String(v || '').trim(); return /^https:\/\/(?:buy|donate)\.stripe\.com\/[A-Za-z0-9_-]+$/.test(v) ? v : ''; };
-  return { once: ok(process.env.DONATE_LINK_ONCE), monthly: ok(process.env.DONATE_LINK_MONTHLY) };
+  // DONATE_LINK_MONTHLY_5 / _10 / _25 / _50 = one fixed-amount monthly link each. DONATE_LINK_MONTHLY (no amount) still works on its own.
+  const tiers = MONTHLY_TIERS.map((n) => ({ amount: n, url: ok(process.env['DONATE_LINK_MONTHLY_' + n]) })).filter((t) => t.url);
+  return { once: ok(process.env.DONATE_LINK_ONCE), tiers, monthly: ok(process.env.DONATE_LINK_MONTHLY) };
 }
 // Built without backticks or dollar-brace: this text lands inside a template literal in app.html.
 function donateNotice() {
-  const { once, monthly } = donateLinks();
-  if (!once && !monthly) {
+  const { once, tiers, monthly } = donateLinks();
+  if (!once && !tiers.length && !monthly) {
     return '<div class="notice info" style="max-width:780px"><b>Online card payments are coming soon.</b><p>Until then, tell us how you\'d like to help below and we\'ll email you the details for sending your donation.</p></div>';
   }
-  const btns = (once ? '<a class="btn" href="' + once + '" rel="noopener">Give once</a>' : '') +
-    (monthly ? '<a class="btn' + (once ? ' alt' : '') + '" href="' + monthly + '" rel="noopener">Give monthly</a>' : '');
+  const cap = 'font-size:.92em;margin:6px 0 0;max-width:340px';
+  const bcls = once ? 'btn alt' : 'btn';
+  let monthlyBlock = '';
+  if (tiers.length) {
+    monthlyBlock = '<div style="flex:1 1 320px"><b>Give monthly (recurring)</b>' +
+      '<div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:8px">' +
+      tiers.map((t) => '<a class="' + bcls + '" href="' + t.url + '" rel="noopener">$' + t.amount + ' a month</a>').join('') + '</div>' +
+      '<p style="' + cap + '">A recurring gift, charged every month until you cancel. Cancel anytime.</p></div>';
+  } else if (monthly) {
+    monthlyBlock = '<div style="flex:1 1 260px"><a class="' + bcls + '" href="' + monthly + '" rel="noopener">Give monthly: recurring</a>' +
+      '<p style="' + cap + '">A recurring gift, charged every month until you cancel. Cancel anytime.</p></div>';
+  }
+  const onceBlock = once ? '<div style="flex:1 1 260px"><b>Give once</b><div style="margin-top:8px"><a class="btn" href="' + once + '" rel="noopener">Give once: any amount</a></div>' +
+    '<p style="' + cap + '">A single gift. You type in whatever amount you like.</p></div>' : '';
   return '<div class="notice info" style="max-width:780px"><b>Every gift helps keep this going.</b>' +
-    '<p>You choose the amount, and pay securely through Stripe. Stripe emails you a receipt. TownTales is not a registered charity, so donations are not tax-deductible.</p></div>' +
-    '<div style="display:flex;flex-wrap:wrap;gap:12px;max-width:780px;margin:16px 0">' + btns + '</div>' +
+    '<p>You pay securely through Stripe, and Stripe emails you a receipt. TownTales is not a registered charity, so donations are not tax-deductible.</p></div>' +
+    '<div style="display:flex;flex-wrap:wrap;gap:24px;max-width:780px;margin:16px 0">' + onceBlock + monthlyBlock + '</div>' +
     '<p style="max-width:780px"><b>Prefer another way, or want to sponsor a town?</b> Tell us below and we\'ll email you the details.</p>';
 }
 
