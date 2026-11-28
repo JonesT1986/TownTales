@@ -81,7 +81,7 @@ module.exports = async (req, res) => {
   try { towns = await getTowns(); } catch (e) { /* serve what we can */ }
 
   if (part === 'core') {
-    const urls = [S + '/', S + '/province'];
+    const urls = [S + '/', S + '/province', S + '/donors'];
     const provs = new Set();
     let bigArchive = null; // towns whose archive has more than the town page shows (see seo.js ARCHIVE_MIN)
     try { bigArchive = await archiveTowns(); } catch (e) { /* unknown: list every archive, as before */ }

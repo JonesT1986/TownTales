@@ -46,6 +46,10 @@
       "destination": "/api/sitemap?part=rem&n=:n"
     },
     {
+      "source": "/donors",
+      "destination": "/api/extra?kind=donors"
+    },
+    {
       "source": "/anniversary",
       "destination": "/api/extra?kind=anniversary"
     },

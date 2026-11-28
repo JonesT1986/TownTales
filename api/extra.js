@@ -3,11 +3,13 @@
 //   ?kind=family       → /<town>/family/<surname>   (_family-report.js)
 //   ?kind=partners     → /partners/funeral-homes    (_partners.js)
 //   ?kind=anniversary  → /anniversary               (_anniversary.js)
+//   ?kind=donors       → /donors                    (_donors.js)
 const PAGES = {
   book: () => require('./_book'),
   family: () => require('./_family-report'),
   partners: () => require('./_partners'),
   anniversary: () => require('./_anniversary'),
+  donors: () => require('./_donors'),
 };
 module.exports = (req, res) => {
   const kind = new URL(req.url, 'http://localhost').searchParams.get('kind');

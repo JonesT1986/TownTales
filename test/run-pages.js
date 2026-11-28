@@ -52,6 +52,7 @@ function call(handler, reqUrl) {
     ['seo-home', seo, '/api/seo?slug=_home'],
     ['seo-town', seo, '/api/seo?slug=wapella-sk'],
     ['seo-archive', seo, '/api/seo?slug=wapella-sk&sub=archive'],
+    ['donors', require('../api/extra'), '/api/extra?kind=donors'],
     ['sitemap', sitemap, '/api/sitemap'],
   ];
   for (const [name, h, u] of cases) {
